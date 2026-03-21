@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Pratiche Edilizie Bologna",
+    "slug": "pratiche-edilizie-bologna",
+    "version": "1.0.0",
+    "scheme": "pratiche-bologna",
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#9B2335"
+        }
+      ]
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#9B2335"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.praticheedilizie.bologna",
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "it",
+        "UIBackgroundModes": ["fetch", "processing"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#9B2335"
+      },
+      "package": "com.praticheedilizie.bologna"
+    },
+    "locales": {
+      "it": "./assets/lang/it.json"
+    }
+  }
+}

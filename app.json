@@ -40,16 +40,20 @@
         "UIBackgroundModes": [
           "fetch",
           "processing"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "background-permit-sync"
         ]
       },
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#9B2335"
       },
-      "package": "it.innesti.praticheediliziebologna"
+      "package": "it.innesti.praticheediliziebologna",
+      "versionCode": 2
     },
     "locales": {
       "it": "./assets/lang/it.json"

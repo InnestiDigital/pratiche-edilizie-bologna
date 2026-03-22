@@ -17,7 +17,8 @@
           "icon": "./assets/icon.png",
           "color": "#9B2335"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -32,21 +33,33 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.praticheedilizie.bologna",
+      "bundleIdentifier": "it.innesti.praticheediliziebologna",
       "infoPlist": {
         "CFBundleDevelopmentRegion": "it",
-        "UIBackgroundModes": ["fetch", "processing"]
-      }
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "fetch",
+          "processing"
+        ]
+      },
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#9B2335"
       },
-      "package": "com.praticheedilizie.bologna"
+      "package": "it.innesti.praticheediliziebologna"
     },
     "locales": {
       "it": "./assets/lang/it.json"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c0d7122d-e3bf-4813-98ba-b68f02d8da80"
+      }
+    },
+    "owner": "mottaviani.dev"
   }
 }

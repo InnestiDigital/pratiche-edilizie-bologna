@@ -16,6 +16,9 @@ web-build/
 ios
 android
 
+# EAS config (contains Apple credentials)
+eas.json
+
 # macOS
 .DS_Store
 

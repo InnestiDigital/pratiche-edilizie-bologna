@@ -6,6 +6,8 @@
     "ios": "expo run:ios",
     "start": "expo start",
     "prebuild": "expo prebuild",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "web": "expo start --web"
@@ -32,7 +34,8 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "^0.21.0",
-    "react-native-worklets": "0.5.1"
+    "react-native-worklets": "0.5.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
@@ -44,7 +47,8 @@
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "tailwindcss": "^3.4.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.9"
   },
   "main": "expo-router/entry",
   "private": true

@@ -1,10 +1,10 @@
-import "../global.css";
-import { useEffect, useCallback, useState } from "react";
-import { Stack, useRouter, useSegments } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator } from "react-native";
-import { isOnboardingDone, isNotificationsEnabled } from "../lib/preferences";
-import { registerBackgroundSync } from "../lib/background-sync";
+import '../global.css';
+import { useEffect, useCallback, useState } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
+import { isOnboardingDone, isNotificationsEnabled } from '../lib/preferences';
+import { registerBackgroundSync } from '../lib/background-sync';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -33,12 +33,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (!ready) return;
 
-    const inOnboarding = segments[0] === "onboarding";
+    const inOnboarding = segments[0] === 'onboarding';
 
     if (!onboarded && !inOnboarding) {
-      router.replace("/onboarding");
+      router.replace('/onboarding');
     } else if (onboarded && inOnboarding) {
-      router.replace("/(tabs)");
+      router.replace('/(tabs)');
     }
   }, [ready, onboarded]);
 
@@ -60,10 +60,10 @@ export default function RootLayout() {
           name="permit/[id]"
           options={{
             headerShown: true,
-            title: "Dettaglio Pratica",
-            presentation: "card",
-            headerStyle: { backgroundColor: "#9B2335" },
-            headerTintColor: "#ffffff",
+            title: 'Dettaglio Pratica',
+            presentation: 'card',
+            headerStyle: { backgroundColor: '#9B2335' },
+            headerTintColor: '#ffffff',
           }}
         />
       </Stack>

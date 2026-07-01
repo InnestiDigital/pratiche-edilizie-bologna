@@ -73,6 +73,19 @@ export function parsePermitTags(raw: string): string[] {
   return parsed.filter((t): t is string => typeof t === 'string');
 }
 
+/**
+ * Escape a user search term for safe use inside a SQL `LIKE` pattern.
+ *
+ * The feed search wraps the term as `%term%`, so the SQLite `LIKE` wildcards
+ * `%` (any run) and `_` (any single char) — plus the escape char `\` itself —
+ * would otherwise be interpreted, not matched literally. A search for `100%`
+ * or `via_` should match those exact strings, not "100 followed by anything".
+ * Callers must pair the escaped term with an `ESCAPE '\'` clause on the `LIKE`.
+ */
+export function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
 export async function getPermits(
   db: SQLite.SQLiteDatabase,
   filters: FeedFilters,
@@ -93,8 +106,8 @@ export async function getPermits(
   }
 
   if (filters.searchQuery) {
-    conditions.push('(address LIKE ? OR procedimento LIKE ?)');
-    const q = `%${filters.searchQuery}%`;
+    conditions.push("(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')");
+    const q = `%${escapeLike(filters.searchQuery)}%`;
     params.push(q, q);
   }
 

@@ -6,6 +6,7 @@ import {
   getStats,
   markAllSeen,
   parsePermitTags,
+  escapeLike,
   SORT_LABELS,
   type FeedFilters,
   type Permit,
@@ -106,8 +107,20 @@ describe('getPermits — WHERE construction', () => {
   it('builds a wrapped LIKE pair for searchQuery against address and procedimento', async () => {
     const { db, calls } = makeFakeDb();
     await getPermits(db, baseFilters({ searchQuery: 'Indipendenza' }));
-    expect(squish(calls[0].sql)).toContain('(address LIKE ? OR procedimento LIKE ?)');
+    expect(squish(calls[0].sql)).toContain(
+      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')"
+    );
     expect(calls[0].params).toEqual(['%Indipendenza%', '%Indipendenza%', 50, 0]);
+  });
+
+  it('escapes LIKE wildcards in the search term so they match literally', async () => {
+    const { db, calls } = makeFakeDb();
+    // A user typing "100%" or "via_" must match those literal strings, not use
+    // % / _ as SQL wildcards. The escaped term is wrapped in the outer %…%.
+    await getPermits(db, baseFilters({ searchQuery: '100%_ok\\' }));
+    expect(calls[0].params).toEqual(['%100\\%\\_ok\\\\%', '%100\\%\\_ok\\\\%', 50, 0]);
+    // The ESCAPE clause is what makes the backslash prefixes literal.
+    expect(squish(calls[0].sql)).toContain("ESCAPE '\\'");
   });
 
   it('builds an IN clause for statuses', async () => {
@@ -144,7 +157,7 @@ describe('getPermits — WHERE construction', () => {
     );
     const sql = squish(calls[0].sql);
     expect(sql).toContain(
-      'WHERE zone IN (?) AND filing_type IN (?) AND (address LIKE ? OR procedimento LIKE ?) AND status IN (?) AND is_new = 1'
+      "WHERE zone IN (?) AND filing_type IN (?) AND (address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\') AND status IN (?) AND is_new = 1"
     );
     expect(calls[0].params).toEqual(['Navile', 'SCIA', '%via%', '%via%', 'rilasciata', 50, 0]);
   });
@@ -272,6 +285,29 @@ describe('parsePermitTags', () => {
       'sanatoria',
       'deroga',
     ]);
+  });
+});
+
+describe('escapeLike', () => {
+  it('leaves a plain term untouched', () => {
+    expect(escapeLike('Indipendenza')).toBe('Indipendenza');
+    expect(escapeLike('')).toBe('');
+  });
+
+  it('escapes the % wildcard', () => {
+    expect(escapeLike('100%')).toBe('100\\%');
+  });
+
+  it('escapes the _ single-char wildcard', () => {
+    expect(escapeLike('via_')).toBe('via\\_');
+  });
+
+  it('escapes the backslash escape char itself, first', () => {
+    expect(escapeLike('a\\b')).toBe('a\\\\b');
+  });
+
+  it('escapes every special char in one pass without double-escaping', () => {
+    expect(escapeLike('%_\\')).toBe('\\%\\_\\\\');
   });
 });
 

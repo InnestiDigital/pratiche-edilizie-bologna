@@ -1,0 +1,41 @@
+name: EAS Build & Submit
+
+# ponytail: manual-only trigger — EAS cloud builds cost credits, so no build-on-push.
+# Add `push: { tags: ['v*'] }` here if you want tag-driven releases later.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        options: [all, ios, android]
+        default: all
+      submit:
+        description: Also submit to the stores after build
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: npm ci
+
+      - name: Build
+        run: eas build --platform ${{ inputs.platform }} --profile production --non-interactive --wait
+
+      - name: Submit
+        if: ${{ inputs.submit }}
+        run: eas submit --platform ${{ inputs.platform }} --profile production --non-interactive --latest

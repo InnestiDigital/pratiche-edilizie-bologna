@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { createPermitIndexesSql } from './schema-indexes';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
@@ -44,9 +45,7 @@ async function createTables(db: SQLite.SQLiteDatabase): Promise<void> {
       updated_count INTEGER NOT NULL DEFAULT 0
     );
 
-    CREATE INDEX IF NOT EXISTS idx_permits_zone ON permits(zone);
-    CREATE INDEX IF NOT EXISTS idx_permits_filing_type ON permits(filing_type);
-    CREATE INDEX IF NOT EXISTS idx_permits_first_seen ON permits(first_seen_at);
+    ${createPermitIndexesSql()}
   `);
 }
 

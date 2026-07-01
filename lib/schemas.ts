@@ -72,9 +72,11 @@ export interface ParsedPage {
  *
  * @throws {SyncIngressError} when the top-level envelope shape is wrong
  *   (not an object, `results` not an array, etc.) — i.e. the endpoint changed
- *   shape or returned an error page. Individual rows that fail validation are
- *   skipped (counted in {@link ParsedPage.skipped}) rather than fatal, so a
- *   single bad record does not lose an entire page.
+ *   shape or returned an error page — or when the page carried records but
+ *   *none* survived per-row validation (a renamed/removed required field: a
+ *   partial shape drift, see below). Individual rows that fail validation on an
+ *   otherwise-usable page are skipped (counted in {@link ParsedPage.skipped})
+ *   rather than fatal, so a single bad record does not lose an entire page.
  */
 export function parseApiResponse(payload: unknown): ParsedPage {
   const envelope = apiResponseSchema.safeParse(payload);
@@ -94,6 +96,22 @@ export function parseApiResponse(payload: unknown): ParsedPage {
     } else {
       skipped++;
     }
+  }
+
+  // A page the API returned WITH records but from which NONE survived per-row
+  // validation is a partial shape drift (e.g. a renamed required field makes
+  // every row fail), not a genuinely-empty page. If we returned `{results: []}`
+  // here it would be indistinguishable from end-of-data: the pagination walk
+  // (`walkPages` stops on an empty page) would halt and the sync would falsely
+  // report success with 0 fetched — a silently dead feed. Fail loud instead so
+  // retry.ts (which treats SyncIngressError as permanent) surfaces it on the
+  // dataset's SyncResult. A truly-empty page (`results.length === 0`) is the
+  // normal end-of-data signal and is left untouched.
+  if (envelope.data.results.length > 0 && results.length === 0) {
+    throw new SyncIngressError(
+      `Risposta open-data non valida: ${skipped} record presenti ma nessuno con la forma attesa ` +
+        `(possibile cambio di schema dell'endpoint)`
+    );
   }
 
   return { results, totalCount: envelope.data.total_count, skipped };

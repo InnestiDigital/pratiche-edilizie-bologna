@@ -81,12 +81,59 @@ describe('parseApiResponse — per-row resilience', () => {
     expect(page.skipped).toBe(1);
   });
 
-  it('skips a row whose required id field has the wrong type', () => {
+  it('skips a bad-typed row but keeps the good ones on the same page', () => {
     const page = parseApiResponse({
-      results: [rawRow({ richiesta_ndeg_prot: 'not-a-number' })],
+      total_count: 3,
+      results: [rawRow(), rawRow({ richiesta_ndeg_prot: 'not-a-number' }), rawRow()],
     });
-    expect(page.results).toHaveLength(0);
+    expect(page.results).toHaveLength(2);
     expect(page.skipped).toBe(1);
+  });
+});
+
+describe('parseApiResponse — total row-drop = shape drift throws', () => {
+  it('throws when a page has records but none survive validation', () => {
+    // Simulates a renamed/removed required field: every row fails per-row parse.
+    expect(() =>
+      parseApiResponse({
+        total_count: 100,
+        results: [
+          { anno: '2025', prot: 1 },
+          { anno: '2025', prot: 2 },
+        ],
+      })
+    ).toThrow(SyncIngressError);
+  });
+
+  it('throws even for a single-row page where the only row is unusable', () => {
+    // A page the API filled but from which we can extract nothing is a failure,
+    // not an empty page — returning [] would silently halt the pagination walk.
+    expect(() =>
+      parseApiResponse({ results: [rawRow({ richiesta_ndeg_prot: 'not-a-number' })] })
+    ).toThrow(SyncIngressError);
+  });
+
+  it('carries a drift-specific message mentioning the schema', () => {
+    try {
+      parseApiResponse({ results: [{ campo: 'ignoto' }] });
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(SyncIngressError);
+      expect((e as SyncIngressError).message).toContain('cambio di schema');
+    }
+  });
+
+  it('does NOT throw on a genuinely empty page (normal end-of-data)', () => {
+    const page = parseApiResponse({ total_count: 0, results: [] });
+    expect(page.results).toEqual([]);
+    expect(page.skipped).toBe(0);
+  });
+
+  it('does NOT throw when total_count is high but results is empty (end of walk)', () => {
+    // Past the last page the API returns an empty `results` even though
+    // total_count still reports the dataset size — must not read as drift.
+    const page = parseApiResponse({ total_count: 5000, results: [] });
+    expect(page.results).toEqual([]);
   });
 });
 

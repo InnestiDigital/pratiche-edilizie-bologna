@@ -221,6 +221,9 @@ export default function PermitDetail() {
           {permit.source_link && (
             <Pressable
               onPress={() => Linking.openURL(permit.source_link!)}
+              accessibilityRole="link"
+              accessibilityLabel="Vedi su Open Data Bologna"
+              accessibilityHint="Apre la scheda della pratica nel browser"
               className="flex-row items-center justify-center rounded-xl bg-brick-600 py-4"
               style={{
                 shadowColor: '#9B2335',
@@ -236,6 +239,8 @@ export default function PermitDetail() {
 
           <Pressable
             onPress={handleShare}
+            accessibilityRole="button"
+            accessibilityLabel="Condividi"
             className="mt-2 flex-row items-center justify-center rounded-xl border border-stone-300 bg-white py-3.5">
             <Ionicons name="share-outline" size={18} color="#5c5248" />
             <Text className="ml-2 text-base font-semibold text-ink-600">Condividi</Text>

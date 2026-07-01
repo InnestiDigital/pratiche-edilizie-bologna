@@ -99,6 +99,8 @@ export default function SyncScreen() {
             </Text>
             <Pressable
               onPress={handleGoToFeed}
+              accessibilityRole="button"
+              accessibilityLabel="Vai alle pratiche"
               className="mt-4 flex-row items-center rounded-xl bg-brick-600 px-5 py-3">
               <Ionicons name="document-text-outline" size={16} color="white" />
               <Text className="ml-2 font-bold text-white">Vai alle Pratiche</Text>
@@ -110,6 +112,11 @@ export default function SyncScreen() {
         <Pressable
           onPress={() => handleSync(false)}
           disabled={syncing}
+          accessibilityRole="button"
+          accessibilityLabel={
+            syncing ? 'Sincronizzazione in corso' : 'Aggiornamento rapido, ultimi 2 anni'
+          }
+          accessibilityState={{ disabled: syncing, busy: syncing }}
           className={`flex-row items-center justify-center rounded-xl py-4 ${
             syncing ? 'bg-stone-400' : 'bg-brick-600'
           }`}>
@@ -132,6 +139,8 @@ export default function SyncScreen() {
         {!syncing && (
           <Pressable
             onPress={() => handleSync(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Scarica storico completo"
             className="mt-2 flex-row items-center justify-center rounded-xl border border-stone-300 bg-white py-3">
             <Ionicons name="download-outline" size={18} color="#8B7355" />
             <Text className="ml-2 text-sm font-semibold text-stone-500">

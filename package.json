@@ -1,5 +1,5 @@
 {
-  "name": "permit-alert-app",
+  "name": "pratiche-edilizie-bologna",
   "version": "1.0.0",
   "scripts": {
     "android": "expo run:android",

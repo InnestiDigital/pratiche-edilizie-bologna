@@ -16,8 +16,9 @@ web-build/
 ios
 android
 
-# EAS config (contains Apple credentials)
-eas.json
+# EAS local credentials (Apple/Google signing material) — never commit.
+# eas.json itself holds only non-secret build/submit profiles and IS committed.
+credentials.json
 
 # macOS
 .DS_Store

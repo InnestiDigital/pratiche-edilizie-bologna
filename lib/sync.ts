@@ -6,6 +6,7 @@ import { withRetry } from './retry';
 import type { ParsedPage } from './schemas';
 import { getDb } from './db';
 import { classifyUpsert, type UpsertOutcome } from './upsert-classify';
+import { walkPages, recentYears, fullScanYears, MAX_OFFSET } from './paginate';
 
 /**
  * Fetch one page, retrying transient transport failures with backoff. A blip on
@@ -37,24 +38,21 @@ async function fetchDatasetRecent(
   const currentYear = new Date().getFullYear();
   const allRecords: RawRecord[] = [];
 
-  for (let year = currentYear - yearsBack + 1; year <= currentYear; year++) {
-    let offset = 0;
-    while (true) {
-      const { results } = await fetchPageWithRetry(
-        url,
-        {
-          limit: String(API_LIMIT),
-          offset: String(offset),
-          refine: `richiesta_anno_prot:${year}`,
-        },
-        onProgress
-      );
-      if (results.length === 0) break;
-      allRecords.push(...results);
-      if (results.length < API_LIMIT) break;
-      offset += API_LIMIT;
-      if (offset >= 9900) break;
-    }
+  for (const year of recentYears(currentYear, yearsBack)) {
+    const records = await walkPages<RawRecord>(
+      (offset) =>
+        fetchPageWithRetry(
+          url,
+          {
+            limit: String(API_LIMIT),
+            offset: String(offset),
+            refine: `richiesta_anno_prot:${year}`,
+          },
+          onProgress
+        ),
+      API_LIMIT
+    );
+    allRecords.push(...records);
   }
   return allRecords;
 }
@@ -68,46 +66,38 @@ async function fetchDatasetFull(
 
   const { totalCount } = await fetchPageWithRetry(url, { limit: '1', offset: '0' }, onProgress);
 
-  if (totalCount <= 9900) {
-    const allRecords: RawRecord[] = [];
-    let offset = 0;
-    while (true) {
-      const { results } = await fetchPageWithRetry(
-        url,
-        {
-          limit: String(API_LIMIT),
-          offset: String(offset),
-        },
-        onProgress
-      );
-      if (results.length === 0) break;
-      allRecords.push(...results);
-      if (results.length < API_LIMIT) break;
-      offset += API_LIMIT;
-    }
-    return allRecords;
+  if (totalCount <= MAX_OFFSET) {
+    return walkPages<RawRecord>(
+      (offset) =>
+        fetchPageWithRetry(
+          url,
+          {
+            limit: String(API_LIMIT),
+            offset: String(offset),
+          },
+          onProgress
+        ),
+      API_LIMIT
+    );
   }
 
   const allRecords: RawRecord[] = [];
   const currentYear = new Date().getFullYear();
-  for (let year = 2000; year <= currentYear; year++) {
-    let offset = 0;
-    while (true) {
-      const { results } = await fetchPageWithRetry(
-        url,
-        {
-          limit: String(API_LIMIT),
-          offset: String(offset),
-          refine: `richiesta_anno_prot:${year}`,
-        },
-        onProgress
-      );
-      if (results.length === 0) break;
-      allRecords.push(...results);
-      if (results.length < API_LIMIT) break;
-      offset += API_LIMIT;
-      if (offset >= 9900) break;
-    }
+  for (const year of fullScanYears(2000, currentYear)) {
+    const records = await walkPages<RawRecord>(
+      (offset) =>
+        fetchPageWithRetry(
+          url,
+          {
+            limit: String(API_LIMIT),
+            offset: String(offset),
+            refine: `richiesta_anno_prot:${year}`,
+          },
+          onProgress
+        ),
+      API_LIMIT
+    );
+    allRecords.push(...records);
   }
   return allRecords;
 }
@@ -211,15 +201,16 @@ export async function syncRecent(onProgress?: (msg: string) => void): Promise<Sy
       onProgress?.(
         `${key.toUpperCase()}: ${records.length} scaricati, ${inserted} nuovi, ${updated} aggiornati`
       );
-    } catch (e: any) {
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
       results.push({
         dataset: key,
         fetched: 0,
         inserted: 0,
         updated: 0,
-        error: e.message,
+        error: message,
       });
-      onProgress?.(`${key.toUpperCase()}: errore — ${e.message}`);
+      onProgress?.(`${key.toUpperCase()}: errore — ${message}`);
     }
   }
   return results;
@@ -262,15 +253,16 @@ export async function syncFull(onProgress?: (msg: string) => void): Promise<Sync
       onProgress?.(
         `${key.toUpperCase()}: ${records.length} scaricati, ${inserted} nuovi, ${updated} aggiornati`
       );
-    } catch (e: any) {
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
       results.push({
         dataset: key,
         fetched: 0,
         inserted: 0,
         updated: 0,
-        error: e.message,
+        error: message,
       });
-      onProgress?.(`${key.toUpperCase()}: errore — ${e.message}`);
+      onProgress?.(`${key.toUpperCase()}: errore — ${message}`);
     }
   }
   return results;

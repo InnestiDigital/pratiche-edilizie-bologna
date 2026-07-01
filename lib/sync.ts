@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { DATASETS, BOLOGNA_API_BASE, API_LIMIT, type DatasetKey } from './constants';
+import { DATASETS, API_LIMIT, type DatasetKey } from './constants';
 import { normalizeRecord, type RawRecord } from './normalize';
 import { fetchPage } from './fetch-page';
 import { withRetry } from './retry';
@@ -8,6 +8,7 @@ import { getDb } from './db';
 import { classifyUpsert, type UpsertOutcome } from './upsert-classify';
 import { tallyOutcomes } from './sync-tally';
 import { walkPages, recentYears, fullScanYears, MAX_OFFSET } from './paginate';
+import { buildOdsUrl, buildPageParams, buildCountProbeParams } from './ods-request';
 
 /**
  * Fetch one page, retrying transient transport failures with backoff. A blip on
@@ -34,23 +35,13 @@ async function fetchDatasetRecent(
   yearsBack = 2,
   onProgress?: (msg: string) => void
 ): Promise<RawRecord[]> {
-  const slug = DATASETS[datasetKey].slug;
-  const url = BOLOGNA_API_BASE.replace('{slug}', slug);
+  const url = buildOdsUrl(datasetKey);
   const currentYear = new Date().getFullYear();
   const allRecords: RawRecord[] = [];
 
   for (const year of recentYears(currentYear, yearsBack)) {
     const records = await walkPages<RawRecord>(
-      (offset) =>
-        fetchPageWithRetry(
-          url,
-          {
-            limit: String(API_LIMIT),
-            offset: String(offset),
-            refine: `richiesta_anno_prot:${year}`,
-          },
-          onProgress
-        ),
+      (offset) => fetchPageWithRetry(url, buildPageParams({ offset, year }), onProgress),
       API_LIMIT
     );
     allRecords.push(...records);
@@ -62,22 +53,13 @@ async function fetchDatasetFull(
   datasetKey: DatasetKey,
   onProgress?: (msg: string) => void
 ): Promise<RawRecord[]> {
-  const slug = DATASETS[datasetKey].slug;
-  const url = BOLOGNA_API_BASE.replace('{slug}', slug);
+  const url = buildOdsUrl(datasetKey);
 
-  const { totalCount } = await fetchPageWithRetry(url, { limit: '1', offset: '0' }, onProgress);
+  const { totalCount } = await fetchPageWithRetry(url, buildCountProbeParams(), onProgress);
 
   if (totalCount <= MAX_OFFSET) {
     return walkPages<RawRecord>(
-      (offset) =>
-        fetchPageWithRetry(
-          url,
-          {
-            limit: String(API_LIMIT),
-            offset: String(offset),
-          },
-          onProgress
-        ),
+      (offset) => fetchPageWithRetry(url, buildPageParams({ offset }), onProgress),
       API_LIMIT
     );
   }
@@ -86,16 +68,7 @@ async function fetchDatasetFull(
   const currentYear = new Date().getFullYear();
   for (const year of fullScanYears(2000, currentYear)) {
     const records = await walkPages<RawRecord>(
-      (offset) =>
-        fetchPageWithRetry(
-          url,
-          {
-            limit: String(API_LIMIT),
-            offset: String(offset),
-            refine: `richiesta_anno_prot:${year}`,
-          },
-          onProgress
-        ),
+      (offset) => fetchPageWithRetry(url, buildPageParams({ offset, year }), onProgress),
       API_LIMIT
     );
     allRecords.push(...records);

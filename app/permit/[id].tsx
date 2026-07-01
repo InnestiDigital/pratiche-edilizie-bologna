@@ -4,6 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermitById, parsePermitTags, type Permit } from '../../lib/queries';
+import { formatItDate } from '../../lib/format-date';
 import {
   FILING_TYPE_LABELS,
   STATUS_LABELS,
@@ -175,11 +176,15 @@ export default function PermitDetail() {
             <InfoRow
               icon="checkmark-circle-outline"
               label="Data chiusura"
-              value={permit.date_issued}
+              value={formatItDate(permit.date_issued) ?? permit.date_issued}
             />
           )}
           {permit.source_updated_at && (
-            <InfoRow icon="time-outline" label="Data richiesta" value={permit.source_updated_at} />
+            <InfoRow
+              icon="time-outline"
+              label="Data richiesta"
+              value={formatItDate(permit.source_updated_at) ?? permit.source_updated_at}
+            />
           )}
           {permit.first_seen_at && (
             <InfoRow

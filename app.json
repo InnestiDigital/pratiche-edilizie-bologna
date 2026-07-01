@@ -38,7 +38,7 @@
         "UIBackgroundModes": ["fetch", "processing"],
         "BGTaskSchedulerPermittedIdentifiers": ["background-permit-sync"]
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {

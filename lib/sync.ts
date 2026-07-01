@@ -1,22 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 import { DATASETS, BOLOGNA_API_BASE, API_LIMIT, type DatasetKey } from './constants';
 import { normalizeRecord, type RawRecord } from './normalize';
-import { parseApiResponse } from './schemas';
+import { fetchPage } from './fetch-page';
 import { getDb } from './db';
-
-async function fetchPage(
-  url: string,
-  params: Record<string, string>
-): Promise<{ results: RawRecord[]; totalCount: number }> {
-  const qs = new URLSearchParams(params).toString();
-  const resp = await fetch(`${url}?${qs}`);
-  if (!resp.ok) throw new Error(`Errore API: ${resp.status}`);
-  const data = await resp.json();
-  // Validate the payload shape at the ingress boundary (don't trust field
-  // shapes from the external open-data endpoint).
-  const { results, totalCount } = parseApiResponse(data);
-  return { results, totalCount };
-}
 
 async function fetchDatasetRecent(datasetKey: DatasetKey, yearsBack = 2): Promise<RawRecord[]> {
   const slug = DATASETS[datasetKey].slug;

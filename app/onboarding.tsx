@@ -23,6 +23,9 @@ function ZoneChip({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Quartiere ${zone}`}
+      accessibilityState={{ selected }}
       className={`mb-2 mr-2 rounded-full px-4 py-2.5 ${
         selected ? 'bg-brick-600' : 'border border-stone-300 bg-white'
       }`}>
@@ -53,6 +56,9 @@ function TypeChip({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Tipo di pratica ${type}, ${label}`}
+      accessibilityState={{ selected }}
       className={`mb-2 mr-2 rounded-full px-5 py-2.5 ${
         selected ? colors.active : 'border border-stone-300 bg-white'
       }`}>
@@ -159,6 +165,9 @@ export default function OnboardingScreen() {
         <Pressable
           onPress={handleStart}
           disabled={!canStart || syncing}
+          accessibilityRole="button"
+          accessibilityLabel={syncing ? 'Salvataggio in corso' : 'Inizia'}
+          accessibilityState={{ disabled: !canStart || syncing, busy: syncing }}
           className={`flex-row items-center justify-center rounded-xl py-4 ${
             !canStart || syncing ? 'bg-stone-300' : 'bg-brick-600'
           }`}>

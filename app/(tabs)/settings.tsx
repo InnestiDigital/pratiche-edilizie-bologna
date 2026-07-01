@@ -46,6 +46,7 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={onToggle}
+        accessibilityLabel={label}
         trackColor={{ false: '#e2d9cd', true: '#9B2335' }}
         thumbColor="#fdfcfa"
         ios_backgroundColor="#e2d9cd"
@@ -228,6 +229,9 @@ export default function SettingsScreen() {
       <View className="p-4 pb-10">
         <Pressable
           onPress={handleReset}
+          accessibilityRole="button"
+          accessibilityLabel="Ripristina predefiniti"
+          accessibilityHint="Reimposta tutti i filtri ai valori predefiniti"
           className="items-center rounded-xl border border-stone-300 bg-white py-3">
           <Text className="font-semibold text-stone-600">Ripristina Predefiniti</Text>
         </Pressable>

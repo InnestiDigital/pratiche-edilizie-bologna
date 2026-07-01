@@ -33,12 +33,22 @@ export const SORT_LABELS: Record<SortOption, string> = {
   closing_newest: 'Data chiusura (recenti)',
 };
 
+// Every sort ends in the unique `id` PK as a tiebreaker so the ORDER BY is a
+// TOTAL order. The primary columns are all non-unique: a whole sync batch stamps
+// hundreds of rows with the same `first_seen_at` (it is `new Date().toISOString()`
+// set per-permit inside a tight insert loop), and `source_updated_at` / `date_issued`
+// are the request / closing dates that many permits legitimately share (and can be
+// NULL). Without a unique tiebreaker SQLite's order among tied rows is undefined and
+// NOT guaranteed stable across the separate LIMIT/OFFSET queries the feed's infinite
+// scroll issues per page — so tied rows could be duplicated on one page and skipped on
+// the next. The `id` suffix (UNIQUE, NOT NULL, monotonic with insertion) removes the
+// ties, matching the primary column's direction for an intuitive within-tie order.
 const SORT_SQL: Record<SortOption, string> = {
-  newest: 'first_seen_at DESC',
-  oldest: 'first_seen_at ASC',
-  request_newest: 'source_updated_at DESC',
-  request_oldest: 'source_updated_at ASC',
-  closing_newest: 'date_issued DESC',
+  newest: 'first_seen_at DESC, id DESC',
+  oldest: 'first_seen_at ASC, id ASC',
+  request_newest: 'source_updated_at DESC, id DESC',
+  request_oldest: 'source_updated_at ASC, id ASC',
+  closing_newest: 'date_issued DESC, id DESC',
 };
 
 export interface FeedFilters {

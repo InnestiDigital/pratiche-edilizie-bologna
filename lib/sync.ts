@@ -2,9 +2,35 @@ import * as SQLite from 'expo-sqlite';
 import { DATASETS, BOLOGNA_API_BASE, API_LIMIT, type DatasetKey } from './constants';
 import { normalizeRecord, type RawRecord } from './normalize';
 import { fetchPage } from './fetch-page';
+import { withRetry } from './retry';
+import type { ParsedPage } from './schemas';
 import { getDb } from './db';
 
-async function fetchDatasetRecent(datasetKey: DatasetKey, yearsBack = 2): Promise<RawRecord[]> {
+/**
+ * Fetch one page, retrying transient transport failures with backoff. A blip on
+ * a single page of a multi-page walk must not abort the whole dataset sync; a
+ * permanent failure (404/410, 4xx, bad shape) still fails fast. Retries are
+ * surfaced through `onProgress` so a long sync doesn't look frozen.
+ */
+function fetchPageWithRetry(
+  url: string,
+  params: Record<string, string>,
+  onProgress?: (msg: string) => void
+): Promise<ParsedPage> {
+  return withRetry(() => fetchPage(url, params), {
+    onRetry: ({ attempt, delayMs, error }) =>
+      onProgress?.(
+        `Ritento (${attempt}) tra ${Math.round(delayMs)}ms — ` +
+          `${error instanceof Error ? error.message : String(error)}`
+      ),
+  });
+}
+
+async function fetchDatasetRecent(
+  datasetKey: DatasetKey,
+  yearsBack = 2,
+  onProgress?: (msg: string) => void
+): Promise<RawRecord[]> {
   const slug = DATASETS[datasetKey].slug;
   const url = BOLOGNA_API_BASE.replace('{slug}', slug);
   const currentYear = new Date().getFullYear();
@@ -13,11 +39,15 @@ async function fetchDatasetRecent(datasetKey: DatasetKey, yearsBack = 2): Promis
   for (let year = currentYear - yearsBack + 1; year <= currentYear; year++) {
     let offset = 0;
     while (true) {
-      const { results } = await fetchPage(url, {
-        limit: String(API_LIMIT),
-        offset: String(offset),
-        refine: `richiesta_anno_prot:${year}`,
-      });
+      const { results } = await fetchPageWithRetry(
+        url,
+        {
+          limit: String(API_LIMIT),
+          offset: String(offset),
+          refine: `richiesta_anno_prot:${year}`,
+        },
+        onProgress
+      );
       if (results.length === 0) break;
       allRecords.push(...results);
       if (results.length < API_LIMIT) break;
@@ -28,20 +58,27 @@ async function fetchDatasetRecent(datasetKey: DatasetKey, yearsBack = 2): Promis
   return allRecords;
 }
 
-async function fetchDatasetFull(datasetKey: DatasetKey): Promise<RawRecord[]> {
+async function fetchDatasetFull(
+  datasetKey: DatasetKey,
+  onProgress?: (msg: string) => void
+): Promise<RawRecord[]> {
   const slug = DATASETS[datasetKey].slug;
   const url = BOLOGNA_API_BASE.replace('{slug}', slug);
 
-  const { totalCount } = await fetchPage(url, { limit: '1', offset: '0' });
+  const { totalCount } = await fetchPageWithRetry(url, { limit: '1', offset: '0' }, onProgress);
 
   if (totalCount <= 9900) {
     const allRecords: RawRecord[] = [];
     let offset = 0;
     while (true) {
-      const { results } = await fetchPage(url, {
-        limit: String(API_LIMIT),
-        offset: String(offset),
-      });
+      const { results } = await fetchPageWithRetry(
+        url,
+        {
+          limit: String(API_LIMIT),
+          offset: String(offset),
+        },
+        onProgress
+      );
       if (results.length === 0) break;
       allRecords.push(...results);
       if (results.length < API_LIMIT) break;
@@ -55,11 +92,15 @@ async function fetchDatasetFull(datasetKey: DatasetKey): Promise<RawRecord[]> {
   for (let year = 2000; year <= currentYear; year++) {
     let offset = 0;
     while (true) {
-      const { results } = await fetchPage(url, {
-        limit: String(API_LIMIT),
-        offset: String(offset),
-        refine: `richiesta_anno_prot:${year}`,
-      });
+      const { results } = await fetchPageWithRetry(
+        url,
+        {
+          limit: String(API_LIMIT),
+          offset: String(offset),
+          refine: `richiesta_anno_prot:${year}`,
+        },
+        onProgress
+      );
       if (results.length === 0) break;
       allRecords.push(...results);
       if (results.length < API_LIMIT) break;
@@ -135,7 +176,7 @@ export async function syncRecent(onProgress?: (msg: string) => void): Promise<Sy
   for (const key of Object.keys(DATASETS) as DatasetKey[]) {
     try {
       onProgress?.(`Scaricamento ${DATASETS[key].label}...`);
-      const records = await fetchDatasetRecent(key, 2);
+      const records = await fetchDatasetRecent(key, 2, onProgress);
       onProgress?.(`Elaborazione ${records.length} pratiche ${key.toUpperCase()}...`);
 
       let inserted = 0;
@@ -186,7 +227,7 @@ export async function syncFull(onProgress?: (msg: string) => void): Promise<Sync
   for (const key of Object.keys(DATASETS) as DatasetKey[]) {
     try {
       onProgress?.(`Scaricamento completo ${DATASETS[key].label}...`);
-      const records = await fetchDatasetFull(key);
+      const records = await fetchDatasetFull(key, onProgress);
       onProgress?.(`Elaborazione ${records.length} pratiche ${key.toUpperCase()}...`);
 
       let inserted = 0;

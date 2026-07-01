@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../lib/sync';
 import { getDb } from '../../lib/db';
 import { getStats } from '../../lib/queries';
-import { loadPreferences } from '../../lib/preferences';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function SyncScreen() {
@@ -13,7 +12,6 @@ export default function SyncScreen() {
   const [progress, setProgress] = useState<string[]>([]);
   const [results, setResults] = useState<SyncResult[]>([]);
   const [lastSync, setLastSync] = useState<string | null>(null);
-  const [isFirstSync, setIsFirstSync] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
   const [stats, setStats] = useState<{
     total: number;
@@ -31,7 +29,6 @@ export default function SyncScreen() {
     const db = await getDb();
     const s = await getStats(db);
     setStats(s);
-    setIsFirstSync(!s || s.total === 0);
   }
 
   async function handleSync(full: boolean) {

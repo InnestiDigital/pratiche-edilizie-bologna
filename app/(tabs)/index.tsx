@@ -20,6 +20,7 @@ import {
   type SortOption,
 } from '../../lib/queries';
 import { loadPreferences } from '../../lib/preferences';
+import { formatItDate } from '../../lib/format-date';
 import {
   FILING_TYPE_ORDER,
   STATUS_LABELS,
@@ -132,7 +133,7 @@ function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }
           <View className="mr-3 flex-row items-center">
             <Ionicons name="calendar-outline" size={12} color="#a89888" />
             <Text className="ml-1 text-xs text-stone-400">
-              {permit.date_issued ?? permit.source_updated_at}
+              {formatItDate(permit.date_issued ?? permit.source_updated_at)}
             </Text>
           </View>
         )}

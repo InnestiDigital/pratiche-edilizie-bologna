@@ -5,6 +5,7 @@ import {
   getPermitById,
   getStats,
   markAllSeen,
+  parsePermitTags,
   SORT_LABELS,
   type FeedFilters,
   type Permit,
@@ -228,6 +229,49 @@ describe('getPermits — tag post-filter (JS side)', () => {
     const { db, calls } = makeFakeDb({ getAll: [] });
     await getPermits(db, baseFilters({ tags: ['sanatoria'] }));
     expect(calls[0].params).toEqual([50, 0]);
+  });
+
+  it('does not crash when a row has a corrupt tags column, just skips it', async () => {
+    const rows = [
+      permitRow({ id: 1, tags: 'not json' }),
+      permitRow({ id: 2, tags: JSON.stringify(['sanatoria']) }),
+    ];
+    const { db } = makeFakeDb({ getAll: rows });
+    const out = await getPermits(db, baseFilters({ tags: ['sanatoria'] }));
+    expect(out.map((r) => r.id)).toEqual([2]);
+  });
+});
+
+describe('parsePermitTags', () => {
+  it('parses a valid JSON string array', () => {
+    expect(parsePermitTags(JSON.stringify(['sanatoria', 'deroga']))).toEqual([
+      'sanatoria',
+      'deroga',
+    ]);
+  });
+
+  it('returns [] for an empty array', () => {
+    expect(parsePermitTags('[]')).toEqual([]);
+  });
+
+  it('returns [] for malformed JSON instead of throwing', () => {
+    expect(parsePermitTags('not json')).toEqual([]);
+    expect(parsePermitTags('')).toEqual([]);
+    expect(parsePermitTags('["unterminated')).toEqual([]);
+  });
+
+  it('returns [] when the JSON is valid but not an array', () => {
+    expect(parsePermitTags('null')).toEqual([]);
+    expect(parsePermitTags('42')).toEqual([]);
+    expect(parsePermitTags('"sanatoria"')).toEqual([]);
+    expect(parsePermitTags('{"sanatoria":true}')).toEqual([]);
+  });
+
+  it('drops non-string array elements, keeping the valid strings', () => {
+    expect(parsePermitTags('["sanatoria", 1, null, "deroga", true]')).toEqual([
+      'sanatoria',
+      'deroga',
+    ]);
   });
 });
 

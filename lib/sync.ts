@@ -5,6 +5,7 @@ import { fetchPage } from './fetch-page';
 import { withRetry } from './retry';
 import type { ParsedPage } from './schemas';
 import { getDb } from './db';
+import { classifyUpsert, type UpsertOutcome } from './upsert-classify';
 
 /**
  * Fetch one page, retrying transient transport failures with backoff. A blip on
@@ -114,7 +115,7 @@ async function fetchDatasetFull(
 async function upsertPermit(
   db: SQLite.SQLiteDatabase,
   permit: ReturnType<typeof normalizeRecord>
-): Promise<'inserted' | 'updated' | 'unchanged'> {
+): Promise<UpsertOutcome> {
   const existing = await db.getFirstAsync<{ id: number; status: string }>(
     'SELECT id, status FROM permits WHERE source_id = ?',
     permit.source_id
@@ -123,7 +124,11 @@ async function upsertPermit(
   const now = new Date().toISOString();
 
   if (!existing) {
-    await db.runAsync(
+    // `INSERT OR IGNORE`: if a concurrent sync inserted the same source_id
+    // between the lookup and here, the insert is ignored (changes === 0) and
+    // the permit is not new to us. classifyUpsert reads `changes` so the
+    // "new permits" count (and its notification) is not inflated.
+    const { changes } = await db.runAsync(
       `INSERT OR IGNORE INTO permits (dataset, source_id, filing_type, source_updated_at,
         first_seen_at, address, zone, codvia, procedimento, date_issued,
         status, status_raw, tags, source_link, is_new)
@@ -143,10 +148,11 @@ async function upsertPermit(
       permit.tags,
       permit.source_link
     );
-    return 'inserted';
+    return classifyUpsert(null, permit.status, changes);
   }
 
-  if (existing.status !== permit.status) {
+  const outcome = classifyUpsert(existing, permit.status, 0);
+  if (outcome === 'updated') {
     await db.runAsync(
       `UPDATE permits SET status=?, status_raw=?, date_issued=?, tags=?, is_new=1 WHERE id=?`,
       permit.status,
@@ -155,10 +161,9 @@ async function upsertPermit(
       permit.tags,
       existing.id
     );
-    return 'updated';
   }
 
-  return 'unchanged';
+  return outcome;
 }
 
 export interface SyncResult {

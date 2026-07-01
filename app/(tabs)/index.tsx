@@ -68,9 +68,22 @@ function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }
   const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
   const fc = FILING_COLORS[permit.filing_type as FilingType] ?? FILING_COLORS.PDC;
 
+  const a11yLabel = [
+    permit.filing_type,
+    statusLabel,
+    permit.is_new === 1 ? 'nuovo' : null,
+    permit.address ?? 'Indirizzo non disponibile',
+    permit.zone,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint="Apri i dettagli della pratica"
       className="mx-4 mb-2.5 rounded-xl bg-white p-4"
       style={{
         shadowColor: '#000',
@@ -157,6 +170,8 @@ function EmptyDataState() {
       </Text>
       <Pressable
         onPress={() => router.push('/(tabs)/sync')}
+        accessibilityRole="button"
+        accessibilityLabel="Vai ad Aggiorna"
         className="mt-4 flex-row items-center rounded-xl bg-brick-600 px-5 py-3">
         <Ionicons name="cloud-download-outline" size={16} color="white" />
         <Text className="ml-2 font-bold text-white">Vai ad Aggiorna</Text>
@@ -173,7 +188,11 @@ function EmptyFilterState({ onReset }: { onReset: () => void }) {
       <Ionicons name="filter-outline" size={36} color="#a89888" />
       <Text className="mt-3 text-base font-semibold text-ink-700">Nessun risultato</Text>
       <Text className="mt-1 text-sm text-stone-500">Prova a modificare i filtri o la ricerca.</Text>
-      <Pressable onPress={onReset} className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
+      <Pressable
+        onPress={onReset}
+        accessibilityRole="button"
+        accessibilityLabel="Resetta filtri"
+        className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
         <Text className="font-semibold text-stone-600">Resetta filtri</Text>
       </Pressable>
     </View>
@@ -214,6 +233,9 @@ function FilterPanel({
       {/* Only new */}
       <Pressable
         onPress={toggleOnlyNew}
+        accessibilityRole="button"
+        accessibilityLabel="Solo nuovi"
+        accessibilityState={{ selected: onlyNew }}
         className={`mb-3 flex-row items-center self-start rounded-full px-3.5 py-2 ${
           onlyNew ? 'bg-brick-600' : 'bg-parchment-100'
         }`}>
@@ -231,6 +253,9 @@ function FilterPanel({
           <Pressable
             key={s}
             onPress={() => setSort(s)}
+            accessibilityRole="button"
+            accessibilityLabel={`Ordina per ${SORT_LABELS[s]}`}
+            accessibilityState={{ selected: sort === s }}
             className={`mr-2 rounded-full px-3.5 py-1.5 ${
               sort === s ? 'bg-brick-600' : 'bg-parchment-100'
             }`}>
@@ -249,6 +274,9 @@ function FilterPanel({
           <Pressable
             key={zone}
             onPress={() => toggleZone(zone)}
+            accessibilityRole="button"
+            accessibilityLabel={`Quartiere ${zone}`}
+            accessibilityState={{ selected: activeZones.has(zone) }}
             className={`mb-1.5 mr-1.5 rounded-full px-3 py-1.5 ${
               activeZones.has(zone) ? 'bg-brick-600' : 'bg-parchment-100'
             }`}>
@@ -270,6 +298,9 @@ function FilterPanel({
             <Pressable
               key={s}
               onPress={() => toggleStatus(s)}
+              accessibilityRole="button"
+              accessibilityLabel={`Stato ${STATUS_LABELS[s]}`}
+              accessibilityState={{ selected: active }}
               className={`mb-1.5 mr-1.5 flex-row items-center rounded-full px-3 py-1.5 ${
                 active ? 'bg-ink-800' : 'bg-parchment-100'
               }`}>
@@ -413,9 +444,15 @@ export default function FeedScreen() {
           value={search}
           onChangeText={setSearch}
           clearButtonMode="while-editing"
+          accessibilityLabel="Cerca indirizzo o procedimento"
         />
         <Pressable
           onPress={() => setFiltersOpen((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={
+            activeFilterCount > 0 ? `Filtri, ${activeFilterCount} attivi` : 'Filtri'
+          }
+          accessibilityState={{ expanded: filtersOpen }}
           className={`ml-2 h-10 w-10 items-center justify-center rounded-lg ${
             filtersOpen ? 'bg-brick-600' : 'bg-parchment-100'
           }`}>
@@ -437,6 +474,9 @@ export default function FeedScreen() {
             <Pressable
               key={type}
               onPress={() => toggleType(type)}
+              accessibilityRole="button"
+              accessibilityLabel={`Tipo pratica ${type}`}
+              accessibilityState={{ selected: active }}
               className={`mr-2 rounded-full px-4 py-2 ${active ? '' : 'bg-parchment-100'}`}
               style={active ? { backgroundColor: fc.bg } : undefined}>
               <Text

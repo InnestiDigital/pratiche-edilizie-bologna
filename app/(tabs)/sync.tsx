@@ -236,18 +236,29 @@ export default function SyncScreen() {
             <View
               className="overflow-hidden rounded-xl bg-white"
               style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
-              {Object.entries(stats.byZone).map(([zone, count], i, arr) => (
-                <View
-                  key={zone}
-                  className={`flex-row items-center justify-between px-4 py-3 ${
-                    i < arr.length - 1 ? 'border-b border-parchment-200' : ''
-                  }`}>
-                  <Text className="text-sm text-ink-600">{zone}</Text>
-                  <Text className="text-sm font-bold text-ink-800">
-                    {count.toLocaleString('it-IT')}
-                  </Text>
-                </View>
-              ))}
+              {(() => {
+                const maxZone = Math.max(1, ...Object.values(stats.byZone));
+                return Object.entries(stats.byZone).map(([zone, count], i, arr) => (
+                  <View
+                    key={zone}
+                    className={`px-4 py-3 ${
+                      i < arr.length - 1 ? 'border-b border-parchment-200' : ''
+                    }`}>
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-sm text-ink-600">{zone}</Text>
+                      <Text className="text-sm font-bold text-ink-800">
+                        {count.toLocaleString('it-IT')}
+                      </Text>
+                    </View>
+                    <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-parchment-200">
+                      <View
+                        className="h-full rounded-full bg-brick-500"
+                        style={{ width: `${Math.max(6, (count / maxZone) * 100)}%` }}
+                      />
+                    </View>
+                  </View>
+                ));
+              })()}
             </View>
           </View>
         )}

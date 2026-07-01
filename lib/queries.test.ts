@@ -16,8 +16,8 @@ import {
  * Minimal fake of the slice of the expo-sqlite API that queries.ts uses.
  * It records every call (sql + flattened params) so tests can assert on the
  * generated SQL string and parameter ordering — the brittle part of these
- * functions — and returns programmable rows so the JS-side tag post-filter and
- * the stats reducers can be exercised without a native SQLite engine.
+ * functions — and returns programmable rows so the stats reducers and row
+ * pass-through can be exercised without a native SQLite engine.
  */
 interface RecordedCall {
   sql: string;
@@ -208,50 +208,33 @@ describe('getPermits — pagination', () => {
   });
 });
 
-describe('getPermits — tag post-filter (JS side)', () => {
-  it('keeps only rows whose tags JSON intersects the requested tags', async () => {
-    const rows = [
-      permitRow({ id: 1, tags: JSON.stringify(['sanatoria', 'parziale']) }),
-      permitRow({ id: 2, tags: JSON.stringify(['deroga']) }),
-      permitRow({ id: 3, tags: JSON.stringify([]) }),
-    ];
-    const { db } = makeFakeDb({ getAll: rows });
+describe('getPermits — tag filter (SQL side, json_each)', () => {
+  it('filters tags in SQL (json_each EXISTS), not by post-filtering the page', async () => {
+    // The fake db returns rows verbatim; if getPermits still post-filtered in JS
+    // these non-matching rows would be dropped. They are returned untouched, which
+    // proves the filtering is delegated to SQL (correct LIMIT/OFFSET pagination).
+    const rows = [permitRow({ id: 1, tags: '[]' }), permitRow({ id: 2, tags: '[]' })];
+    const { db, calls } = makeFakeDb({ getAll: rows });
     const out = await getPermits(db, baseFilters({ tags: ['sanatoria'] }));
-    expect(out.map((r) => r.id)).toEqual([1]);
-  });
-
-  it('matches if any requested tag is present (OR semantics)', async () => {
-    const rows = [
-      permitRow({ id: 1, tags: JSON.stringify(['sanatoria']) }),
-      permitRow({ id: 2, tags: JSON.stringify(['deroga']) }),
-      permitRow({ id: 3, tags: JSON.stringify(['telefonia']) }),
-    ];
-    const { db } = makeFakeDb({ getAll: rows });
-    const out = await getPermits(db, baseFilters({ tags: ['sanatoria', 'deroga'] }));
     expect(out.map((r) => r.id)).toEqual([1, 2]);
+    expect(squish(calls[0].sql)).toContain(
+      'json_valid(permits.tags) AND EXISTS (SELECT 1 FROM json_each(permits.tags) AS jt WHERE jt.value IN (?)'
+    );
   });
 
-  it('returns rows untouched when no tags requested', async () => {
-    const rows = [permitRow({ id: 1 }), permitRow({ id: 2 })];
-    const { db } = makeFakeDb({ getAll: rows });
-    const out = await getPermits(db, baseFilters());
-    expect(out).toHaveLength(2);
-  });
-
-  it('does not pass tags into the SQL params (post-filtered only)', async () => {
+  it('binds each requested tag as its own IN placeholder (OR semantics)', async () => {
     const { db, calls } = makeFakeDb({ getAll: [] });
-    await getPermits(db, baseFilters({ tags: ['sanatoria'] }));
-    expect(calls[0].params).toEqual([50, 0]);
+    await getPermits(db, baseFilters({ tags: ['sanatoria', 'deroga'] }), 25, 100);
+    expect(squish(calls[0].sql)).toContain('jt.value IN (?,?)');
+    // tag params come before the trailing limit/offset
+    expect(calls[0].params).toEqual(['sanatoria', 'deroga', 25, 100]);
   });
 
-  it('does not crash when a row has a corrupt tags column, just skips it', async () => {
-    const rows = [
-      permitRow({ id: 1, tags: 'not json' }),
-      permitRow({ id: 2, tags: JSON.stringify(['sanatoria']) }),
-    ];
-    const { db } = makeFakeDb({ getAll: rows });
-    const out = await getPermits(db, baseFilters({ tags: ['sanatoria'] }));
-    expect(out.map((r) => r.id)).toEqual([2]);
+  it('emits no tag SQL and no tag params when no tags requested', async () => {
+    const { db, calls } = makeFakeDb({ getAll: [] });
+    await getPermits(db, baseFilters());
+    expect(squish(calls[0].sql)).not.toContain('json_each');
+    expect(calls[0].params).toEqual([50, 0]);
   });
 });
 

@@ -85,6 +85,34 @@ describe('buildFeedQuery — WHERE construction', () => {
   });
 });
 
+describe('buildFeedQuery — tag filter (json_each)', () => {
+  it('emits a json_valid-guarded json_each EXISTS with one placeholder per tag', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, tags: ['sanatoria', 'deroga'] }, 50, 0);
+    expect(squish(sql)).toContain(
+      'WHERE (json_valid(permits.tags) AND EXISTS (SELECT 1 FROM json_each(permits.tags) AS jt WHERE jt.value IN (?,?)))'
+    );
+    // tag params, then LIMIT/OFFSET
+    expect(params).toEqual(['sanatoria', 'deroga', 50, 0]);
+  });
+
+  it('emits no tag SQL when tags is empty', () => {
+    expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).not.toContain('json_each');
+  });
+
+  it('orders tag params last among filters, before LIMIT/OFFSET', () => {
+    const { sql, params } = buildFeedQuery(
+      { zones: ['Navile'], filingTypes: ['PDC'], tags: ['sanatoria'], onlyNew: true },
+      10,
+      20
+    );
+    expect(squish(sql)).toContain(
+      'WHERE zone IN (?) AND filing_type IN (?) AND is_new = 1 AND (json_valid(permits.tags) AND EXISTS (SELECT 1 FROM json_each(permits.tags) AS jt WHERE jt.value IN (?)))'
+    );
+    // zone, filing_type, (is_new binds nothing), tag, then LIMIT/OFFSET
+    expect(params).toEqual(['Navile', 'PDC', 'sanatoria', 10, 20]);
+  });
+});
+
 describe('buildFeedQuery — sort mapping', () => {
   it.each([
     ['newest', 'ORDER BY first_seen_at DESC'],

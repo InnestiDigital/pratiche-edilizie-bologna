@@ -7,11 +7,15 @@ import type { FilingType, Quartiere } from './constants';
  * — dynamic WHERE/IN construction, `LIKE` escaping, sort mapping, pagination and
  * strict parameter ordering — is a single pure function that can be unit-tested
  * against its exact `{ sql, params }` output without a native SQLite engine.
- * `queries.getPermits` is a thin wrapper: build → run → JS-side tag post-filter.
+ * `queries.getPermits` is a thin wrapper: build → run.
  *
- * The tag filter is intentionally NOT part of this SQL — tags are stored as a
- * JSON array and post-filtered in JS after `LIMIT/OFFSET` (see `getPermits`), so
- * it never enters the WHERE clause here.
+ * The tag filter IS part of this SQL. Tags are stored as a JSON array string, so
+ * an active tag filter matches with the SQLite JSON1 `json_each` table-valued
+ * function inside a correlated `EXISTS`, guarded by `json_valid` (a corrupt/legacy
+ * tags value fails the guard and is simply excluded, never erroring the query).
+ * Keeping the filter in SQL — rather than post-filtering the page in JS after
+ * `LIMIT/OFFSET` — is what makes `LIMIT`/`OFFSET` and the feed's "got a full page?"
+ * pagination check correct when a tag filter is active.
  */
 
 export type SortOption =
@@ -100,6 +104,19 @@ export function buildFeedQuery(filters: FeedFilters, limit: number, offset: numb
 
   if (filters.onlyNew) {
     conditions.push('is_new = 1');
+  }
+
+  if (filters.tags.length > 0) {
+    // OR semantics: keep a permit if ANY requested tag is in its JSON tags array.
+    // `json_valid` guards `json_each` against a corrupt/legacy tags value, which
+    // would otherwise raise a "malformed JSON" error and fail the whole query;
+    // an invalid row fails the guard and is excluded (it can't match a tag).
+    const placeholders = filters.tags.map(() => '?').join(',');
+    conditions.push(
+      `(json_valid(permits.tags) AND EXISTS (` +
+        `SELECT 1 FROM json_each(permits.tags) AS jt WHERE jt.value IN (${placeholders})))`
+    );
+    params.push(...filters.tags);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

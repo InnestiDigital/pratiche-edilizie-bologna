@@ -115,17 +115,40 @@ describe('buildFeedQuery — tag filter (json_each)', () => {
 
 describe('buildFeedQuery — sort mapping', () => {
   it.each([
-    ['newest', 'ORDER BY first_seen_at DESC'],
-    ['oldest', 'ORDER BY first_seen_at ASC'],
-    ['request_newest', 'ORDER BY source_updated_at DESC'],
-    ['request_oldest', 'ORDER BY source_updated_at ASC'],
-    ['closing_newest', 'ORDER BY date_issued DESC'],
+    ['newest', 'ORDER BY first_seen_at DESC, id DESC'],
+    ['oldest', 'ORDER BY first_seen_at ASC, id ASC'],
+    ['request_newest', 'ORDER BY source_updated_at DESC, id DESC'],
+    ['request_oldest', 'ORDER BY source_updated_at ASC, id ASC'],
+    ['closing_newest', 'ORDER BY date_issued DESC, id DESC'],
   ] as const)('maps sort=%s to %s', (sort, expected) => {
     expect(squish(buildFeedQuery({ ...EMPTY, sort }, 50, 0).sql)).toContain(expected);
   });
 
   it('defaults to newest when no sort is given', () => {
-    expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).toContain('ORDER BY first_seen_at DESC');
+    expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).toContain(
+      'ORDER BY first_seen_at DESC, id DESC'
+    );
+  });
+
+  it('ends every sort in the unique id PK so pagination is stable across pages', () => {
+    // The primary sort columns are all non-unique (a sync batch shares first_seen_at;
+    // request/closing dates repeat and can be NULL). Without the id tiebreaker the order
+    // among tied rows is undefined and unstable across separate LIMIT/OFFSET queries, so
+    // infinite scroll could dupe/skip rows. Every ORDER BY must terminate in `id`.
+    const sorts = [
+      'newest',
+      'oldest',
+      'request_newest',
+      'request_oldest',
+      'closing_newest',
+    ] as const;
+    for (const sort of sorts) {
+      const orderBy = squish(buildFeedQuery({ ...EMPTY, sort }, 50, 0).sql)
+        .split('ORDER BY')[1]
+        .split('LIMIT')[0]
+        .trim();
+      expect(orderBy).toMatch(/, id (ASC|DESC)$/);
+    }
   });
 
   it('has a label for every sort key', () => {

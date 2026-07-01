@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, Switch, Alert } from "react-native";
+import { useEffect, useState } from 'react';
+import { View, Text, Pressable, ScrollView, Switch, Alert } from 'react-native';
 import {
   QUARTIERI,
   FILING_TYPE_ORDER,
@@ -7,26 +7,21 @@ import {
   TAG_LABELS,
   type FilingType,
   type Quartiere,
-} from "../../lib/constants";
+} from '../../lib/constants';
 import {
   loadPreferences,
   savePreferences,
   isNotificationsEnabled,
   setNotificationsEnabled,
-} from "../../lib/preferences";
-import { requestNotificationPermissions } from "../../lib/notifications";
-import {
-  registerBackgroundSync,
-  unregisterBackgroundSync,
-} from "../../lib/background-sync";
+} from '../../lib/preferences';
+import { requestNotificationPermissions } from '../../lib/notifications';
+import { registerBackgroundSync, unregisterBackgroundSync } from '../../lib/background-sync';
 
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
     <View className="mb-2 mt-6 px-4">
       <Text className="text-base font-bold text-ink-800">{title}</Text>
-      {hint && (
-        <Text className="mt-0.5 text-xs text-stone-400">{hint}</Text>
-      )}
+      {hint && <Text className="mt-0.5 text-xs text-stone-400">{hint}</Text>}
     </View>
   );
 }
@@ -45,14 +40,13 @@ function ToggleRow({
   return (
     <View
       className={`flex-row items-center justify-between px-4 py-3 ${
-        !isLast ? "border-b border-parchment-200" : ""
-      }`}
-    >
+        !isLast ? 'border-b border-parchment-200' : ''
+      }`}>
       <Text className="flex-1 text-base text-ink-800">{label}</Text>
       <Switch
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: "#e2d9cd", true: "#9B2335" }}
+        trackColor={{ false: '#e2d9cd', true: '#9B2335' }}
         thumbColor="#fdfcfa"
         ios_backgroundColor="#e2d9cd"
       />
@@ -62,18 +56,13 @@ function ToggleRow({
 
 export default function SettingsScreen() {
   const [zones, setZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
-  const [filingTypes, setFilingTypes] = useState<Set<FilingType>>(
-    new Set(FILING_TYPE_ORDER),
-  );
+  const [filingTypes, setFilingTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [tags, setTags] = useState<Set<string>>(new Set());
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      loadPreferences(),
-      isNotificationsEnabled(),
-    ]).then(([prefs, notifEnabled]) => {
+    Promise.all([loadPreferences(), isNotificationsEnabled()]).then(([prefs, notifEnabled]) => {
       setZones(new Set(prefs.zones));
       setFilingTypes(new Set(prefs.filingTypes));
       setTags(new Set(prefs.tags));
@@ -87,8 +76,8 @@ export default function SettingsScreen() {
       const granted = await requestNotificationPermissions();
       if (!granted) {
         Alert.alert(
-          "Permessi necessari",
-          "Abilita le notifiche nelle Impostazioni del dispositivo per ricevere aggiornamenti.",
+          'Permessi necessari',
+          'Abilita le notifiche nelle Impostazioni del dispositivo per ricevere aggiornamenti.'
         );
         return;
       }
@@ -139,13 +128,13 @@ export default function SettingsScreen() {
 
   const handleReset = () => {
     Alert.alert(
-      "Ripristina Predefiniti",
-      "Tutti i filtri verranno reimpostati ai valori predefiniti. Continuare?",
+      'Ripristina Predefiniti',
+      'Tutti i filtri verranno reimpostati ai valori predefiniti. Continuare?',
       [
-        { text: "Annulla", style: "cancel" },
+        { text: 'Annulla', style: 'cancel' },
         {
-          text: "Ripristina",
-          style: "destructive",
+          text: 'Ripristina',
+          style: 'destructive',
           onPress: () => {
             setZones(new Set(QUARTIERI));
             setFilingTypes(new Set(FILING_TYPE_ORDER));
@@ -157,7 +146,7 @@ export default function SettingsScreen() {
             });
           },
         },
-      ],
+      ]
     );
   };
 
@@ -177,9 +166,9 @@ export default function SettingsScreen() {
         title="Notifiche"
         hint="Controlla in background e avvisa quando ci sono nuove pratiche"
       />
-      <View className="mx-4 overflow-hidden rounded-xl bg-white"
-        style={{ shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}
-      >
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
         <ToggleRow
           label="Aggiornamenti automatici"
           value={notificationsOn}
@@ -188,13 +177,10 @@ export default function SettingsScreen() {
         />
       </View>
 
-      <SectionHeader
-        title="Quartieri"
-        hint={`${zones.size} di ${QUARTIERI.length} attivi`}
-      />
-      <View className="mx-4 overflow-hidden rounded-xl bg-white"
-        style={{ shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}
-      >
+      <SectionHeader title="Quartieri" hint={`${zones.size} di ${QUARTIERI.length} attivi`} />
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
         {QUARTIERI.map((zone, i) => (
           <ToggleRow
             key={zone}
@@ -210,9 +196,9 @@ export default function SettingsScreen() {
         title="Tipo di Pratica"
         hint={`${filingTypes.size} di ${FILING_TYPE_ORDER.length} attivi`}
       />
-      <View className="mx-4 overflow-hidden rounded-xl bg-white"
-        style={{ shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}
-      >
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
         {FILING_TYPE_ORDER.map((type, i) => (
           <ToggleRow
             key={type}
@@ -224,13 +210,10 @@ export default function SettingsScreen() {
         ))}
       </View>
 
-      <SectionHeader
-        title="Filtri Etichette"
-        hint="Mostra solo pratiche con queste etichette"
-      />
-      <View className="mx-4 overflow-hidden rounded-xl bg-white"
-        style={{ shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}
-      >
+      <SectionHeader title="Filtri Etichette" hint="Mostra solo pratiche con queste etichette" />
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
         {tagEntries.map(([tag, label], i) => (
           <ToggleRow
             key={tag}
@@ -245,16 +228,13 @@ export default function SettingsScreen() {
       <View className="p-4 pb-10">
         <Pressable
           onPress={handleReset}
-          className="items-center rounded-xl border border-stone-300 bg-white py-3"
-        >
-          <Text className="font-semibold text-stone-600">
-            Ripristina Predefiniti
-          </Text>
+          className="items-center rounded-xl border border-stone-300 bg-white py-3">
+          <Text className="font-semibold text-stone-600">Ripristina Predefiniti</Text>
         </Pressable>
 
         <Text className="mt-6 text-center text-xs text-stone-400">
-          Pratiche Edilizie Bologna v1.0{"\n"}
-          Dati da opendata.comune.bologna.it{"\n"}
+          Pratiche Edilizie Bologna v1.0{'\n'}
+          Dati da opendata.comune.bologna.it{'\n'}
           Licenza CC BY 4.0
         </Text>
       </View>

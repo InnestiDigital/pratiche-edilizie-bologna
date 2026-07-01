@@ -1,11 +1,11 @@
-import * as SQLite from "expo-sqlite";
+import * as SQLite from 'expo-sqlite';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (_db) return _db;
-  _db = await SQLite.openDatabaseAsync("permits.db");
-  await _db.execAsync("PRAGMA journal_mode=WAL;");
+  _db = await SQLite.openDatabaseAsync('permits.db');
+  await _db.execAsync('PRAGMA journal_mode=WAL;');
   await createTables(_db);
   return _db;
 }
@@ -53,11 +53,11 @@ async function createTables(db: SQLite.SQLiteDatabase): Promise<void> {
 export async function getPreference(
   db: SQLite.SQLiteDatabase,
   key: string,
-  defaultValue: string,
+  defaultValue: string
 ): Promise<string> {
   const row = await db.getFirstAsync<{ value: string }>(
-    "SELECT value FROM preferences WHERE key = ?",
-    key,
+    'SELECT value FROM preferences WHERE key = ?',
+    key
   );
   return row?.value ?? defaultValue;
 }
@@ -65,11 +65,11 @@ export async function getPreference(
 export async function setPreference(
   db: SQLite.SQLiteDatabase,
   key: string,
-  value: string,
+  value: string
 ): Promise<void> {
   await db.runAsync(
-    "INSERT INTO preferences (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    'INSERT INTO preferences (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
     key,
-    value,
+    value
   );
 }

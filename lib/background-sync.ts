@@ -1,18 +1,18 @@
-import * as BackgroundFetch from "expo-background-fetch";
-import * as TaskManager from "expo-task-manager";
-import { syncRecent } from "./sync";
-import { sendNewPermitsNotification, hasNotificationPermissions } from "./notifications";
-import { getDb, getPreference } from "./db";
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
+import { syncRecent } from './sync';
+import { sendNewPermitsNotification, hasNotificationPermissions } from './notifications';
+import { getDb, getPreference } from './db';
 
-const TASK_NAME = "background-permit-sync";
+const TASK_NAME = 'background-permit-sync';
 
 // Define the background task
 TaskManager.defineTask(TASK_NAME, async () => {
   try {
     // Check if notifications are enabled in user preferences
     const db = await getDb();
-    const enabled = await getPreference(db, "notifications_enabled", "false");
-    if (enabled !== "true") {
+    const enabled = await getPreference(db, 'notifications_enabled', 'false');
+    if (enabled !== 'true') {
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
 

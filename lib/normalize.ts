@@ -4,8 +4,8 @@ import {
   STATUS_PATTERNS,
   BOLOGNA_PORTAL_BASE,
   type DatasetKey,
-} from "./constants";
-import codviaMap from "../assets/data/codvia_to_zone.json";
+} from './constants';
+import codviaMap from '../assets/data/codvia_to_zone.json';
 
 const zoneMap = codviaMap as Record<string, string>;
 
@@ -43,14 +43,14 @@ export function makeSourceId(datasetKey: DatasetKey, record: RawRecord): string 
 }
 
 export function normalizeStatus(raw: string | null): string {
-  if (!raw) return "altro";
+  if (!raw) return 'altro';
   const s = raw.trim().toLowerCase();
   for (const [statusName, patterns] of STATUS_PATTERNS) {
     for (const pattern of patterns) {
       if (s.includes(pattern)) return statusName;
     }
   }
-  return "altro";
+  return 'altro';
 }
 
 export function extractTags(procedimento: string | null): string[] {
@@ -60,8 +60,8 @@ export function extractTags(procedimento: string | null): string[] {
   for (const [tag, pattern] of Object.entries(TAG_RULES)) {
     if (upper.includes(pattern)) tags.push(tag);
   }
-  if (upper.startsWith("URB ") && !tags.includes("urbanistica")) {
-    tags.push("urbanistica");
+  if (upper.startsWith('URB ') && !tags.includes('urbanistica')) {
+    tags.push('urbanistica');
   }
   return tags;
 }
@@ -71,23 +71,16 @@ export function deriveZone(codvia: number | null): string | null {
   return zoneMap[String(codvia)] ?? null;
 }
 
-export function makeSourceLink(
-  datasetKey: DatasetKey,
-  anno: string,
-  prot: number,
-): string {
+export function makeSourceLink(datasetKey: DatasetKey, anno: string, prot: number): string {
   const slug = DATASETS[datasetKey].slug;
-  return BOLOGNA_PORTAL_BASE.replace("{slug}", slug)
-    .replace("{anno}", anno)
-    .replace("{prot}", String(prot));
+  return BOLOGNA_PORTAL_BASE.replace('{slug}', slug)
+    .replace('{anno}', anno)
+    .replace('{prot}', String(prot));
 }
 
-export function normalizeRecord(
-  datasetKey: DatasetKey,
-  raw: RawRecord,
-): NormalizedPermit {
-  const statusRaw = raw.esito_pratica ?? "";
-  const procedimento = raw.procedimento ?? "";
+export function normalizeRecord(datasetKey: DatasetKey, raw: RawRecord): NormalizedPermit {
+  const statusRaw = raw.esito_pratica ?? '';
+  const procedimento = raw.procedimento ?? '';
   const tags = extractTags(procedimento);
 
   return {
@@ -106,7 +99,7 @@ export function normalizeRecord(
     source_link: makeSourceLink(
       datasetKey,
       String(raw.richiesta_anno_prot),
-      raw.richiesta_ndeg_prot,
+      raw.richiesta_ndeg_prot
     ),
   };
 }

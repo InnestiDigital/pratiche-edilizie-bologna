@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import { syncRecent } from './sync';
 import { sendNewPermitsNotification, hasNotificationPermissions } from './notifications';
 import { getDb, getPreference } from './db';
+import { summarizeSyncResults } from './background-result';
 
 const TASK_NAME = 'background-permit-sync';
 
@@ -25,10 +26,9 @@ TaskManager.defineTask(TASK_NAME, async () => {
     // Run sync
     const results = await syncRecent();
 
-    const totalNew = results.reduce((sum, r) => sum + r.inserted, 0);
-    const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
+    const { totalNew, totalUpdated, hasChanges } = summarizeSyncResults(results);
 
-    if (totalNew > 0 || totalUpdated > 0) {
+    if (hasChanges) {
       await sendNewPermitsNotification(totalNew, totalUpdated);
       return BackgroundFetch.BackgroundFetchResult.NewData;
     }

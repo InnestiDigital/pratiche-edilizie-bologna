@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, Linking, Share } from 'react-native'
 import { useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
-import { getPermitById, type Permit } from '../../lib/queries';
+import { getPermitById, parsePermitTags, type Permit } from '../../lib/queries';
 import {
   FILING_TYPE_LABELS,
   STATUS_LABELS,
@@ -72,7 +72,7 @@ export default function PermitDetail() {
     );
   }
 
-  const tags: string[] = JSON.parse(permit.tags);
+  const tags = parsePermitTags(permit.tags);
   const filingType = permit.filing_type as FilingType;
   const filingLabel = FILING_TYPE_LABELS[filingType] ?? permit.filing_type;
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;

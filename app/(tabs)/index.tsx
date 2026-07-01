@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import {
   getPermits,
+  parsePermitTags,
   SORT_LABELS,
   type Permit,
   type FeedFilters,
@@ -63,7 +64,7 @@ function TagBadge({ tag }: { tag: string }) {
 /* ── Permit Card ────────────────────────────────── */
 
 function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }) {
-  const tags: string[] = JSON.parse(permit.tags);
+  const tags = parsePermitTags(permit.tags);
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
   const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
   const fc = FILING_COLORS[permit.filing_type as FilingType] ?? FILING_COLORS.PDC;

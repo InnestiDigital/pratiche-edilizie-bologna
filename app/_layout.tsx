@@ -28,7 +28,7 @@ export default function RootLayout() {
   // Re-check onboarding state every time segments change (i.e. after navigation)
   useEffect(() => {
     checkOnboarding();
-  }, [segments]);
+  }, [checkOnboarding, segments]);
 
   useEffect(() => {
     if (!ready) return;
@@ -40,7 +40,7 @@ export default function RootLayout() {
     } else if (onboarded && inOnboarding) {
       router.replace('/(tabs)');
     }
-  }, [ready, onboarded]);
+  }, [ready, onboarded, router, segments]);
 
   if (!ready) {
     return (

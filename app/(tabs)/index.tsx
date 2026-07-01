@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -304,7 +304,7 @@ export default function FeedScreen() {
   const [onlyNew, setOnlyNew] = useState(false);
   const [sort, setSort] = useState<SortOption>('request_newest');
   const [search, setSearch] = useState('');
-  const [offset, setOffset] = useState(0);
+  const offsetRef = useRef(0);
   const [hasMore, setHasMore] = useState(true);
 
   const activeFilterCount =
@@ -317,7 +317,7 @@ export default function FeedScreen() {
     async (reset = false) => {
       const db = await getDb();
       const prefs = await loadPreferences();
-      const newOffset = reset ? 0 : offset;
+      const newOffset = reset ? 0 : offsetRef.current;
 
       const filters: FeedFilters = {
         zones: activeZones.size < QUARTIERI.length ? [...activeZones] : prefs.zones,
@@ -342,20 +342,20 @@ export default function FeedScreen() {
       const rows = await getPermits(db, filters, 50, newOffset);
       if (reset) {
         setPermits(rows);
-        setOffset(50);
+        offsetRef.current = 50;
       } else {
         setPermits((prev) => [...prev, ...rows]);
-        setOffset(newOffset + 50);
+        offsetRef.current = newOffset + 50;
       }
       setHasMore(rows.length === 50);
       setLoading(false);
     },
-    [activeTypes, activeZones, activeStatuses, onlyNew, sort, search, offset]
+    [activeTypes, activeZones, activeStatuses, onlyNew, sort, search]
   );
 
   useEffect(() => {
     loadPermits(true);
-  }, [activeTypes, activeZones, activeStatuses, onlyNew, sort, search]);
+  }, [loadPermits]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

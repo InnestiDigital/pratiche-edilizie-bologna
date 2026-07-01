@@ -6,6 +6,7 @@ import { withRetry } from './retry';
 import type { ParsedPage } from './schemas';
 import { getDb } from './db';
 import { classifyUpsert, type UpsertOutcome } from './upsert-classify';
+import { tallyOutcomes } from './sync-tally';
 import { walkPages, recentYears, fullScanYears, MAX_OFFSET } from './paginate';
 
 /**
@@ -164,24 +165,33 @@ export interface SyncResult {
   error?: string;
 }
 
-export async function syncRecent(onProgress?: (msg: string) => void): Promise<SyncResult[]> {
+/**
+ * Sync every dataset through one fetch strategy. `syncRecent` and `syncFull`
+ * differ only in how a dataset's raw records are fetched (recent window vs full
+ * scan) and the download progress prefix — the per-dataset processing (normalize
+ * → upsert → tally → sync_log → build `SyncResult`) and the per-dataset error
+ * isolation (one dataset's 404/shape-change is recorded on its own `SyncResult`
+ * and never aborts the others) are identical, so they live here once.
+ */
+async function syncDatasets(
+  fetchDataset: (key: DatasetKey, onProgress?: (msg: string) => void) => Promise<RawRecord[]>,
+  downloadLabel: (label: string) => string,
+  onProgress?: (msg: string) => void
+): Promise<SyncResult[]> {
   const db = await getDb();
   const results: SyncResult[] = [];
 
   for (const key of Object.keys(DATASETS) as DatasetKey[]) {
     try {
-      onProgress?.(`Scaricamento ${DATASETS[key].label}...`);
-      const records = await fetchDatasetRecent(key, 2, onProgress);
+      onProgress?.(downloadLabel(DATASETS[key].label));
+      const records = await fetchDataset(key, onProgress);
       onProgress?.(`Elaborazione ${records.length} pratiche ${key.toUpperCase()}...`);
 
-      let inserted = 0;
-      let updated = 0;
+      const outcomes: UpsertOutcome[] = [];
       for (const raw of records) {
-        const normalized = normalizeRecord(key, raw);
-        const result = await upsertPermit(db, normalized);
-        if (result === 'inserted') inserted++;
-        if (result === 'updated') updated++;
+        outcomes.push(await upsertPermit(db, normalizeRecord(key, raw)));
       }
+      const { inserted, updated } = tallyOutcomes(outcomes);
 
       await db.runAsync(
         'INSERT INTO sync_log (dataset, synced_at, new_count, updated_count) VALUES (?, ?, ?, ?)',
@@ -191,81 +201,29 @@ export async function syncRecent(onProgress?: (msg: string) => void): Promise<Sy
         updated
       );
 
-      const r: SyncResult = {
-        dataset: key,
-        fetched: records.length,
-        inserted,
-        updated,
-      };
-      results.push(r);
+      results.push({ dataset: key, fetched: records.length, inserted, updated });
       onProgress?.(
         `${key.toUpperCase()}: ${records.length} scaricati, ${inserted} nuovi, ${updated} aggiornati`
       );
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      results.push({
-        dataset: key,
-        fetched: 0,
-        inserted: 0,
-        updated: 0,
-        error: message,
-      });
+      results.push({ dataset: key, fetched: 0, inserted: 0, updated: 0, error: message });
       onProgress?.(`${key.toUpperCase()}: errore — ${message}`);
     }
   }
   return results;
 }
 
-export async function syncFull(onProgress?: (msg: string) => void): Promise<SyncResult[]> {
-  const db = await getDb();
-  const results: SyncResult[] = [];
+export function syncRecent(onProgress?: (msg: string) => void): Promise<SyncResult[]> {
+  return syncDatasets(
+    (key, op) => fetchDatasetRecent(key, 2, op),
+    (label) => `Scaricamento ${label}...`,
+    onProgress
+  );
+}
 
-  for (const key of Object.keys(DATASETS) as DatasetKey[]) {
-    try {
-      onProgress?.(`Scaricamento completo ${DATASETS[key].label}...`);
-      const records = await fetchDatasetFull(key, onProgress);
-      onProgress?.(`Elaborazione ${records.length} pratiche ${key.toUpperCase()}...`);
-
-      let inserted = 0;
-      let updated = 0;
-      for (const raw of records) {
-        const normalized = normalizeRecord(key, raw);
-        const result = await upsertPermit(db, normalized);
-        if (result === 'inserted') inserted++;
-        if (result === 'updated') updated++;
-      }
-
-      await db.runAsync(
-        'INSERT INTO sync_log (dataset, synced_at, new_count, updated_count) VALUES (?, ?, ?, ?)',
-        key,
-        new Date().toISOString(),
-        inserted,
-        updated
-      );
-
-      const r: SyncResult = {
-        dataset: key,
-        fetched: records.length,
-        inserted,
-        updated,
-      };
-      results.push(r);
-      onProgress?.(
-        `${key.toUpperCase()}: ${records.length} scaricati, ${inserted} nuovi, ${updated} aggiornati`
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      results.push({
-        dataset: key,
-        fetched: 0,
-        inserted: 0,
-        updated: 0,
-        error: message,
-      });
-      onProgress?.(`${key.toUpperCase()}: errore — ${message}`);
-    }
-  }
-  return results;
+export function syncFull(onProgress?: (msg: string) => void): Promise<SyncResult[]> {
+  return syncDatasets(fetchDatasetFull, (label) => `Scaricamento completo ${label}...`, onProgress);
 }
 
 export async function getLastSyncTime(): Promise<string | null> {

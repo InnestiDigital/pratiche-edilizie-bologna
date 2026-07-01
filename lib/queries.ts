@@ -53,6 +53,26 @@ export interface FeedFilters {
   sort?: SortOption;
 }
 
+/**
+ * Safely decode a permit's `tags` column into a string array.
+ *
+ * `normalize.ts` always writes this as `JSON.stringify(string[])`, but a legacy
+ * row, a manual DB edit, or a future schema change could leave a malformed value.
+ * A raw `JSON.parse` inside the feed's tag post-filter would throw and blank the
+ * whole feed, so parse defensively: any non-array / non-string-element / invalid
+ * JSON collapses to `[]` (the row simply matches no tag filter) instead of crashing.
+ */
+export function parsePermitTags(raw: string): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((t): t is string => typeof t === 'string');
+}
+
 export async function getPermits(
   db: SQLite.SQLiteDatabase,
   filters: FeedFilters,
@@ -98,10 +118,11 @@ export async function getPermits(
     ...params
   );
 
-  // Post-filter by tags (JSON array in SQLite)
+  // Post-filter by tags (JSON array in SQLite). Parse defensively so a corrupt
+  // tags column can't throw and blank the feed — see parsePermitTags.
   if (filters.tags.length > 0) {
     return rows.filter((row) => {
-      const permitTags: string[] = JSON.parse(row.tags);
+      const permitTags = parsePermitTags(row.tags);
       return filters.tags.some((t) => permitTags.includes(t));
     });
   }

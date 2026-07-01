@@ -40,6 +40,28 @@ npx tsc --noEmit   # typecheck
 Do **not** boot a simulator / Metro to verify a change in CI or a headless run — the test + lint + tsc
 trio is the gate. `npm start`, `expo run:*`, and EAS builds are interactive/heavy and out of scope there.
 
+### Seeing the UI without a device (web screenshot build)
+
+The app has no CI screenshot step and a headless loop can't boot a simulator, so **UI regressions
+went unseen**. The fix: the app can be exported to **web** and screenshotted with headless Chromium.
+
+`npx expo export --platform web` renders the *real* screens (through the real expo-router + NativeWind)
+using **fixture data**, so every screen shows populated, representative content — no SQLite, no network,
+no simulator. This works because of the **`lib/*.web.ts` platform shims** (Metro resolves `X.web.ts` over
+`X.ts` *only* for the web platform; iOS/Android and vitest keep the plain `X.ts` and never load them):
+
+- `db.web.ts` — the native `db.ts` imports `expo-sqlite`, whose wasm worker breaks the web bundle; the
+  shim returns a no-op db handle.
+- `queries.web.ts` / `preferences.web.ts` — return the `screenshot-fixtures.ts` permits and an
+  "already onboarded" preference set instead of querying SQLite.
+- `sync.web.ts` / `background-sync.web.ts` / `notifications.web.ts` — no-op the native-only modules.
+- `screenshot-fixtures.ts` — the deterministic sample permits (imported **only** by the `*.web.ts` shims).
+
+These files are **web-only and inert on device** — do not import them from a `.ts` module, and keep their
+export surface in sync with the native `.ts` (tsc guards drift). The screenshot runner itself lives in the
+git-excluded `.loop/screenshot/` (headless Chromium via `playwright-core`, phone viewport); it writes PNGs
+to `.loop/screenshots/`. This is a **UI-review tool, not a web product** — the app does not ship to web.
+
 ## Layout
 
 ```

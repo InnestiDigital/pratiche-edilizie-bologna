@@ -1,5 +1,18 @@
 import type * as SQLite from 'expo-sqlite';
-import type { FilingType, Quartiere } from './constants';
+import type { FilingType } from './constants';
+import { buildFeedQuery, type FeedFilters } from './build-feed-query';
+
+// The feed-query primitives live in the pure, db-free `build-feed-query` module
+// so the SQL construction is unit-testable in isolation. Re-exported here so the
+// UI + existing tests keep importing them from `./queries` unchanged.
+export {
+  buildFeedQuery,
+  escapeLike,
+  SORT_LABELS,
+  type FeedFilters,
+  type SortOption,
+  type FeedQuery,
+} from './build-feed-query';
 
 export interface Permit {
   id: number;
@@ -18,39 +31,6 @@ export interface Permit {
   tags: string;
   source_link: string | null;
   is_new: number;
-}
-
-export type SortOption =
-  | 'newest'
-  | 'oldest'
-  | 'request_newest'
-  | 'request_oldest'
-  | 'closing_newest';
-
-export const SORT_LABELS: Record<SortOption, string> = {
-  newest: 'Rilevamento (recenti)',
-  oldest: 'Rilevamento (meno recenti)',
-  request_newest: 'Data richiesta (recenti)',
-  request_oldest: 'Data richiesta (meno recenti)',
-  closing_newest: 'Data chiusura (recenti)',
-};
-
-const SORT_SQL: Record<SortOption, string> = {
-  newest: 'first_seen_at DESC',
-  oldest: 'first_seen_at ASC',
-  request_newest: 'source_updated_at DESC',
-  request_oldest: 'source_updated_at ASC',
-  closing_newest: 'date_issued DESC',
-};
-
-export interface FeedFilters {
-  zones: Quartiere[];
-  filingTypes: FilingType[];
-  tags: string[];
-  searchQuery?: string;
-  statuses?: string[];
-  onlyNew?: boolean;
-  sort?: SortOption;
 }
 
 /**
@@ -73,63 +53,14 @@ export function parsePermitTags(raw: string): string[] {
   return parsed.filter((t): t is string => typeof t === 'string');
 }
 
-/**
- * Escape a user search term for safe use inside a SQL `LIKE` pattern.
- *
- * The feed search wraps the term as `%term%`, so the SQLite `LIKE` wildcards
- * `%` (any run) and `_` (any single char) — plus the escape char `\` itself —
- * would otherwise be interpreted, not matched literally. A search for `100%`
- * or `via_` should match those exact strings, not "100 followed by anything".
- * Callers must pair the escaped term with an `ESCAPE '\'` clause on the `LIKE`.
- */
-export function escapeLike(term: string): string {
-  return term.replace(/[\\%_]/g, (ch) => `\\${ch}`);
-}
-
 export async function getPermits(
   db: SQLite.SQLiteDatabase,
   filters: FeedFilters,
   limit = 50,
   offset = 0
 ): Promise<Permit[]> {
-  const conditions: string[] = [];
-  const params: any[] = [];
-
-  if (filters.zones.length > 0) {
-    conditions.push(`zone IN (${filters.zones.map(() => '?').join(',')})`);
-    params.push(...filters.zones);
-  }
-
-  if (filters.filingTypes.length > 0) {
-    conditions.push(`filing_type IN (${filters.filingTypes.map(() => '?').join(',')})`);
-    params.push(...filters.filingTypes);
-  }
-
-  if (filters.searchQuery) {
-    conditions.push("(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')");
-    const q = `%${escapeLike(filters.searchQuery)}%`;
-    params.push(q, q);
-  }
-
-  if (filters.statuses && filters.statuses.length > 0) {
-    conditions.push(`status IN (${filters.statuses.map(() => '?').join(',')})`);
-    params.push(...filters.statuses);
-  }
-
-  if (filters.onlyNew) {
-    conditions.push('is_new = 1');
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const orderBy = SORT_SQL[filters.sort ?? 'newest'];
-
-  params.push(limit, offset);
-
-  const rows = await db.getAllAsync<Permit>(
-    `SELECT * FROM permits ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-    ...params
-  );
+  const { sql, params } = buildFeedQuery(filters, limit, offset);
+  const rows = await db.getAllAsync<Permit>(sql, ...params);
 
   // Post-filter by tags (JSON array in SQLite). Parse defensively so a corrupt
   // tags column can't throw and blank the feed — see parsePermitTags.

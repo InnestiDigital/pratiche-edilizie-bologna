@@ -1,5 +1,6 @@
 import { getDb, getPreference, setPreference } from "./db";
 import { QUARTIERI, FILING_TYPE_ORDER, type FilingType, type Quartiere } from "./constants";
+import { decodeStringArray, decodeEnumArray } from "./preferences-decode";
 
 export interface UserPreferences {
   zones: Quartiere[];
@@ -23,9 +24,9 @@ export async function loadPreferences(): Promise<UserPreferences> {
   const onboarding = await getPreference(db, "onboarding_done", "false");
 
   return {
-    zones: JSON.parse(zones),
-    filingTypes: JSON.parse(filingTypes),
-    tags: JSON.parse(tags),
+    zones: decodeEnumArray(zones, QUARTIERI, DEFAULTS.zones),
+    filingTypes: decodeEnumArray(filingTypes, FILING_TYPE_ORDER, DEFAULTS.filingTypes),
+    tags: decodeStringArray(tags, DEFAULTS.tags),
     onboardingDone: onboarding === "true",
   };
 }

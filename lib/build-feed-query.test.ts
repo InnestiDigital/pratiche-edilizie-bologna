@@ -71,6 +71,22 @@ describe('buildFeedQuery — WHERE construction', () => {
     expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).not.toContain('is_new');
   });
 
+  it('adds a parameterless favorites EXISTS predicate for onlyFavorites', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, onlyFavorites: true }, 50, 0);
+    expect(squish(sql)).toContain(
+      'EXISTS (SELECT 1 FROM favorites WHERE favorites.source_id = permits.source_id)'
+    );
+    // no param for the favorites join — only LIMIT/OFFSET
+    expect(params).toEqual([50, 0]);
+  });
+
+  it('omits the favorites join when onlyFavorites is false/undefined', () => {
+    expect(squish(buildFeedQuery({ ...EMPTY, onlyFavorites: false }, 50, 0).sql)).not.toContain(
+      'favorites'
+    );
+    expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).not.toContain('favorites');
+  });
+
   it('ANDs every active filter in a fixed order with correctly ordered params', () => {
     const { sql, params } = buildFeedQuery(
       {

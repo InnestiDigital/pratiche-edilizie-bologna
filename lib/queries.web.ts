@@ -14,7 +14,7 @@
 import type * as SQLite from 'expo-sqlite';
 import type { FilingType } from './constants';
 import type { FeedFilters } from './build-feed-query';
-import { PERMIT_FIXTURES, STATS_FIXTURE } from './screenshot-fixtures';
+import { PERMIT_FIXTURES, STATS_FIXTURE, FAVORITE_SOURCE_IDS } from './screenshot-fixtures';
 
 // Re-export the pure, db-free query primitives from their real home (safe: the
 // `build-feed-query` module imports nothing native).
@@ -73,6 +73,7 @@ function filterFixtures(filters: FeedFilters): Permit[] {
     rows = rows.filter((p) => filters.filingTypes.includes(p.filing_type));
   if (filters.statuses?.length) rows = rows.filter((p) => filters.statuses!.includes(p.status));
   if (filters.onlyNew) rows = rows.filter((p) => p.is_new === 1);
+  if (filters.onlyFavorites) rows = rows.filter((p) => FAVORITE_SOURCE_IDS.has(p.source_id));
   if (filters.searchQuery?.trim()) {
     const q = filters.searchQuery.trim().toLowerCase();
     rows = rows.filter((p) => (p.address ?? '').toLowerCase().includes(q));

@@ -58,6 +58,7 @@ export interface FeedFilters {
   searchQuery?: string;
   statuses?: string[];
   onlyNew?: boolean;
+  onlyFavorites?: boolean;
   sort?: SortOption;
 }
 
@@ -122,6 +123,16 @@ export function buildFeedWhere(filters: FeedFilters): {
 
   if (filters.onlyNew) {
     conditions.push('is_new = 1');
+  }
+
+  if (filters.onlyFavorites) {
+    // Correlated EXISTS against the favorites table (keyed by source_id), so the
+    // saved-only filter is applied in SQL — LIMIT/OFFSET and the feed's "full
+    // page?" pagination stay correct, exactly as with the tag filter. No bind
+    // params: the predicate is fully static.
+    conditions.push(
+      'EXISTS (SELECT 1 FROM favorites WHERE favorites.source_id = permits.source_id)'
+    );
   }
 
   if (filters.tags.length > 0) {

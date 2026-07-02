@@ -23,6 +23,7 @@ import {
   type SortOption,
 } from '../../lib/queries';
 import { loadPreferences } from '../../lib/preferences';
+import { listFavoriteIds } from '../../lib/favorites';
 import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
 import {
@@ -68,7 +69,15 @@ function TagBadge({ tag }: { tag: string }) {
 
 /* ── Permit Card ────────────────────────────────── */
 
-function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }) {
+function PermitCard({
+  permit,
+  isSaved,
+  onPress,
+}: {
+  permit: Permit;
+  isSaved: boolean;
+  onPress: () => void;
+}) {
   const tags = parsePermitTags(permit.tags);
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
   const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
@@ -78,6 +87,7 @@ function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }
     permit.filing_type,
     statusLabel,
     permit.is_new === 1 ? 'nuovo' : null,
+    isSaved ? 'salvata' : null,
     permit.address ?? 'Indirizzo non disponibile',
     permit.zone,
   ]
@@ -109,11 +119,16 @@ function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }
           <View className="mr-1.5 h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
           <Text className="text-xs font-medium text-stone-500">{statusLabel}</Text>
         </View>
-        {permit.is_new === 1 && (
-          <View className="ml-auto rounded-full bg-brick-600 px-2.5 py-0.5">
-            <Text className="text-[10px] font-bold text-white">NUOVO</Text>
-          </View>
-        )}
+        <View className="ml-auto flex-row items-center">
+          {isSaved && (
+            <Ionicons name="bookmark" size={14} color="#9B2335" style={{ marginRight: 6 }} />
+          )}
+          {permit.is_new === 1 && (
+            <View className="rounded-full bg-brick-600 px-2.5 py-0.5">
+              <Text className="text-[10px] font-bold text-white">NUOVO</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Address */}
@@ -222,6 +237,8 @@ function FilterPanel({
   toggleStatus,
   onlyNew,
   toggleOnlyNew,
+  onlyFavorites,
+  toggleOnlyFavorites,
   sort,
   setSort,
 }: {
@@ -231,26 +248,48 @@ function FilterPanel({
   toggleStatus: (s: string) => void;
   onlyNew: boolean;
   toggleOnlyNew: () => void;
+  onlyFavorites: boolean;
+  toggleOnlyFavorites: () => void;
   sort: SortOption;
   setSort: (s: SortOption) => void;
 }) {
   return (
     <View className="border-b border-stone-200 bg-white px-4 pb-3">
-      {/* Only new */}
-      <Pressable
-        onPress={toggleOnlyNew}
-        accessibilityRole="button"
-        accessibilityLabel="Solo nuovi"
-        accessibilityState={{ selected: onlyNew }}
-        className={`mb-3 flex-row items-center self-start rounded-full px-3.5 py-2 ${
-          onlyNew ? 'bg-brick-600' : 'bg-parchment-100'
-        }`}>
-        <Ionicons name="sparkles" size={14} color={onlyNew ? 'white' : '#8B7355'} />
-        <Text
-          className={`ml-1.5 text-xs font-semibold ${onlyNew ? 'text-white' : 'text-stone-500'}`}>
-          Solo nuovi
-        </Text>
-      </Pressable>
+      {/* Quick toggles: only new / only saved */}
+      <View className="mb-3 flex-row">
+        <Pressable
+          onPress={toggleOnlyNew}
+          accessibilityRole="button"
+          accessibilityLabel="Solo nuovi"
+          accessibilityState={{ selected: onlyNew }}
+          className={`mr-2 flex-row items-center self-start rounded-full px-3.5 py-2 ${
+            onlyNew ? 'bg-brick-600' : 'bg-parchment-100'
+          }`}>
+          <Ionicons name="sparkles" size={14} color={onlyNew ? 'white' : '#8B7355'} />
+          <Text
+            className={`ml-1.5 text-xs font-semibold ${onlyNew ? 'text-white' : 'text-stone-500'}`}>
+            Solo nuovi
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={toggleOnlyFavorites}
+          accessibilityRole="button"
+          accessibilityLabel="Solo salvate"
+          accessibilityState={{ selected: onlyFavorites }}
+          className={`flex-row items-center self-start rounded-full px-3.5 py-2 ${
+            onlyFavorites ? 'bg-brick-600' : 'bg-parchment-100'
+          }`}>
+          <Ionicons
+            name={onlyFavorites ? 'bookmark' : 'bookmark-outline'}
+            size={14}
+            color={onlyFavorites ? 'white' : '#8B7355'}
+          />
+          <Text
+            className={`ml-1.5 text-xs font-semibold ${onlyFavorites ? 'text-white' : 'text-stone-500'}`}>
+            Solo salvate
+          </Text>
+        </Pressable>
+      </View>
 
       {/* Sort */}
       <Text className="mb-1.5 text-xs font-semibold text-stone-600">Ordina per</Text>
@@ -335,12 +374,14 @@ export default function FeedScreen() {
   const [hasData, setHasData] = useState(true);
   const [resultCount, setResultCount] = useState<number | null>(null);
   const [newCount, setNewCount] = useState(0);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [activeZones, setActiveZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set());
   const [onlyNew, setOnlyNew] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sort, setSort] = useState<SortOption>('request_newest');
   const [search, setSearch] = useState('');
   const offsetRef = useRef(0);
@@ -350,6 +391,7 @@ export default function FeedScreen() {
     (activeZones.size < QUARTIERI.length ? 1 : 0) +
     (activeStatuses.size > 0 ? 1 : 0) +
     (onlyNew ? 1 : 0) +
+    (onlyFavorites ? 1 : 0) +
     (sort !== 'request_newest' ? 1 : 0);
 
   const loadPermits = useCallback(
@@ -365,6 +407,7 @@ export default function FeedScreen() {
         searchQuery: search || undefined,
         statuses: activeStatuses.size > 0 ? [...activeStatuses] : undefined,
         onlyNew: onlyNew || undefined,
+        onlyFavorites: onlyFavorites || undefined,
         sort,
       };
 
@@ -382,6 +425,9 @@ export default function FeedScreen() {
         // New (unseen) permits across the whole DB — drives the "mark all seen"
         // action; global, matching markAllSeen's global UPDATE.
         setNewCount(await countNewPermits(db));
+        // Saved-permit ids, so each card can render its bookmark from one query
+        // instead of an isFavorite call per visible row.
+        setFavoriteIds(await listFavoriteIds(db));
       }
 
       const rows = await getPermits(db, filters, 50, newOffset);
@@ -395,7 +441,7 @@ export default function FeedScreen() {
       setHasMore(rows.length === 50);
       setLoading(false);
     },
-    [activeTypes, activeZones, activeStatuses, onlyNew, sort, search]
+    [activeTypes, activeZones, activeStatuses, onlyNew, onlyFavorites, sort, search]
   );
 
   useEffect(() => {
@@ -449,6 +495,7 @@ export default function FeedScreen() {
     setActiveZones(new Set(QUARTIERI));
     setActiveStatuses(new Set());
     setOnlyNew(false);
+    setOnlyFavorites(false);
     setSort('request_newest');
     setSearch('');
   };
@@ -518,6 +565,8 @@ export default function FeedScreen() {
           toggleStatus={toggleStatus}
           onlyNew={onlyNew}
           toggleOnlyNew={() => setOnlyNew((v) => !v)}
+          onlyFavorites={onlyFavorites}
+          toggleOnlyFavorites={() => setOnlyFavorites((v) => !v)}
           sort={sort}
           setSort={setSort}
         />
@@ -550,7 +599,11 @@ export default function FeedScreen() {
         data={permits}
         keyExtractor={(item) => item.source_id}
         renderItem={({ item }) => (
-          <PermitCard permit={item} onPress={() => router.push(`/permit/${item.id}`)} />
+          <PermitCard
+            permit={item}
+            isSaved={favoriteIds.has(item.source_id)}
+            onPress={() => router.push(`/permit/${item.id}`)}
+          />
         )}
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
         refreshControl={

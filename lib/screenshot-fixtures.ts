@@ -204,3 +204,11 @@ export const STATS_FIXTURE = {
 };
 
 export const LAST_SYNC_FIXTURE = '2025-01-04T09:12:00.000Z';
+
+/**
+ * `source_id`s of the permits shown as **saved** in the screenshot build (see
+ * `favorites.web.ts`). Two are marked so the feed renders bookmarked cards and
+ * the detail screen (`/permit/1`) shows the "Salvata" state. Keyed by
+ * `source_id` to mirror the real `favorites` table.
+ */
+export const FAVORITE_SOURCE_IDS = new Set<string>(['PDC-2024-000481', 'PDC-2024-000390']);

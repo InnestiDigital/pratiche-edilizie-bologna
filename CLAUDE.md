@@ -12,7 +12,8 @@ or updated permits land.
 
 - **No backend, no accounts, no analytics.** Everything runs on-device. The only network calls are
   read-only GETs to the Bologna open-data API.
-- Pre–App-Store. Bundle id `it.innesti.praticheediliziebologna` (iOS + Android). Owner/EAS account:
+- On the App Store: v1.0.0 already approved by Apple, so the `1.0.0` version train is **closed** — ship
+  updates as `1.0.1`+. Bundle id `it.innesti.praticheediliziebologna` (iOS + Android). Owner/EAS account:
   `mottaviani.dev` (InnestiDigital).
 - Italian-only UI (hardcoded copy — there is no runtime i18n framework; `assets/lang/it.json` is only the
   iOS `InfoPlist` localization).
@@ -61,6 +62,37 @@ These files are **web-only and inert on device** — do not import them from a `
 export surface in sync with the native `.ts` (tsc guards drift). The screenshot runner itself lives in the
 git-excluded `.loop/screenshot/` (headless Chromium via `playwright-core`, phone viewport); it writes PNGs
 to `.loop/screenshots/`. This is a **UI-review tool, not a web product** — the app does not ship to web.
+
+## Deploy (EAS)
+
+Manual EAS from a dev machine today (owner `mottaviani.dev`); no CI yet. `.github/workflows/eas.yml`
+(manual `workflow_dispatch`) exists but is **dormant** until the CI setup below is done.
+
+```bash
+eas build  --platform ios --profile production --non-interactive --wait   # cloud build → .ipa
+eas submit --platform ios --profile production --latest                   # → App Store Connect (interactive: Apple 2FA)
+```
+
+Gotchas — each one cost a rebuild this session, read before shipping:
+
+- **EAS builds from the git commit, not the working tree** — commit `app.json` / `eas.json` changes
+  *before* `eas build`, or they won't be in the binary.
+- **Version fields live in `app.json`**: `version` = CFBundleShortVersionString, iOS `buildNumber` =
+  CFBundleVersion, Android `versionCode`. Both are baked into the `.ipa`, so changing either needs a rebuild.
+- **App Store rejects (90062 / 90186):** `buildNumber` must be unique *within a version train*, and an
+  approved `version` train is *closed*. Same version + new build → bump `buildNumber`; closed/new version →
+  bump `version` (e.g. `1.0.0` → `1.0.1`).
+- `autoIncrement: true` with `appVersionSource: "local"` bumps `buildNumber` and writes it back to
+  `app.json` (dirty tree) — commit the writeback.
+- **Submit auth:** interactive uses Apple 2FA; headless/CI needs an **App Store Connect API key** stored on
+  EAS (`eas credentials`), not the `appleId` path (which requires 2FA).
+- App Store listing (screenshots, description, "Novità"/release-notes, privacy) is edited in App Store
+  Connect — EAS only uploads the binary; you still create the version + Submit for Review by hand.
+
+To enable CI (`eas.yml`): (1) add `EXPO_TOKEN` GitHub secret; (2) store the ASC API key on EAS; (3) flip
+`eas.json` → `appVersionSource: "remote"` + run `eas build:version:set` to init the counter — local
+`autoIncrement` does **not** persist across runners, so CI would collide. Then Actions → Run workflow does
+build + `--auto-submit` server-side.
 
 ## Layout
 

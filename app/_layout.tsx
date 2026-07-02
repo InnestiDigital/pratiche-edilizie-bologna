@@ -2,10 +2,10 @@ import '../global.css';
 import { useEffect, useCallback, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
 import { isOnboardingDone, isNotificationsEnabled } from '../lib/preferences';
 import { registerBackgroundSync } from '../lib/background-sync';
 import { HeaderBrand } from '../components/HeaderBrand';
+import { AppLoading } from '../components/AppLoading';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -44,11 +44,7 @@ export default function RootLayout() {
   }, [ready, onboarded, router, segments]);
 
   if (!ready) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#1e3a5f" />
-      </View>
-    );
+    return <AppLoading />;
   }
 
   return (

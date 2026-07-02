@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Linking, Share } from 'react-native';
+import { View, Text, ScrollView, Pressable, Linking, Share, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermitById, parsePermitTags, type Permit } from '../../lib/queries';
 import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
+import { buildMapsUrl } from '../../lib/maps-url';
 import {
   FILING_TYPE_LABELS,
   STATUS_LABELS,
@@ -82,6 +83,7 @@ export default function PermitDetail() {
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
 
   const protocol = formatProtocol(permit.source_id);
+  const mapsUrl = buildMapsUrl(permit.address, Platform.OS);
 
   const handleShare = async () => {
     const text = [
@@ -238,6 +240,18 @@ export default function PermitDetail() {
               }}>
               <Ionicons name="open-outline" size={18} color="white" />
               <Text className="ml-2 text-base font-bold text-white">Vedi su Open Data Bologna</Text>
+            </Pressable>
+          )}
+
+          {mapsUrl && (
+            <Pressable
+              onPress={() => Linking.openURL(mapsUrl)}
+              accessibilityRole="link"
+              accessibilityLabel="Apri in Mappe"
+              accessibilityHint="Apre la posizione della pratica nell'app mappe"
+              className="mt-2 flex-row items-center justify-center rounded-xl border border-stone-300 bg-white py-3.5">
+              <Ionicons name="navigate-outline" size={18} color="#9B2335" />
+              <Text className="ml-2 text-base font-semibold text-ink-600">Apri in Mappe</Text>
             </Pressable>
           )}
 

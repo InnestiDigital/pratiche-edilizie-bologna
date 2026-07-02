@@ -6,6 +6,14 @@ import { getDb } from '../../lib/db';
 import { getStats } from '../../lib/queries';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
+/* Dataset accent colors — same palette used for the filing-type badges across
+   the feed and detail screens, so the composition bar reads as one language. */
+const DATASET_META: { key: string; label: string; color: string }[] = [
+  { key: 'pdc', label: 'PdC', color: '#8B5E1A' },
+  { key: 'scia', label: 'SCIA', color: '#3D5C38' },
+  { key: 'cila', label: 'CILA', color: '#3A4A82' },
+];
+
 export default function SyncScreen() {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
@@ -213,24 +221,67 @@ export default function SyncScreen() {
           <View className="mt-6">
             <Text className="mb-3 text-base font-bold text-ink-800">Database Locale</Text>
 
-            <View
-              className="mb-4 flex-row justify-between rounded-xl bg-white p-4"
-              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
-              {[
-                { value: stats.total, label: 'Totale', color: '#9B2335' },
-                { value: stats.newCount, label: 'Nuovi', color: '#ef4444' },
-                { value: stats.byDataset.pdc ?? 0, label: 'PdC', color: '#8B5E1A' },
-                { value: stats.byDataset.scia ?? 0, label: 'SCIA', color: '#3D5C38' },
-                { value: stats.byDataset.cila ?? 0, label: 'CILA', color: '#3A4A82' },
-              ].map((item) => (
-                <View key={item.label} className="items-center">
-                  <Text className="text-xl font-bold" style={{ color: item.color }}>
-                    {item.value.toLocaleString('it-IT')}
-                  </Text>
-                  <Text className="text-xs text-stone-500">{item.label}</Text>
+            {(() => {
+              const segments = DATASET_META.map((m) => ({
+                ...m,
+                value: stats.byDataset[m.key] ?? 0,
+              }));
+              return (
+                <View
+                  className="mb-4 rounded-xl bg-white p-4"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    elevation: 1,
+                  }}>
+                  {/* Hero total + new-permits pill */}
+                  <View className="flex-row items-end justify-between">
+                    <View>
+                      <Text className="text-3xl font-bold text-ink-800">
+                        {stats.total.toLocaleString('it-IT')}
+                      </Text>
+                      <Text className="text-xs text-stone-600">pratiche totali</Text>
+                    </View>
+                    {stats.newCount > 0 && (
+                      <View className="rounded-full bg-brick-50 px-3 py-1">
+                        <Text className="text-xs font-bold text-brick-600">
+                          {stats.newCount.toLocaleString('it-IT')}{' '}
+                          {stats.newCount === 1 ? 'nuova' : 'nuove'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Proportional composition bar (PdC / SCIA / CILA) */}
+                  <View className="mt-3 h-2.5 flex-row overflow-hidden rounded-full bg-parchment-200">
+                    {segments.map((s) =>
+                      s.value > 0 ? (
+                        <View key={s.key} style={{ flex: s.value, backgroundColor: s.color }} />
+                      ) : null
+                    )}
+                  </View>
+
+                  {/* Legend */}
+                  <View className="mt-3 flex-row flex-wrap">
+                    {segments.map((s) => (
+                      <View key={s.key} className="mr-4 mt-1 flex-row items-center">
+                        <View
+                          className="mr-1.5 h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: s.color }}
+                        />
+                        <Text className="text-xs text-stone-600">
+                          <Text className="font-bold text-ink-800">
+                            {s.value.toLocaleString('it-IT')}
+                          </Text>{' '}
+                          {s.label}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              ))}
-            </View>
+              );
+            })()}
 
             <Text className="mb-2 text-base font-bold text-ink-800">Per Quartiere</Text>
             <View

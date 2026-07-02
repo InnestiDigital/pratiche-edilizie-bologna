@@ -56,6 +56,7 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 const STATUS_KEYS = Object.keys(STATUS_LABELS);
+const TAG_KEYS = Object.keys(TAG_LABELS);
 
 /* ── Tag Badge ──────────────────────────────────── */
 
@@ -235,6 +236,8 @@ function FilterPanel({
   toggleZone,
   activeStatuses,
   toggleStatus,
+  activeTags,
+  toggleTag,
   onlyNew,
   toggleOnlyNew,
   onlyFavorites,
@@ -246,6 +249,8 @@ function FilterPanel({
   toggleZone: (z: Quartiere) => void;
   activeStatuses: Set<string>;
   toggleStatus: (s: string) => void;
+  activeTags: Set<string>;
+  toggleTag: (t: string) => void;
   onlyNew: boolean;
   toggleOnlyNew: () => void;
   onlyFavorites: boolean;
@@ -360,6 +365,29 @@ function FilterPanel({
           );
         })}
       </View>
+
+      {/* Tag chips */}
+      <Text className="mb-1.5 mt-3 text-xs font-semibold text-stone-600">Etichette</Text>
+      <View className="flex-row flex-wrap">
+        {TAG_KEYS.map((t) => {
+          const active = activeTags.has(t);
+          return (
+            <Pressable
+              key={t}
+              onPress={() => toggleTag(t)}
+              accessibilityRole="button"
+              accessibilityLabel={`Etichetta ${TAG_LABELS[t]}`}
+              accessibilityState={{ selected: active }}
+              className={`mb-1.5 mr-1.5 rounded-full px-3 py-1.5 ${
+                active ? 'bg-brick-600' : 'bg-parchment-100'
+              }`}>
+              <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-stone-500'}`}>
+                {TAG_LABELS[t]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -380,6 +408,7 @@ export default function FeedScreen() {
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [activeZones, setActiveZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set());
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [onlyNew, setOnlyNew] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sort, setSort] = useState<SortOption>('request_newest');
@@ -390,6 +419,7 @@ export default function FeedScreen() {
   const activeFilterCount =
     (activeZones.size < QUARTIERI.length ? 1 : 0) +
     (activeStatuses.size > 0 ? 1 : 0) +
+    (activeTags.size > 0 ? 1 : 0) +
     (onlyNew ? 1 : 0) +
     (onlyFavorites ? 1 : 0) +
     (sort !== 'request_newest' ? 1 : 0);
@@ -403,7 +433,9 @@ export default function FeedScreen() {
       const filters: FeedFilters = {
         zones: activeZones.size < QUARTIERI.length ? [...activeZones] : prefs.zones,
         filingTypes: [...activeTypes].filter((t) => prefs.filingTypes.includes(t)),
-        tags: prefs.tags,
+        // In-feed tag chips override the persistent settings tag filter for this
+        // session; fall back to prefs.tags when no chip is active (mirrors zones).
+        tags: activeTags.size > 0 ? [...activeTags] : prefs.tags,
         searchQuery: search || undefined,
         statuses: activeStatuses.size > 0 ? [...activeStatuses] : undefined,
         onlyNew: onlyNew || undefined,
@@ -441,7 +473,7 @@ export default function FeedScreen() {
       setHasMore(rows.length === 50);
       setLoading(false);
     },
-    [activeTypes, activeZones, activeStatuses, onlyNew, onlyFavorites, sort, search]
+    [activeTypes, activeZones, activeStatuses, activeTags, onlyNew, onlyFavorites, sort, search]
   );
 
   useEffect(() => {
@@ -490,10 +522,20 @@ export default function FeedScreen() {
     });
   };
 
+  const toggleTag = (tag: string) => {
+    setActiveTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  };
+
   const resetFilters = () => {
     setActiveTypes(new Set(FILING_TYPE_ORDER));
     setActiveZones(new Set(QUARTIERI));
     setActiveStatuses(new Set());
+    setActiveTags(new Set());
     setOnlyNew(false);
     setOnlyFavorites(false);
     setSort('request_newest');
@@ -563,6 +605,8 @@ export default function FeedScreen() {
           toggleZone={toggleZone}
           activeStatuses={activeStatuses}
           toggleStatus={toggleStatus}
+          activeTags={activeTags}
+          toggleTag={toggleTag}
           onlyNew={onlyNew}
           toggleOnlyNew={() => setOnlyNew((v) => !v)}
           onlyFavorites={onlyFavorites}

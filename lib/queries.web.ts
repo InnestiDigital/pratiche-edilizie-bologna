@@ -20,6 +20,8 @@ import { PERMIT_FIXTURES, STATS_FIXTURE } from './screenshot-fixtures';
 // `build-feed-query` module imports nothing native).
 export {
   buildFeedQuery,
+  buildFeedCountQuery,
+  buildFeedWhere,
   escapeLike,
   SORT_LABELS,
   type FeedFilters,
@@ -59,15 +61,11 @@ export function parsePermitTags(raw: string): string[] {
 
 const FIXTURES = PERMIT_FIXTURES as Permit[];
 
-export async function getPermits(
-  _db: SQLite.SQLiteDatabase,
-  filters: FeedFilters,
-  limit = 50,
-  offset = 0
-): Promise<Permit[]> {
-  // A light client-side pass so the fixture feed still reacts to the filters the
-  // screenshot may exercise (zone / filing type / search / onlyNew); enough to
-  // look real, not a faithful reimplementation of the SQL builder.
+// A light client-side pass so the fixture feed still reacts to the filters the
+// screenshot may exercise (zone / filing type / search / onlyNew); enough to
+// look real, not a faithful reimplementation of the SQL builder. Shared by
+// getPermits and countPermits so the fixture feed and its count agree.
+function filterFixtures(filters: FeedFilters): Permit[] {
   let rows = FIXTURES;
   if (filters.zones?.length)
     rows = rows.filter((p) => p.zone !== null && filters.zones.includes(p.zone as never));
@@ -79,7 +77,23 @@ export async function getPermits(
     const q = filters.searchQuery.trim().toLowerCase();
     rows = rows.filter((p) => (p.address ?? '').toLowerCase().includes(q));
   }
-  return rows.slice(offset, offset + limit);
+  return rows;
+}
+
+export async function getPermits(
+  _db: SQLite.SQLiteDatabase,
+  filters: FeedFilters,
+  limit = 50,
+  offset = 0
+): Promise<Permit[]> {
+  return filterFixtures(filters).slice(offset, offset + limit);
+}
+
+export async function countPermits(
+  _db: SQLite.SQLiteDatabase,
+  filters: FeedFilters
+): Promise<number> {
+  return filterFixtures(filters).length;
 }
 
 export async function getPermitById(

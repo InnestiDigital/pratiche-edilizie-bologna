@@ -81,13 +81,21 @@ export interface FeedQuery {
 }
 
 /**
- * Build the `SELECT ... FROM permits` feed query for the given filters, sort and
- * page window. Every dynamic fragment appends its placeholders and pushes the
+ * Build the shared `WHERE` fragment (and its ordered bind params) for the feed
+ * filters. Every dynamic fragment appends its placeholders and pushes the
  * matching params in the same order, so the returned `params` array lines up
- * positionally with the `?`s in `sql`. `limit`/`offset` are always the last two
- * params. Emits no `WHERE` when no filter is active.
+ * positionally with the `?`s in `where`. Emits an empty `where` string when no
+ * filter is active.
+ *
+ * This is the single source of truth for the feed predicate: both the paginated
+ * row query (`buildFeedQuery`) and the total-count query (`buildFeedCountQuery`)
+ * build on it, so the count is guaranteed to describe the exact rows the feed
+ * lists — same filters, same param order.
  */
-export function buildFeedQuery(filters: FeedFilters, limit: number, offset: number): FeedQuery {
+export function buildFeedWhere(filters: FeedFilters): {
+  where: string;
+  params: (string | number)[];
+} {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
@@ -130,12 +138,36 @@ export function buildFeedQuery(filters: FeedFilters, limit: number, offset: numb
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { where, params };
+}
+
+/**
+ * Build the `SELECT ... FROM permits` feed query for the given filters, sort and
+ * page window. `limit`/`offset` are always the last two params. Emits no `WHERE`
+ * when no filter is active. See `buildFeedWhere` for the predicate construction.
+ */
+export function buildFeedQuery(filters: FeedFilters, limit: number, offset: number): FeedQuery {
+  const { where, params } = buildFeedWhere(filters);
   const orderBy = SORT_SQL[filters.sort ?? 'newest'];
 
   params.push(limit, offset);
 
   return {
     sql: `SELECT * FROM permits ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+    params,
+  };
+}
+
+/**
+ * Build the total-count query for the given filters — `SELECT COUNT(*)` over the
+ * same `WHERE` the feed uses, with no `ORDER BY` / `LIMIT` / `OFFSET`. The count
+ * column is aliased `c`. Because it shares `buildFeedWhere`, the number it returns
+ * always matches how many rows the feed would list for the identical filters.
+ */
+export function buildFeedCountQuery(filters: FeedFilters): FeedQuery {
+  const { where, params } = buildFeedWhere(filters);
+  return {
+    sql: `SELECT COUNT(*) as c FROM permits ${where}`,
     params,
   };
 }

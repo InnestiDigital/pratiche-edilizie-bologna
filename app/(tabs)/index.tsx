@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import {
   getPermits,
+  countPermits,
   parsePermitTags,
   SORT_LABELS,
   type Permit,
@@ -330,6 +331,7 @@ export default function FeedScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasData, setHasData] = useState(true);
+  const [resultCount, setResultCount] = useState<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
@@ -371,6 +373,9 @@ export default function FeedScreen() {
         };
         const checkRows = await getPermits(db, allFilters, 1, 0);
         setHasData(checkRows.length > 0);
+        // Total matching the active filters (pagination-independent) for the
+        // result-count header; shares getPermits' WHERE so the number is exact.
+        setResultCount(await countPermits(db, filters));
       }
 
       const rows = await getPermits(db, filters, 50, newOffset);
@@ -504,6 +509,18 @@ export default function FeedScreen() {
           sort={sort}
           setSort={setSort}
         />
+      )}
+
+      {/* Result count — reflects the active filters + search */}
+      {!loading && hasData && resultCount !== null && (
+        <View className="flex-row items-center bg-parchment-100 px-4 pb-1 pt-2.5">
+          <Text
+            className="text-xs font-semibold text-stone-600"
+            accessibilityRole="header"
+            accessibilityLabel={`${resultCount} ${resultCount === 1 ? 'pratica' : 'pratiche'}`}>
+            {resultCount.toLocaleString('it-IT')} {resultCount === 1 ? 'pratica' : 'pratiche'}
+          </Text>
+        </View>
       )}
 
       <FlatList

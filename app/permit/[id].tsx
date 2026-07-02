@@ -47,7 +47,7 @@ function InfoRow({
         <Ionicons name={icon} size={15} color="#8B7355" />
       </View>
       <View className="flex-1">
-        <Text className="text-xs font-semibold text-stone-400">{label}</Text>
+        <Text className="text-xs font-semibold text-stone-600">{label}</Text>
         <Text className="mt-0.5 text-[15px] text-ink-800" selectable>
           {value}
         </Text>
@@ -68,7 +68,7 @@ export default function PermitDetail() {
   if (!permit) {
     return (
       <View className="flex-1 items-center justify-center bg-parchment-100">
-        <Text className="text-stone-400">Caricamento...</Text>
+        <Text className="text-stone-600">Caricamento...</Text>
       </View>
     );
   }
@@ -138,7 +138,7 @@ export default function PermitDetail() {
           )}
 
           {/* Protocol */}
-          <Text className="mt-1 text-sm text-stone-400" selectable>
+          <Text className="mt-1 text-sm text-stone-600" selectable>
             Prot. {protocolNumber}/{protocolYear}
           </Text>
 
@@ -154,7 +154,7 @@ export default function PermitDetail() {
           <View
             className="mt-3 rounded-2xl bg-white p-5"
             style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
-            <Text className="mb-1 text-xs font-semibold text-stone-400">Procedimento</Text>
+            <Text className="mb-1 text-xs font-semibold text-stone-600">Procedimento</Text>
             <Text className="text-[15px] leading-6 text-ink-700" selectable>
               {permit.procedimento}
             </Text>
@@ -210,7 +210,7 @@ export default function PermitDetail() {
           <View
             className="mt-3 rounded-2xl bg-white p-5"
             style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
-            <Text className="mb-2 text-xs font-semibold text-stone-400">Etichette</Text>
+            <Text className="mb-2 text-xs font-semibold text-stone-600">Etichette</Text>
             <View className="flex-row flex-wrap">
               {tags.map((t) => (
                 <View key={t} className="mb-2 mr-2 rounded-full bg-parchment-200 px-3.5 py-1.5">

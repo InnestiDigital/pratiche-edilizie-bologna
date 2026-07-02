@@ -131,15 +131,15 @@ function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }
       <View className="mt-2 flex-row items-center">
         {(permit.date_issued || permit.source_updated_at) && (
           <View className="mr-3 flex-row items-center">
-            <Ionicons name="calendar-outline" size={12} color="#a89888" />
-            <Text className="ml-1 text-xs text-stone-400">
+            <Ionicons name="calendar-outline" size={12} color="#70593f" />
+            <Text className="ml-1 text-xs text-stone-600">
               {formatItDate(permit.date_issued ?? permit.source_updated_at)}
             </Text>
           </View>
         )}
         <View className="flex-row items-center">
-          <Ionicons name="document-outline" size={12} color="#a89888" />
-          <Text className="ml-1 text-xs text-stone-400">{permit.source_id}</Text>
+          <Ionicons name="document-outline" size={12} color="#70593f" />
+          <Text className="ml-1 text-xs text-stone-600">{permit.source_id}</Text>
         </View>
       </View>
 
@@ -249,7 +249,7 @@ function FilterPanel({
       </Pressable>
 
       {/* Sort */}
-      <Text className="mb-1.5 text-xs font-semibold text-stone-400">Ordina per</Text>
+      <Text className="mb-1.5 text-xs font-semibold text-stone-600">Ordina per</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
         {SORT_OPTIONS.map((s) => (
           <Pressable
@@ -270,7 +270,7 @@ function FilterPanel({
       </ScrollView>
 
       {/* Zone chips */}
-      <Text className="mb-1.5 text-xs font-semibold text-stone-400">Quartiere</Text>
+      <Text className="mb-1.5 text-xs font-semibold text-stone-600">Quartiere</Text>
       <View className="mb-3 flex-row flex-wrap">
         {QUARTIERI.map((zone) => (
           <Pressable
@@ -291,7 +291,7 @@ function FilterPanel({
       </View>
 
       {/* Status chips */}
-      <Text className="mb-1.5 text-xs font-semibold text-stone-400">Stato</Text>
+      <Text className="mb-1.5 text-xs font-semibold text-stone-600">Stato</Text>
       <View className="flex-row flex-wrap">
         {STATUS_KEYS.map((s) => {
           const active = activeStatuses.has(s);
@@ -520,7 +520,7 @@ export default function FeedScreen() {
         ListEmptyComponent={
           loading ? (
             <View className="items-center pt-20">
-              <Text className="text-base text-stone-400">Caricamento...</Text>
+              <Text className="text-base text-stone-600">Caricamento...</Text>
             </View>
           ) : !hasData ? (
             <EmptyDataState />

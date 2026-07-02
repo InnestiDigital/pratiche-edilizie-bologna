@@ -21,7 +21,7 @@ function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
     <View className="mb-2 mt-6 px-4">
       <Text className="text-base font-bold text-ink-800">{title}</Text>
-      {hint && <Text className="mt-0.5 text-xs text-stone-400">{hint}</Text>}
+      {hint && <Text className="mt-0.5 text-xs text-stone-600">{hint}</Text>}
     </View>
   );
 }
@@ -154,7 +154,7 @@ export default function SettingsScreen() {
   if (!loaded) {
     return (
       <View className="flex-1 items-center justify-center bg-parchment-100">
-        <Text className="text-stone-400">Caricamento...</Text>
+        <Text className="text-stone-600">Caricamento...</Text>
       </View>
     );
   }
@@ -236,7 +236,7 @@ export default function SettingsScreen() {
           <Text className="font-semibold text-stone-600">Ripristina Predefiniti</Text>
         </Pressable>
 
-        <Text className="mt-6 text-center text-xs text-stone-400">
+        <Text className="mt-6 text-center text-xs text-stone-600">
           Pratiche Edilizie Bologna v1.0{'\n'}
           Dati da opendata.comune.bologna.it{'\n'}
           Licenza CC BY 4.0

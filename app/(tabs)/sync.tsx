@@ -150,7 +150,7 @@ export default function SyncScreen() {
         )}
 
         {lastSync && (
-          <Text className="mt-3 text-center text-xs text-stone-400">
+          <Text className="mt-3 text-center text-xs text-stone-600">
             Ultimo aggiornamento: {formatDate(lastSync)}
           </Text>
         )}

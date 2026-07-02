@@ -184,7 +184,7 @@ export default function OnboardingScreen() {
           )}
         </Pressable>
 
-        <Text className="mt-4 text-center text-xs text-stone-400">
+        <Text className="mt-4 text-center text-xs text-stone-600">
           Dati da opendata.comune.bologna.it — Licenza CC BY 4.0
         </Text>
       </View>

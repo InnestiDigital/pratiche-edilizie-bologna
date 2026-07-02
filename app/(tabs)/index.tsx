@@ -26,6 +26,7 @@ import { loadPreferences } from '../../lib/preferences';
 import { listFavoriteIds } from '../../lib/favorites';
 import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
+import { PermitFeedSkeleton } from '../../components/PermitSkeleton';
 import {
   FILING_TYPE_ORDER,
   STATUS_LABELS,
@@ -657,9 +658,7 @@ export default function FeedScreen() {
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
           loading ? (
-            <View className="items-center pt-20">
-              <Text className="text-base text-stone-600">Caricamento...</Text>
-            </View>
+            <PermitFeedSkeleton />
           ) : !hasData ? (
             <EmptyDataState />
           ) : (

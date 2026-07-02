@@ -112,6 +112,10 @@ export async function getStats(_db: SQLite.SQLiteDatabase): Promise<{
   return STATS_FIXTURE;
 }
 
+export async function countNewPermits(_db: SQLite.SQLiteDatabase): Promise<number> {
+  return FIXTURES.filter((p) => p.is_new === 1).length;
+}
+
 export async function markAllSeen(_db: SQLite.SQLiteDatabase): Promise<void> {
   // no-op on web
 }

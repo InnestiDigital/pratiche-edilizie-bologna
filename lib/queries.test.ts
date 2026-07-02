@@ -4,6 +4,7 @@ import {
   getPermits,
   getPermitById,
   getStats,
+  countNewPermits,
   markAllSeen,
   parsePermitTags,
   escapeLike,
@@ -353,6 +354,20 @@ describe('getStats', () => {
     expect(stats.newCount).toBe(0);
     expect(stats.byDataset).toEqual({});
     expect(stats.byZone).toEqual({});
+  });
+});
+
+describe('countNewPermits', () => {
+  it('counts only rows with is_new = 1', async () => {
+    const { db, calls } = makeFakeDb({ getFirst: { c: 4 } });
+    const count = await countNewPermits(db);
+    expect(count).toBe(4);
+    expect(squish(calls[0].sql)).toBe('SELECT COUNT(*) as c FROM permits WHERE is_new = 1');
+  });
+
+  it('defaults to 0 when the count query returns null', async () => {
+    const { db } = makeFakeDb({ getFirst: null });
+    expect(await countNewPermits(db)).toBe(0);
   });
 });
 

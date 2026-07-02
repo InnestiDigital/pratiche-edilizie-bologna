@@ -5,9 +5,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermitById, parsePermitTags, type Permit } from '../../lib/queries';
 import { isFavorite, toggleFavorite } from '../../lib/favorites';
-import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
+import { buildPermitTimeline } from '../../lib/permit-timeline';
 import {
   FILING_TYPE_LABELS,
   STATUS_LABELS,
@@ -59,6 +59,40 @@ function InfoRow({
   );
 }
 
+function Timeline({ events }: { events: ReturnType<typeof buildPermitTimeline> }) {
+  return (
+    <View>
+      {events.map((e, i) => {
+        const isLast = i === events.length - 1;
+        return (
+          <View key={e.key} className="flex-row">
+            {/* Rail: dot + connecting line */}
+            <View className="mr-3 items-center">
+              <View
+                className="h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${e.color}1A` }}>
+                <Ionicons
+                  name={e.icon as keyof typeof Ionicons.glyphMap}
+                  size={16}
+                  color={e.color}
+                />
+              </View>
+              {!isLast && <View className="mt-1 w-0.5 flex-1 bg-parchment-200" />}
+            </View>
+            {/* Event */}
+            <View className={`flex-1 ${isLast ? 'pb-0' : 'pb-5'}`}>
+              <Text className="text-xs font-semibold text-stone-600">{e.label}</Text>
+              <Text className="mt-0.5 text-[15px] font-medium text-ink-800" selectable>
+                {e.date}
+              </Text>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function PermitDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [permit, setPermit] = useState<Permit | null>(null);
@@ -97,6 +131,7 @@ export default function PermitDetail() {
 
   const protocol = formatProtocol(permit.source_id);
   const mapsUrl = buildMapsUrl(permit.address, Platform.OS);
+  const timeline = buildPermitTimeline(permit);
 
   const handleShare = async () => {
     const text = [
@@ -175,7 +210,17 @@ export default function PermitDetail() {
           </View>
         )}
 
-        {/* Details */}
+        {/* Cronologia — key dates as a chronological timeline */}
+        {timeline.length > 0 && (
+          <View
+            className="mt-3 rounded-2xl bg-white p-5"
+            style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+            <Text className="mb-3 text-xs font-semibold text-stone-600">Cronologia</Text>
+            <Timeline events={timeline} />
+          </View>
+        )}
+
+        {/* Dettagli — non-temporal facts */}
         <View
           className="mt-3 rounded-2xl bg-white px-5"
           style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
@@ -184,31 +229,6 @@ export default function PermitDetail() {
               icon="flag-outline"
               label="Esito pratica (originale)"
               value={permit.status_raw}
-            />
-          )}
-          {permit.date_issued && (
-            <InfoRow
-              icon="checkmark-circle-outline"
-              label="Data chiusura"
-              value={formatItDate(permit.date_issued) ?? permit.date_issued}
-            />
-          )}
-          {permit.source_updated_at && (
-            <InfoRow
-              icon="time-outline"
-              label="Data richiesta"
-              value={formatItDate(permit.source_updated_at) ?? permit.source_updated_at}
-            />
-          )}
-          {permit.first_seen_at && (
-            <InfoRow
-              icon="eye-outline"
-              label="Rilevata dall'app"
-              value={new Date(permit.first_seen_at).toLocaleDateString('it-IT', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
             />
           )}
           <InfoRow

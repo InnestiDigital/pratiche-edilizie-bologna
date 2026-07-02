@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { isOnboardingDone, isNotificationsEnabled } from '../lib/preferences';
 import { registerBackgroundSync } from '../lib/background-sync';
+import { HeaderBrand } from '../components/HeaderBrand';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -61,6 +62,8 @@ export default function RootLayout() {
           options={{
             headerShown: true,
             title: 'Dettaglio Pratica',
+            headerTitle: () => <HeaderBrand title="Dettaglio Pratica" />,
+            headerTitleAlign: 'left',
             presentation: 'card',
             headerStyle: { backgroundColor: '#9B2335' },
             headerTintColor: '#ffffff',

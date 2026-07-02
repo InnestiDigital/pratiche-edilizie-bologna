@@ -4,6 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermitById, parsePermitTags, type Permit } from '../../lib/queries';
+import { isFavorite, toggleFavorite } from '../../lib/favorites';
 import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
@@ -61,11 +62,23 @@ function InfoRow({
 export default function PermitDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [permit, setPermit] = useState<Permit | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    getDb().then((db) => getPermitById(db, Number(id)).then(setPermit));
+    getDb().then((db) =>
+      getPermitById(db, Number(id)).then((p) => {
+        setPermit(p);
+        if (p) isFavorite(db, p.source_id).then(setSaved);
+      })
+    );
   }, [id]);
+
+  const handleToggleSave = async () => {
+    if (!permit) return;
+    const db = await getDb();
+    setSaved(await toggleFavorite(db, permit.source_id, new Date().toISOString()));
+  };
 
   if (!permit) {
     return (
@@ -242,6 +255,20 @@ export default function PermitDetail() {
               <Text className="ml-2 text-base font-bold text-white">Vedi su Open Data Bologna</Text>
             </Pressable>
           )}
+
+          <Pressable
+            onPress={handleToggleSave}
+            accessibilityRole="button"
+            accessibilityLabel={saved ? 'Rimuovi dai salvati' : 'Salva pratica'}
+            accessibilityState={{ selected: saved }}
+            className={`mt-2 flex-row items-center justify-center rounded-xl border py-3.5 ${
+              saved ? 'border-brick-600 bg-brick-50' : 'border-stone-300 bg-white'
+            }`}>
+            <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color="#9B2335" />
+            <Text className="ml-2 text-base font-semibold text-brick-600">
+              {saved ? 'Salvata' : 'Salva'}
+            </Text>
+          </Pressable>
 
           {mapsUrl && (
             <Pressable

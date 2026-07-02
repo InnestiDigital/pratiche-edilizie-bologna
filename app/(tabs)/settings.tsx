@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, Alert } from 'react-native';
+import Constants from 'expo-constants';
 import {
   QUARTIERI,
   FILING_TYPE_ORDER,
@@ -160,6 +161,9 @@ export default function SettingsScreen() {
   }
 
   const tagEntries = Object.entries(TAG_LABELS);
+  // Single source of truth for the app version: app.json (CFBundleShortVersionString),
+  // surfaced by expo-constants — never hardcode it in the UI or it drifts on each release.
+  const appVersion = Constants.expoConfig?.version ?? '';
 
   return (
     <ScrollView className="flex-1 bg-parchment-100">
@@ -237,7 +241,8 @@ export default function SettingsScreen() {
         </Pressable>
 
         <Text className="mt-6 text-center text-xs text-stone-600">
-          Pratiche Edilizie Bologna v1.0{'\n'}
+          Pratiche Edilizie Bologna{appVersion ? ` v${appVersion}` : ''}
+          {'\n'}
           Dati da opendata.comune.bologna.it{'\n'}
           Licenza CC BY 4.0
         </Text>

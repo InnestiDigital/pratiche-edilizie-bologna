@@ -14,6 +14,8 @@ import { getDb } from '../../lib/db';
 import {
   getPermits,
   countPermits,
+  countNewPermits,
+  markAllSeen,
   parsePermitTags,
   SORT_LABELS,
   type Permit,
@@ -332,6 +334,7 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasData, setHasData] = useState(true);
   const [resultCount, setResultCount] = useState<number | null>(null);
+  const [newCount, setNewCount] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
@@ -376,6 +379,9 @@ export default function FeedScreen() {
         // Total matching the active filters (pagination-independent) for the
         // result-count header; shares getPermits' WHERE so the number is exact.
         setResultCount(await countPermits(db, filters));
+        // New (unseen) permits across the whole DB — drives the "mark all seen"
+        // action; global, matching markAllSeen's global UPDATE.
+        setNewCount(await countNewPermits(db));
       }
 
       const rows = await getPermits(db, filters, 50, newOffset);
@@ -400,6 +406,12 @@ export default function FeedScreen() {
     setRefreshing(true);
     await loadPermits(true);
     setRefreshing(false);
+  }, [loadPermits]);
+
+  const handleMarkAllSeen = useCallback(async () => {
+    const db = await getDb();
+    await markAllSeen(db);
+    await loadPermits(true);
   }, [loadPermits]);
 
   const toggleType = (type: FilingType) => {
@@ -520,6 +532,17 @@ export default function FeedScreen() {
             accessibilityLabel={`${resultCount} ${resultCount === 1 ? 'pratica' : 'pratiche'}`}>
             {resultCount.toLocaleString('it-IT')} {resultCount === 1 ? 'pratica' : 'pratiche'}
           </Text>
+          {/* Mark-all-seen — clears the NUOVO badges when unseen permits exist */}
+          {newCount > 0 && (
+            <Pressable
+              onPress={handleMarkAllSeen}
+              accessibilityRole="button"
+              accessibilityLabel={`Segna ${newCount} ${newCount === 1 ? 'pratica' : 'pratiche'} come ${newCount === 1 ? 'letta' : 'lette'}`}
+              className="ml-auto flex-row items-center rounded-full bg-brick-50 px-3 py-1">
+              <Ionicons name="checkmark-done" size={13} color="#9B2335" />
+              <Text className="ml-1 text-xs font-semibold text-brick-600">Segna lette</Text>
+            </Pressable>
+          )}
         </View>
       )}
 

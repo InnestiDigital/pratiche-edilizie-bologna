@@ -116,6 +116,13 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   return { total, byDataset, byZone, newCount };
 }
 
+export async function countNewPermits(db: SQLite.SQLiteDatabase): Promise<number> {
+  return (
+    (await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM permits WHERE is_new = 1'))
+      ?.c ?? 0
+  );
+}
+
 export async function markAllSeen(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.runAsync('UPDATE permits SET is_new = 0 WHERE is_new = 1');
 }

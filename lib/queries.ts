@@ -1,12 +1,14 @@
 import type * as SQLite from 'expo-sqlite';
 import type { FilingType } from './constants';
-import { buildFeedQuery, type FeedFilters } from './build-feed-query';
+import { buildFeedQuery, buildFeedCountQuery, type FeedFilters } from './build-feed-query';
 
 // The feed-query primitives live in the pure, db-free `build-feed-query` module
 // so the SQL construction is unit-testable in isolation. Re-exported here so the
 // UI + existing tests keep importing them from `./queries` unchanged.
 export {
   buildFeedQuery,
+  buildFeedCountQuery,
+  buildFeedWhere,
   escapeLike,
   SORT_LABELS,
   type FeedFilters,
@@ -65,6 +67,22 @@ export async function getPermits(
   // skipped across pages — see buildFeedQuery. Rows are returned as-is.
   const { sql, params } = buildFeedQuery(filters, limit, offset);
   return db.getAllAsync<Permit>(sql, ...params);
+}
+
+/**
+ * Count the permits matching the given feed filters, ignoring pagination.
+ *
+ * Shares `buildFeedCountQuery`'s WHERE with `getPermits`, so the number returned
+ * is exactly how many rows the feed would list for the same filters — the value
+ * behind the feed's "N pratiche" result header.
+ */
+export async function countPermits(
+  db: SQLite.SQLiteDatabase,
+  filters: FeedFilters
+): Promise<number> {
+  const { sql, params } = buildFeedCountQuery(filters);
+  const row = await db.getFirstAsync<{ c: number }>(sql, ...params);
+  return row?.c ?? 0;
 }
 
 export async function getPermitById(db: SQLite.SQLiteDatabase, id: number): Promise<Permit | null> {

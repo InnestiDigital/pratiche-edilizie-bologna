@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { buildFeedQuery, escapeLike, SORT_LABELS, type FeedFilters } from './build-feed-query';
+import {
+  buildFeedQuery,
+  buildFeedCountQuery,
+  buildFeedWhere,
+  escapeLike,
+  SORT_LABELS,
+  type FeedFilters,
+} from './build-feed-query';
 
 /** Collapse runs of whitespace so assertions ignore formatting/indentation. */
 function squish(sql: string): string {
@@ -163,6 +170,57 @@ describe('buildFeedQuery — pagination', () => {
     const { sql, params } = buildFeedQuery({ ...EMPTY, zones: ['Navile'] }, 25, 75);
     expect(squish(sql)).toContain('LIMIT ? OFFSET ?');
     expect(params.slice(-2)).toEqual([25, 75]);
+  });
+});
+
+describe('buildFeedCountQuery', () => {
+  it('emits SELECT COUNT(*) with no ORDER BY / LIMIT / OFFSET on empty filters', () => {
+    const { sql, params } = buildFeedCountQuery(EMPTY);
+    expect(squish(sql)).toBe('SELECT COUNT(*) as c FROM permits');
+    expect(squish(sql)).not.toContain('WHERE');
+    expect(squish(sql)).not.toContain('ORDER BY');
+    expect(squish(sql)).not.toContain('LIMIT');
+    expect(squish(sql)).not.toContain('OFFSET');
+    expect(params).toEqual([]);
+  });
+
+  it('reuses the exact feed WHERE + param order, without pagination params', () => {
+    const filters: FeedFilters = {
+      zones: ['Navile'],
+      filingTypes: ['PDC'],
+      tags: ['sanatoria'],
+      searchQuery: 'via',
+      statuses: ['rilasciata'],
+      onlyNew: true,
+    };
+    const count = buildFeedCountQuery(filters);
+    const feed = buildFeedQuery(filters, 10, 20);
+    // Same WHERE text in both queries.
+    const feedWhere = squish(feed.sql).split('ORDER BY')[0].replace('SELECT * FROM permits ', '');
+    const countWhere = squish(count.sql).replace('SELECT COUNT(*) as c FROM permits ', '');
+    expect(countWhere.trim()).toBe(feedWhere.trim());
+    // Count params == feed params minus the trailing LIMIT/OFFSET.
+    expect(count.params).toEqual(feed.params.slice(0, -2));
+    expect(count.params).toEqual(['Navile', 'PDC', '%via%', '%via%', 'rilasciata', 'sanatoria']);
+  });
+
+  it('ignores the sort option (no ORDER BY in a count)', () => {
+    expect(squish(buildFeedCountQuery({ ...EMPTY, sort: 'closing_newest' }).sql)).not.toContain(
+      'ORDER BY'
+    );
+  });
+});
+
+describe('buildFeedWhere', () => {
+  it('returns an empty where + no params for empty filters', () => {
+    expect(buildFeedWhere(EMPTY)).toEqual({ where: '', params: [] });
+  });
+
+  it('returns a fresh params array each call (no shared mutable state)', () => {
+    const a = buildFeedWhere({ ...EMPTY, zones: ['Navile'] });
+    const b = buildFeedWhere({ ...EMPTY, zones: ['Navile'] });
+    expect(a.params).not.toBe(b.params);
+    expect(a.params).toEqual(b.params);
   });
 });
 

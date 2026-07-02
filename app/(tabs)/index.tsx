@@ -21,6 +21,7 @@ import {
 } from '../../lib/queries';
 import { loadPreferences } from '../../lib/preferences';
 import { formatItDate } from '../../lib/format-date';
+import { formatProtocol } from '../../lib/format-protocol';
 import {
   FILING_TYPE_ORDER,
   STATUS_LABELS,
@@ -139,7 +140,7 @@ function PermitCard({ permit, onPress }: { permit: Permit; onPress: () => void }
         )}
         <View className="flex-row items-center">
           <Ionicons name="document-outline" size={12} color="#70593f" />
-          <Text className="ml-1 text-xs text-stone-600">{permit.source_id}</Text>
+          <Text className="ml-1 text-xs text-stone-600">{formatProtocol(permit.source_id)}</Text>
         </View>
       </View>
 

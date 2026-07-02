@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermitById, parsePermitTags, type Permit } from '../../lib/queries';
 import { formatItDate } from '../../lib/format-date';
+import { formatProtocol } from '../../lib/format-protocol';
 import {
   FILING_TYPE_LABELS,
   STATUS_LABELS,
@@ -80,16 +81,14 @@ export default function PermitDetail() {
   const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
 
-  const idParts = permit.source_id.split('-');
-  const protocolYear = idParts[1] ?? '';
-  const protocolNumber = idParts[2] ?? '';
+  const protocol = formatProtocol(permit.source_id);
 
   const handleShare = async () => {
     const text = [
       `${filingLabel} — ${permit.address ?? 'Indirizzo n.d.'}`,
       permit.procedimento ? `Procedimento: ${permit.procedimento}` : null,
       `Stato: ${statusLabel}`,
-      `Protocollo: ${protocolNumber}/${protocolYear}`,
+      `Protocollo: ${protocol}`,
       permit.source_link,
     ]
       .filter(Boolean)
@@ -139,7 +138,7 @@ export default function PermitDetail() {
 
           {/* Protocol */}
           <Text className="mt-1 text-sm text-stone-600" selectable>
-            Prot. {protocolNumber}/{protocolYear}
+            Prot. {protocol}
           </Text>
 
           {/* Status */}

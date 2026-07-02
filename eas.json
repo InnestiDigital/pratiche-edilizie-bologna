@@ -25,13 +25,18 @@
     "production": {
       "distribution": "store",
       "channel": "production",
-      "autoIncrement": false,
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6760963985",
+        "appleTeamId": "R7H94Q9W3V"
+      }
+    }
   }
 }

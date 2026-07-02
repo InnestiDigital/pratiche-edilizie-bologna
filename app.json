@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pratiche Edilizie Bologna",
     "slug": "pratiche-edilizie-bologna",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "scheme": "pratiche-bologna",
     "experiments": {
       "tsconfigPaths": true

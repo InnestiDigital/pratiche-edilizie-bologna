@@ -10,6 +10,7 @@ import {
   type Quartiere,
 } from '../lib/constants';
 import { completeOnboarding } from '../lib/preferences';
+import { TowersMark } from '../components/TowersMark';
 
 function ZoneChip({
   zone,
@@ -116,7 +117,7 @@ export default function OnboardingScreen() {
         {/* Header */}
         <View className="mb-10 items-center">
           <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-brick-600">
-            <Ionicons name="business-outline" size={32} color="white" />
+            <TowersMark size={38} />
           </View>
           <Text className="text-center text-2xl font-bold text-ink-800">
             Pratiche Edilizie Bologna

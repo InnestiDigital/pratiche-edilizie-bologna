@@ -7,6 +7,7 @@ import {
   FILING_TYPE_ORDER,
   FILING_TYPE_LABELS,
   FILING_COLORS,
+  FILING_DATASET_KEY,
   TAG_LABELS,
   type FilingType,
   type Quartiere,
@@ -20,7 +21,7 @@ import {
 import { requestNotificationPermissions } from '../../lib/notifications';
 import { registerBackgroundSync, unregisterBackgroundSync } from '../../lib/background-sync';
 import { getDb } from '../../lib/db';
-import { countPermits } from '../../lib/queries';
+import { countPermits, getStats } from '../../lib/queries';
 import { buildMatchSummary } from '../../lib/settings-match-summary';
 
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
@@ -38,6 +39,7 @@ function ToggleRow({
   onToggle,
   isLast,
   leadingColor,
+  count,
 }: {
   label: string;
   value: boolean;
@@ -45,7 +47,11 @@ function ToggleRow({
   isLast?: boolean;
   /** Optional brand accent dot shown before the label (filing-type color). */
   leadingColor?: string;
+  /** Optional count of stored permits for this filter — shown as a muted pill so
+      you can see how much data each zone / type holds before toggling it. */
+  count?: number;
 }) {
+  const a11yLabel = count === undefined ? label : `${label}, ${count} pratiche`;
   return (
     <View
       className={`flex-row items-center justify-between px-4 py-3 ${
@@ -60,10 +66,16 @@ function ToggleRow({
         )}
         <Text className="text-base text-ink-800">{label}</Text>
       </View>
+      {count !== undefined && (
+        <Text
+          className={`mr-3 text-sm font-semibold ${count > 0 ? 'text-stone-600' : 'text-stone-400'}`}>
+          {count.toLocaleString('it-IT')}
+        </Text>
+      )}
       <Switch
         value={value}
         onValueChange={onToggle}
-        accessibilityLabel={label}
+        accessibilityLabel={a11yLabel}
         trackColor={{ false: '#e2d9cd', true: '#9B2335' }}
         thumbColor="#fdfcfa"
         ios_backgroundColor="#e2d9cd"
@@ -83,6 +95,10 @@ export default function SettingsScreen() {
   // changes so the impact of a toggle is visible without leaving the screen.
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  // Per-zone / per-filing-type stored-permit counts, shown next to each toggle so
+  // the user sees how much data a filter holds before turning it on/off.
+  const [byZone, setByZone] = useState<Record<string, number>>({});
+  const [byDataset, setByDataset] = useState<Record<string, number>>({});
 
   useEffect(() => {
     Promise.all([loadPreferences(), isNotificationsEnabled()]).then(([prefs, notifEnabled]) => {
@@ -94,15 +110,19 @@ export default function SettingsScreen() {
     });
   }, []);
 
-  // The unfiltered DB total — fetched once (an empty filter set adds no WHERE, so
-  // this COUNT(*) is every stored permit regardless of the user's saved filters).
+  // The unfiltered DB total + per-zone / per-dataset breakdown — fetched once via
+  // getStats (one pass over the table): `total` drives the match-summary card, and
+  // byZone / byDataset feed the count shown on each zone / filing-type toggle.
   useEffect(() => {
     if (!loaded) return;
     let cancelled = false;
     getDb()
-      .then((db) => countPermits(db, { zones: [], filingTypes: [], tags: [] }))
-      .then((c) => {
-        if (!cancelled) setTotalCount(c);
+      .then((db) => getStats(db))
+      .then((stats) => {
+        if (cancelled) return;
+        setTotalCount(stats.total);
+        setByZone(stats.byZone);
+        setByDataset(stats.byDataset);
       });
     return () => {
       cancelled = true;
@@ -220,6 +240,9 @@ export default function SettingsScreen() {
   // surfaced by expo-constants — never hardcode it in the UI or it drifts on each release.
   const appVersion = Constants.expoConfig?.version ?? '';
   const summary = buildMatchSummary(matchCount, totalCount);
+  // Stats (per-zone / per-filing counts) share the getStats fetch that sets the
+  // DB total, so totalCount landing means the breakdown maps are populated too.
+  const statsLoaded = totalCount !== null;
 
   return (
     <ScrollView className="flex-1 bg-parchment-100">
@@ -270,6 +293,7 @@ export default function SettingsScreen() {
             value={zones.has(zone)}
             onToggle={() => toggleZone(zone)}
             isLast={i === QUARTIERI.length - 1}
+            count={statsLoaded ? (byZone[zone] ?? 0) : undefined}
           />
         ))}
       </View>
@@ -289,6 +313,7 @@ export default function SettingsScreen() {
             onToggle={() => toggleFilingType(type)}
             isLast={i === FILING_TYPE_ORDER.length - 1}
             leadingColor={FILING_COLORS[type].text}
+            count={statsLoaded ? (byDataset[FILING_DATASET_KEY[type]] ?? 0) : undefined}
           />
         ))}
       </View>

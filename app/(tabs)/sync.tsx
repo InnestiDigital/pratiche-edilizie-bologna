@@ -292,16 +292,32 @@ export default function SyncScreen() {
               {(() => {
                 const maxZone = Math.max(1, ...Object.values(stats.byZone));
                 return Object.entries(stats.byZone).map(([zone, count], i, arr) => (
-                  <View
+                  <Pressable
                     key={zone}
+                    onPress={() =>
+                      router.navigate({
+                        pathname: '/(tabs)',
+                        // Nonce so tapping the same zone twice re-applies the filter.
+                        params: { zone, t: String(Date.now()) },
+                      })
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`${zone}, ${count} ${count === 1 ? 'pratica' : 'pratiche'}`}
+                    accessibilityHint="Mostra le pratiche di questo quartiere nel feed"
                     className={`px-4 py-3 ${
                       i < arr.length - 1 ? 'border-b border-parchment-200' : ''
                     }`}>
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-sm text-ink-600">{zone}</Text>
+                      <Text className="flex-1 text-sm text-ink-600">{zone}</Text>
                       <Text className="text-sm font-bold text-ink-800">
                         {count.toLocaleString('it-IT')}
                       </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={15}
+                        color="#a89888"
+                        style={{ marginLeft: 8 }}
+                      />
                     </View>
                     <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-parchment-200">
                       <View
@@ -309,7 +325,7 @@ export default function SyncScreen() {
                         style={{ width: `${Math.max(6, (count / maxZone) * 100)}%` }}
                       />
                     </View>
-                  </View>
+                  </Pressable>
                 ));
               })()}
             </View>

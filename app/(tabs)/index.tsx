@@ -23,7 +23,8 @@ import {
   type SortOption,
 } from '../../lib/queries';
 import { loadPreferences } from '../../lib/preferences';
-import { listFavoriteIds } from '../../lib/favorites';
+import { listFavoriteIds, toggleFavorite } from '../../lib/favorites';
+import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
 import { groupPermitsBySection } from '../../lib/feed-sections';
@@ -90,11 +91,13 @@ function PermitCard({
   isSaved,
   sort,
   onPress,
+  onToggleSave,
 }: {
   permit: Permit;
   isSaved: boolean;
   sort: SortOption;
   onPress: () => void;
+  onToggleSave: () => void;
 }) {
   const tags = parsePermitTags(permit.tags);
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
@@ -141,14 +144,26 @@ function PermitCard({
           <Text className="text-xs font-medium text-stone-500">{statusLabel}</Text>
         </View>
         <View className="ml-auto flex-row items-center">
-          {isSaved && (
-            <Ionicons name="bookmark" size={14} color="#9B2335" style={{ marginRight: 6 }} />
-          )}
           {permit.is_new === 1 && (
-            <View className="rounded-full bg-brick-600 px-2.5 py-0.5">
+            <View className="mr-2 rounded-full bg-brick-600 px-2.5 py-0.5">
               <Text className="text-[10px] font-bold text-white">NUOVO</Text>
             </View>
           )}
+          {/* Quick-save: toggle the bookmark straight from the feed, no need to
+              open the detail. Nested Pressable captures the tap so the card's
+              own onPress (navigate) does not also fire. */}
+          <Pressable
+            onPress={onToggleSave}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={isSaved ? 'Rimuovi dai salvati' : 'Salva pratica'}
+            accessibilityState={{ selected: isSaved }}>
+            <Ionicons
+              name={isSaved ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={isSaved ? '#9B2335' : '#a89888'}
+            />
+          </Pressable>
         </View>
       </View>
 
@@ -673,6 +688,17 @@ export default function FeedScreen() {
     await loadPermits(true);
   }, [loadPermits]);
 
+  // Save / unsave a permit straight from its feed card. Writes the DB, then folds
+  // the resulting state into the local favorite-id set so the tapped card's
+  // bookmark flips at once (no feed reload). A card unsaved while "Solo salvate"
+  // is active stays visible until the next reload — less jarring than vanishing
+  // under the finger, and the bookmark still reflects the new state.
+  const handleToggleSave = useCallback(async (sourceId: string) => {
+    const db = await getDb();
+    const nowSaved = await toggleFavorite(db, sourceId, new Date().toISOString());
+    setFavoriteIds((prev) => applyFavoriteToggle(prev, sourceId, nowSaved));
+  }, []);
+
   const toggleType = (type: FilingType) => {
     setActiveTypes((prev) => {
       const next = new Set(prev);
@@ -872,6 +898,7 @@ export default function FeedScreen() {
             isSaved={favoriteIds.has(item.source_id)}
             sort={sort}
             onPress={() => router.push(`/permit/${item.id}`)}
+            onToggleSave={() => handleToggleSave(item.source_id)}
           />
         )}
         renderSectionHeader={({ section }) => (

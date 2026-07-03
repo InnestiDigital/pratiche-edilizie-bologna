@@ -16,6 +16,7 @@ import {
   FILING_TYPE_DESCRIPTIONS,
   FILING_COLORS,
   STATUS_LABELS,
+  STATUS_DESCRIPTIONS,
   TAG_LABELS,
   type FilingType,
 } from '../../lib/constants';
@@ -177,6 +178,10 @@ export default function PermitDetail() {
   const mapsUrl = buildMapsUrl(permit.address, Platform.OS);
   const timeline = buildPermitTimeline(permit);
 
+  // Plain-Italian meaning of the current status (jargon like "Decaduta" tells the
+  // citizen nothing). Only shown for a recognized status; 'altro'/unknown → none.
+  const statusDescription = STATUS_DESCRIPTIONS[permit.status];
+
   // Plain-Italian explainer for the filing procedure. Only render it for a known
   // type — an unrecognized filing_type gets no card rather than a wrong caption.
   const filingFullName = FILING_TYPE_FULL_NAMES[filingType];
@@ -246,6 +251,12 @@ export default function PermitDetail() {
             <View className="mr-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
             <Text className="text-sm font-semibold text-ink-700">{statusLabel}</Text>
           </View>
+
+          {/* Plain-Italian meaning of the status — turns the jargon label into
+              something a resident can actually act on. */}
+          {statusDescription && (
+            <Text className="mt-2 text-[13px] leading-5 text-stone-600">{statusDescription}</Text>
+          )}
         </View>
 
         {/* Che cos'è — plain-Italian explainer of the filing procedure */}

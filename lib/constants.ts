@@ -122,3 +122,24 @@ export const STATUS_LABELS: Record<string, string> = {
   concluso: 'Concluso',
   altro: 'Altro',
 };
+
+// Plain-Italian one-liner explaining what each permit status means for the
+// citizen reading it — the labels alone ("Decaduta", "Diniegata") are bureaucratic
+// jargon. Rendered under the status pill on the detail screen (mirrors the
+// filing-type explainer). Keyed by the normalized status; 'altro' is deliberately
+// omitted (a catch-all bucket has no single honest meaning) so it shows no caption
+// rather than a vague one, and an unknown status simply yields `undefined`.
+export const STATUS_DESCRIPTIONS: Record<string, string> = {
+  rilasciata: 'Il titolo edilizio è stato concesso dal Comune: i lavori possono essere eseguiti.',
+  rilasciata_con_prescrizioni:
+    'Il titolo è stato concesso, ma con condizioni o prescrizioni da rispettare durante i lavori.',
+  diniegata:
+    'Il Comune ha respinto la richiesta: l’intervento non può essere realizzato così com’era stato presentato.',
+  annullata: 'La pratica è stata annullata e non ha più validità.',
+  archiviata: 'La pratica è stata chiusa e archiviata dagli uffici senza un esito attivo.',
+  decaduta:
+    'Il titolo ha perso efficacia, di norma perché i lavori non sono iniziati o conclusi nei termini previsti.',
+  rinunciata: 'Il richiedente ha rinunciato alla pratica prima della sua conclusione.',
+  in_attesa: 'La pratica è stata presentata ed è in corso di esame da parte degli uffici comunali.',
+  concluso: 'L’iter della pratica si è concluso.',
+};

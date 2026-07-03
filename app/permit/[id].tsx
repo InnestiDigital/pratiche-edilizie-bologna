@@ -8,6 +8,7 @@ import { isFavorite, toggleFavorite } from '../../lib/favorites';
 import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
+import { pendingDurationLabel } from '../../lib/pending-duration';
 import { buildShareMessage } from '../../lib/share-message';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
@@ -182,6 +183,14 @@ export default function PermitDetail() {
   // citizen nothing). Only shown for a recognized status; 'altro'/unknown → none.
   const statusDescription = STATUS_DESCRIPTIONS[permit.status];
 
+  // For a still-pending permit, the one fact a resident tracking it wants: how long
+  // it has been waiting since the request was filed. Only for `in_attesa`; the pure
+  // builder returns null when the request date is missing.
+  const pendingLabel =
+    permit.status === 'in_attesa'
+      ? pendingDurationLabel(permit.source_updated_at, new Date())
+      : null;
+
   // Plain-Italian explainer for the filing procedure. Only render it for a known
   // type — an unrecognized filing_type gets no card rather than a wrong caption.
   const filingFullName = FILING_TYPE_FULL_NAMES[filingType];
@@ -251,6 +260,17 @@ export default function PermitDetail() {
             <View className="mr-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
             <Text className="text-sm font-semibold text-ink-700">{statusLabel}</Text>
           </View>
+
+          {/* How long a pending permit has been waiting since the request — the
+              concrete, personal counterpart to the generic status description. */}
+          {pendingLabel && (
+            <View className="mt-2 flex-row items-center">
+              <Ionicons name="hourglass-outline" size={14} color="#3b82f6" />
+              <Text className="ml-1.5 text-[13px] font-semibold" style={{ color: '#3b82f6' }}>
+                {pendingLabel}
+              </Text>
+            </View>
+          )}
 
           {/* Plain-Italian meaning of the status — turns the jargon label into
               something a resident can actually act on. */}

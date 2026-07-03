@@ -8,7 +8,7 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import {
@@ -25,6 +25,7 @@ import {
 import { loadPreferences } from '../../lib/preferences';
 import { listFavoriteIds } from '../../lib/favorites';
 import { feedCardDate } from '../../lib/feed-card-date';
+import { parseZoneParam } from '../../lib/zone-param';
 import { groupPermitsBySection } from '../../lib/feed-sections';
 import { formatProtocol } from '../../lib/format-protocol';
 import {
@@ -499,6 +500,10 @@ function FeedSectionHeader({ title, count }: { title: string; count: number }) {
 
 export default function FeedScreen() {
   const router = useRouter();
+  // Deep link from the Sync "Per Quartiere" rows: `?zone=<quartiere>&t=<nonce>`.
+  // The nonce lets tapping the SAME zone twice re-apply the filter (the param
+  // value changes, so the effect below refires even when `zone` is unchanged).
+  const { zone: zoneParam, t: zoneNonce } = useLocalSearchParams<{ zone?: string; t?: string }>();
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -598,6 +603,15 @@ export default function FeedScreen() {
   useEffect(() => {
     loadPermits(true);
   }, [loadPermits]);
+
+  // Apply a `zone` deep link from the Sync screen: narrow the feed to that single
+  // quartiere. Guarded by parseZoneParam so a junk/legacy value is ignored rather
+  // than filtering the feed to nothing; refires on the nonce so re-tapping works.
+  useEffect(() => {
+    const zone = parseZoneParam(zoneParam);
+    if (zone) setActiveZones(new Set([zone]));
+    // zoneNonce is listed only to retrigger this effect on a same-zone re-tap.
+  }, [zoneParam, zoneNonce]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

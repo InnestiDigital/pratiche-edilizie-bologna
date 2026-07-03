@@ -225,6 +225,30 @@ function EmptyDataState() {
   );
 }
 
+function EmptySavedState({ onShowAll }: { onShowAll: () => void }) {
+  return (
+    <View
+      className="mx-6 mt-16 items-center rounded-2xl bg-white p-8"
+      style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
+      <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-brick-50">
+        <Ionicons name="bookmark-outline" size={28} color="#9B2335" />
+      </View>
+      <Text className="text-lg font-bold text-ink-800">Nessuna pratica salvata</Text>
+      <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
+        Tocca il segnalibro <Ionicons name="bookmark-outline" size={13} color="#8B7355" /> su una
+        pratica per salvarla e ritrovarla qui.
+      </Text>
+      <Pressable
+        onPress={onShowAll}
+        accessibilityRole="button"
+        accessibilityLabel="Mostra tutte le pratiche"
+        className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
+        <Text className="font-semibold text-stone-600">Mostra tutte le pratiche</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function EmptyFilterState({ onReset }: { onReset: () => void }) {
   return (
     <View
@@ -835,6 +859,11 @@ export default function FeedScreen() {
             <PermitFeedSkeleton />
           ) : !hasData ? (
             <EmptyDataState />
+          ) : onlyFavorites && favoriteIds.size === 0 ? (
+            // "Solo salvate" is on but nothing is saved yet: the generic filter
+            // empty-state ("modifica i filtri") misleads — there is nothing to
+            // adjust. Teach the bookmark gesture + offer a one-tap way out.
+            <EmptySavedState onShowAll={() => setOnlyFavorites(false)} />
           ) : (
             <EmptyFilterState onReset={resetFilters} />
           )

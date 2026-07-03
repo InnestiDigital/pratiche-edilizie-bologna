@@ -27,6 +27,7 @@ import { listFavoriteIds } from '../../lib/favorites';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
 import { groupPermitsBySection } from '../../lib/feed-sections';
+import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import {
   buildActiveFilterChips,
@@ -244,6 +245,29 @@ function EmptySavedState({ onShowAll }: { onShowAll: () => void }) {
         accessibilityLabel="Mostra tutte le pratiche"
         className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
         <Text className="font-semibold text-stone-600">Mostra tutte le pratiche</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function EmptySearchState({ term, onClearSearch }: { term: string; onClearSearch: () => void }) {
+  return (
+    <View
+      className="mx-6 mt-16 items-center rounded-2xl bg-white p-8"
+      style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
+      <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-brick-50">
+        <Ionicons name="search-outline" size={28} color="#9B2335" />
+      </View>
+      <Text className="text-lg font-bold text-ink-800">Nessun risultato</Text>
+      <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
+        Nessuna pratica corrisponde a «{term}». Controlla l’ortografia o prova un altro termine.
+      </Text>
+      <Pressable
+        onPress={onClearSearch}
+        accessibilityRole="button"
+        accessibilityLabel="Cancella ricerca"
+        className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
+        <Text className="font-semibold text-stone-600">Cancella ricerca</Text>
       </Pressable>
     </View>
   );
@@ -720,6 +744,11 @@ export default function FeedScreen() {
   // grouping never reorders — it mirrors the SQL order and only inserts headers.
   const sections = useMemo(() => groupPermitsBySection(permits, sort), [permits, sort]);
 
+  // Cleaned-up echo of the search term for the "no results" empty state; null
+  // when no search is active, so an empty feed with only filters set still falls
+  // through to the generic filter empty-state below.
+  const searchTermForEmpty = formatSearchTerm(search);
+
   const removeFilter = (key: string) => {
     if (key === ZONES_CHIP_KEY) setActiveZones(new Set(QUARTIERI));
     else if (key === PERIOD_CHIP_KEY) setPeriod('all');
@@ -864,6 +893,11 @@ export default function FeedScreen() {
             // empty-state ("modifica i filtri") misleads — there is nothing to
             // adjust. Teach the bookmark gesture + offer a one-tap way out.
             <EmptySavedState onShowAll={() => setOnlyFavorites(false)} />
+          ) : searchTermForEmpty ? (
+            // A search is active and matched nothing: point at the likely culprit
+            // (the query) and offer to clear ONLY the search, so the user's
+            // carefully-set zone/type/tag filters survive.
+            <EmptySearchState term={searchTermForEmpty} onClearSearch={() => setSearch('')} />
           ) : (
             <EmptyFilterState onReset={resetFilters} />
           )

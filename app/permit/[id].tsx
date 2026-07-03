@@ -8,6 +8,7 @@ import { isFavorite, toggleFavorite } from '../../lib/favorites';
 import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
+import { buildShareMessage } from '../../lib/share-message';
 import {
   FILING_TYPE_LABELS,
   STATUS_LABELS,
@@ -134,16 +135,17 @@ export default function PermitDetail() {
   const timeline = buildPermitTimeline(permit);
 
   const handleShare = async () => {
-    const text = [
-      `${filingLabel} — ${permit.address ?? 'Indirizzo n.d.'}`,
-      permit.procedimento ? `Procedimento: ${permit.procedimento}` : null,
-      `Stato: ${statusLabel}`,
-      `Protocollo: ${protocol}`,
-      permit.source_link,
-    ]
-      .filter(Boolean)
-      .join('\n');
-    await Share.share({ message: text });
+    const message = buildShareMessage({
+      filingLabel,
+      address: permit.address,
+      zone: permit.zone,
+      procedimento: permit.procedimento,
+      statusLabel,
+      protocol,
+      requestDate: permit.source_updated_at,
+      sourceLink: permit.source_link,
+    });
+    await Share.share({ message });
   };
 
   return (

@@ -27,6 +27,24 @@ export const FILING_TYPE_LABELS: Record<FilingType, string> = {
   CILA: 'CILA',
 };
 
+// The unabbreviated names of the three filing types, so the detail screen can
+// spell out what SCIA / CILA stand for (the feed only has room for the acronym).
+export const FILING_TYPE_FULL_NAMES: Record<FilingType, string> = {
+  PDC: 'Permesso di Costruire',
+  SCIA: 'Segnalazione Certificata di Inizio Attività',
+  CILA: 'Comunicazione Inizio Lavori Asseverata',
+};
+
+// Plain-Italian explainers for the detail screen. Comune di Bologna open-permit
+// data is jargon-heavy; a resident browsing it rarely knows how PDC, SCIA and
+// CILA differ. One neutral sentence each, no legal references — just enough to
+// tell the three procedures apart at a glance.
+export const FILING_TYPE_DESCRIPTIONS: Record<FilingType, string> = {
+  PDC: 'Titolo rilasciato dal Comune per gli interventi edilizi di maggiore rilevanza, come nuove costruzioni o ristrutturazioni importanti.',
+  SCIA: 'Il tecnico assevera che l’intervento rispetta le norme: i lavori di media entità possono iniziare subito, senza attendere un permesso.',
+  CILA: 'Comunicazione per interventi edilizi minori che non riguardano le parti strutturali né i prospetti dell’edificio.',
+};
+
 export const BOLOGNA_API_BASE =
   'https://opendata.comune.bologna.it/api/explore/v2.1/catalog/datasets/{slug}/records';
 

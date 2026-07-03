@@ -10,6 +10,8 @@ import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
 import {
   FILING_TYPE_LABELS,
+  FILING_TYPE_FULL_NAMES,
+  FILING_TYPE_DESCRIPTIONS,
   STATUS_LABELS,
   TAG_LABELS,
   type FilingType,
@@ -133,6 +135,11 @@ export default function PermitDetail() {
   const mapsUrl = buildMapsUrl(permit.address, Platform.OS);
   const timeline = buildPermitTimeline(permit);
 
+  // Plain-Italian explainer for the filing procedure. Only render it for a known
+  // type — an unrecognized filing_type gets no card rather than a wrong caption.
+  const filingFullName = FILING_TYPE_FULL_NAMES[filingType];
+  const filingDescription = FILING_TYPE_DESCRIPTIONS[filingType];
+
   const handleShare = async () => {
     const text = [
       `${filingLabel} — ${permit.address ?? 'Indirizzo n.d.'}`,
@@ -197,6 +204,32 @@ export default function PermitDetail() {
             <Text className="text-sm font-semibold text-ink-700">{statusLabel}</Text>
           </View>
         </View>
+
+        {/* Che cos'è — plain-Italian explainer of the filing procedure */}
+        {filingDescription && (
+          <View
+            className="mt-3 rounded-2xl bg-white p-5"
+            style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+            <View className="flex-row items-start">
+              <View
+                className="mr-3 h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: fc.bg }}>
+                <Ionicons name="information-circle-outline" size={18} color={fc.text} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs font-bold" style={{ color: fc.text }}>
+                  {permit.filing_type}
+                </Text>
+                <Text className="text-[15px] font-bold leading-5 text-ink-800">
+                  {filingFullName}
+                </Text>
+                <Text className="mt-1.5 text-[13px] leading-5 text-stone-600">
+                  {filingDescription}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Procedimento */}
         {permit.procedimento && (

@@ -5,6 +5,7 @@ import {
   QUARTIERI,
   FILING_TYPE_ORDER,
   FILING_TYPE_LABELS,
+  FILING_COLORS,
   TAG_LABELS,
   type FilingType,
   type Quartiere,
@@ -32,18 +33,29 @@ function ToggleRow({
   value,
   onToggle,
   isLast,
+  leadingColor,
 }: {
   label: string;
   value: boolean;
   onToggle: (v: boolean) => void;
   isLast?: boolean;
+  /** Optional brand accent dot shown before the label (filing-type color). */
+  leadingColor?: string;
 }) {
   return (
     <View
       className={`flex-row items-center justify-between px-4 py-3 ${
         !isLast ? 'border-b border-parchment-200' : ''
       }`}>
-      <Text className="flex-1 text-base text-ink-800">{label}</Text>
+      <View className="flex-1 flex-row items-center">
+        {leadingColor && (
+          <View
+            className="mr-2.5 h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: leadingColor }}
+          />
+        )}
+        <Text className="text-base text-ink-800">{label}</Text>
+      </View>
       <Switch
         value={value}
         onValueChange={onToggle}
@@ -211,6 +223,7 @@ export default function SettingsScreen() {
             value={filingTypes.has(type)}
             onToggle={() => toggleFilingType(type)}
             isLast={i === FILING_TYPE_ORDER.length - 1}
+            leadingColor={FILING_COLORS[type].text}
           />
         ))}
       </View>

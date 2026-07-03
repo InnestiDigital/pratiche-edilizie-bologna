@@ -13,16 +13,11 @@ import {
   FILING_TYPE_LABELS,
   FILING_TYPE_FULL_NAMES,
   FILING_TYPE_DESCRIPTIONS,
+  FILING_COLORS,
   STATUS_LABELS,
   TAG_LABELS,
   type FilingType,
 } from '../../lib/constants';
-
-const FILING_COLORS: Record<FilingType, { bg: string; text: string }> = {
-  PDC: { bg: '#FDF3E3', text: '#8B5E1A' },
-  SCIA: { bg: '#E8EEE6', text: '#3D5C38' },
-  CILA: { bg: '#E6E8F0', text: '#3A4A82' },
-};
 
 const STATUS_DOT: Record<string, string> = {
   rilasciata: '#22c55e',

@@ -104,6 +104,19 @@ export async function getPermitById(
   return FIXTURES.find((p) => p.id === id) ?? null;
 }
 
+export async function getRelatedPermits(
+  _db: SQLite.SQLiteDatabase,
+  zone: string | null,
+  excludeId: number,
+  limit = 3
+): Promise<Permit[]> {
+  if (!zone) return [];
+  const recency = (p: Permit) => p.date_issued ?? p.source_updated_at ?? p.first_seen_at ?? '';
+  return FIXTURES.filter((p) => p.zone === zone && p.id !== excludeId)
+    .sort((a, b) => (recency(a) < recency(b) ? 1 : recency(a) > recency(b) ? -1 : 0))
+    .slice(0, limit);
+}
+
 export async function getStats(_db: SQLite.SQLiteDatabase): Promise<{
   total: number;
   byDataset: Record<string, number>;

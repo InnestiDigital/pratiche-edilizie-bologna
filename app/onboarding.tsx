@@ -5,7 +5,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   QUARTIERI,
   FILING_TYPE_ORDER,
-  FILING_TYPE_LABELS,
+  FILING_TYPE_FULL_NAMES,
+  FILING_COLORS,
   type FilingType,
   type Quartiere,
 } from '../lib/constants';
@@ -61,38 +62,48 @@ function ZoneChip({
   );
 }
 
-function TypeChip({
+/** One selectable filing-type row in the first-run picker: a filing-colored
+ *  acronym badge + the spelled-out name (from FILING_TYPE_FULL_NAMES, so SCIA/CILA
+ *  no longer echo their own acronym as a redundant sublabel) + a check circle.
+ *  Full-width rows give the long names room to breathe and match the card language
+ *  used on the Settings + detail screens. */
+function TypeRow({
   type,
-  label,
+  fullName,
   selected,
   onPress,
+  isLast,
 }: {
   type: FilingType;
-  label: string;
+  fullName: string;
   selected: boolean;
   onPress: () => void;
+  isLast?: boolean;
 }) {
-  const colors = {
-    PDC: { active: 'bg-pdc-mid', text: 'text-white' },
-    SCIA: { active: 'bg-scia-mid', text: 'text-white' },
-    CILA: { active: 'bg-cila-mid', text: 'text-white' },
-  }[type];
-
+  const color = FILING_COLORS[type];
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Tipo di pratica ${type}, ${label}`}
-      accessibilityState={{ selected }}
-      className={`mb-2 mr-2 rounded-full px-5 py-2.5 ${
-        selected ? colors.active : 'border border-stone-300 bg-white'
+      accessibilityRole="checkbox"
+      accessibilityLabel={`${type}, ${fullName}`}
+      accessibilityState={{ checked: selected }}
+      className={`flex-row items-center px-4 py-3.5 ${
+        !isLast ? 'border-b border-parchment-200' : ''
       }`}>
-      <Text className={`text-sm font-bold ${selected ? colors.text : 'text-ink-600'}`}>{type}</Text>
-      <Text
-        className={`text-xs ${selected ? 'text-white/80' : 'text-stone-500'}`}
-        numberOfLines={1}>
-        {label}
-      </Text>
+      <View
+        className="mr-3.5 w-16 items-center rounded-lg py-1.5"
+        style={{ backgroundColor: color.bg }}>
+        <Text className="text-sm font-bold" style={{ color: color.text }}>
+          {type}
+        </Text>
+      </View>
+      <Text className="flex-1 text-[15px] font-medium leading-5 text-ink-800">{fullName}</Text>
+      <View
+        className={`ml-3 h-6 w-6 items-center justify-center rounded-full ${
+          selected ? 'bg-brick-600' : 'border-2 border-stone-300 bg-white'
+        }`}>
+        {selected && <Ionicons name="checkmark" size={15} color="white" />}
+      </View>
     </Pressable>
   );
 }
@@ -192,14 +203,17 @@ export default function OnboardingScreen() {
 
         {/* Tipo pratica */}
         <Text className="mb-2 text-base font-bold text-ink-800">Tipo di pratica</Text>
-        <View className="mb-8 flex-row flex-wrap">
-          {FILING_TYPE_ORDER.map((type) => (
-            <TypeChip
+        <View
+          className="mb-8 overflow-hidden rounded-2xl bg-white"
+          style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
+          {FILING_TYPE_ORDER.map((type, i) => (
+            <TypeRow
               key={type}
               type={type}
-              label={FILING_TYPE_LABELS[type]}
+              fullName={FILING_TYPE_FULL_NAMES[type]}
               selected={selectedTypes.has(type)}
               onPress={() => toggleType(type)}
+              isLast={i === FILING_TYPE_ORDER.length - 1}
             />
           ))}
         </View>

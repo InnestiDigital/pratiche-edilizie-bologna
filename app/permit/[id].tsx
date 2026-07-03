@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, Linking, Share, Platform } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
-import { getPermitById, parsePermitTags, type Permit } from '../../lib/queries';
+import { getPermitById, getRelatedPermits, parsePermitTags, type Permit } from '../../lib/queries';
 import { isFavorite, toggleFavorite } from '../../lib/favorites';
 import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
@@ -96,17 +96,66 @@ function Timeline({ events }: { events: ReturnType<typeof buildPermitTimeline> }
   );
 }
 
+/** One tappable row in the "Nella stessa zona" card — filing badge, address, status. */
+function RelatedRow({
+  permit,
+  isLast,
+  onPress,
+}: {
+  permit: Permit;
+  isLast: boolean;
+  onPress: () => void;
+}) {
+  const filingType = permit.filing_type as FilingType;
+  const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
+  const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
+  const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${permit.filing_type}, ${permit.address ?? 'Indirizzo non disponibile'}, ${statusLabel}`}
+      accessibilityHint="Apri i dettagli di questa pratica"
+      className={`flex-row items-center py-3 ${!isLast ? 'border-b border-parchment-200' : ''}`}>
+      <View className="mr-3 rounded-md px-2 py-1" style={{ backgroundColor: fc.bg }}>
+        <Text className="text-[11px] font-bold" style={{ color: fc.text }}>
+          {permit.filing_type}
+        </Text>
+      </View>
+      <View className="flex-1">
+        <Text className="text-[15px] font-semibold text-ink-800" numberOfLines={1}>
+          {permit.address ?? 'Indirizzo non disponibile'}
+        </Text>
+        <View className="mt-0.5 flex-row items-center">
+          <View className="mr-1.5 h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
+          <Text className="text-xs text-stone-500">{statusLabel}</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color="#a89888" />
+    </Pressable>
+  );
+}
+
 export default function PermitDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [permit, setPermit] = useState<Permit | null>(null);
+  const [related, setRelated] = useState<Permit[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!id) return;
+    // A new [id] mount reuses this component, so clear the previous permit's
+    // related list until the new one resolves (avoids a flash of stale rows).
+    setRelated([]);
     getDb().then((db) =>
       getPermitById(db, Number(id)).then((p) => {
         setPermit(p);
-        if (p) isFavorite(db, p.source_id).then(setSaved);
+        if (p) {
+          isFavorite(db, p.source_id).then(setSaved);
+          getRelatedPermits(db, p.zone, p.id).then(setRelated);
+        }
       })
     );
   }, [id]);
@@ -287,6 +336,31 @@ export default function PermitDetail() {
                 </View>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Nella stessa zona — other permits in the same quartiere */}
+        {related.length > 0 && (
+          <View
+            className="mt-3 rounded-2xl bg-white px-5 py-4"
+            style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+            <View className="mb-1 flex-row items-center">
+              <Ionicons name="location-outline" size={14} color="#8B7355" />
+              <Text className="ml-1.5 text-xs font-semibold text-stone-600">Nella stessa zona</Text>
+              {permit.zone && (
+                <Text className="ml-1 text-xs text-stone-500" numberOfLines={1}>
+                  · {permit.zone}
+                </Text>
+              )}
+            </View>
+            {related.map((r, i) => (
+              <RelatedRow
+                key={r.id}
+                permit={r}
+                isLast={i === related.length - 1}
+                onPress={() => router.push(`/permit/${r.id}`)}
+              />
+            ))}
           </View>
         )}
 

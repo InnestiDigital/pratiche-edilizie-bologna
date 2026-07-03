@@ -1,6 +1,7 @@
 import type * as SQLite from 'expo-sqlite';
 import type { FilingType } from './constants';
 import { buildFeedQuery, buildFeedCountQuery, type FeedFilters } from './build-feed-query';
+import { buildRelatedPermitsQuery, RELATED_PERMITS_LIMIT } from './related-query';
 
 // The feed-query primitives live in the pure, db-free `build-feed-query` module
 // so the SQL construction is unit-testable in isolation. Re-exported here so the
@@ -87,6 +88,23 @@ export async function countPermits(
 
 export async function getPermitById(db: SQLite.SQLiteDatabase, id: number): Promise<Permit | null> {
   return db.getFirstAsync<Permit>('SELECT * FROM permits WHERE id = ?', id);
+}
+
+/**
+ * Other permits in the same quartiere as the one being viewed, most recent
+ * first, excluding the current permit — powers the detail "Nella stessa zona"
+ * card. Returns `[]` when the permit has no zone (nothing to relate on).
+ * SQL construction lives in the pure, tested `related-query` module.
+ */
+export async function getRelatedPermits(
+  db: SQLite.SQLiteDatabase,
+  zone: string | null,
+  excludeId: number,
+  limit: number = RELATED_PERMITS_LIMIT
+): Promise<Permit[]> {
+  if (!zone) return [];
+  const { sql, params } = buildRelatedPermitsQuery(zone, excludeId, limit);
+  return db.getAllAsync<Permit>(sql, ...params);
 }
 
 export async function getStats(db: SQLite.SQLiteDatabase): Promise<{

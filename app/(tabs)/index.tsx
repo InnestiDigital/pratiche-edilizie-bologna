@@ -29,12 +29,19 @@ import { formatProtocol } from '../../lib/format-protocol';
 import {
   buildActiveFilterChips,
   ZONES_CHIP_KEY,
+  PERIOD_CHIP_KEY,
   ONLY_NEW_CHIP_KEY,
   ONLY_FAVORITES_CHIP_KEY,
   SORT_CHIP_KEY,
   STATUS_CHIP_PREFIX,
   TAG_CHIP_PREFIX,
 } from '../../lib/active-filters';
+import {
+  periodStartDate,
+  FEED_PERIOD_ORDER,
+  PERIOD_LABELS,
+  type FeedPeriod,
+} from '../../lib/feed-period';
 import { PermitFeedSkeleton } from '../../components/PermitSkeleton';
 import {
   FILING_TYPE_ORDER,
@@ -252,6 +259,8 @@ function FilterPanel({
   toggleOnlyNew,
   onlyFavorites,
   toggleOnlyFavorites,
+  period,
+  setPeriod,
   sort,
   setSort,
 }: {
@@ -265,6 +274,8 @@ function FilterPanel({
   toggleOnlyNew: () => void;
   onlyFavorites: boolean;
   toggleOnlyFavorites: () => void;
+  period: FeedPeriod;
+  setPeriod: (p: FeedPeriod) => void;
   sort: SortOption;
   setSort: (s: SortOption) => void;
 }) {
@@ -305,6 +316,27 @@ function FilterPanel({
           </Text>
         </Pressable>
       </View>
+
+      {/* Period (request date) */}
+      <Text className="mb-1.5 text-xs font-semibold text-stone-600">Periodo (richiesta)</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+        {FEED_PERIOD_ORDER.map((p) => (
+          <Pressable
+            key={p}
+            onPress={() => setPeriod(p)}
+            accessibilityRole="button"
+            accessibilityLabel={`Periodo ${PERIOD_LABELS[p]}`}
+            accessibilityState={{ selected: period === p }}
+            className={`mr-2 rounded-full px-3.5 py-1.5 ${
+              period === p ? 'bg-brick-600' : 'bg-parchment-100'
+            }`}>
+            <Text
+              className={`text-xs font-semibold ${period === p ? 'text-white' : 'text-stone-500'}`}>
+              {PERIOD_LABELS[p]}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       {/* Sort */}
       <Text className="mb-1.5 text-xs font-semibold text-stone-600">Ordina per</Text>
@@ -461,6 +493,7 @@ export default function FeedScreen() {
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [onlyNew, setOnlyNew] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [period, setPeriod] = useState<FeedPeriod>('all');
   const [sort, setSort] = useState<SortOption>('request_newest');
   const [search, setSearch] = useState('');
   const offsetRef = useRef(0);
@@ -468,6 +501,7 @@ export default function FeedScreen() {
 
   const activeFilterCount =
     (activeZones.size < QUARTIERI.length ? 1 : 0) +
+    (period !== 'all' ? 1 : 0) +
     (activeStatuses.size > 0 ? 1 : 0) +
     (activeTags.size > 0 ? 1 : 0) +
     (onlyNew ? 1 : 0) +
@@ -490,6 +524,10 @@ export default function FeedScreen() {
         statuses: activeStatuses.size > 0 ? [...activeStatuses] : undefined,
         onlyNew: onlyNew || undefined,
         onlyFavorites: onlyFavorites || undefined,
+        // Time-period filter → a request-date lower bound; `new Date()` is the
+        // real current time (the clock read lives here, not in the pure helper),
+        // and 'all' yields null → undefined (no bound).
+        requestedAfter: periodStartDate(period, new Date()) ?? undefined,
         sort,
       };
 
@@ -523,7 +561,17 @@ export default function FeedScreen() {
       setHasMore(rows.length === 50);
       setLoading(false);
     },
-    [activeTypes, activeZones, activeStatuses, activeTags, onlyNew, onlyFavorites, sort, search]
+    [
+      activeTypes,
+      activeZones,
+      activeStatuses,
+      activeTags,
+      onlyNew,
+      onlyFavorites,
+      period,
+      sort,
+      search,
+    ]
   );
 
   useEffect(() => {
@@ -588,6 +636,7 @@ export default function FeedScreen() {
     setActiveTags(new Set());
     setOnlyNew(false);
     setOnlyFavorites(false);
+    setPeriod('all');
     setSort('request_newest');
     setSearch('');
   };
@@ -597,6 +646,8 @@ export default function FeedScreen() {
   const activeChips = buildActiveFilterChips({
     zones: [...activeZones],
     totalZones: QUARTIERI.length,
+    period,
+    defaultPeriod: 'all',
     statuses: [...activeStatuses],
     tags: [...activeTags],
     onlyNew,
@@ -607,6 +658,7 @@ export default function FeedScreen() {
 
   const removeFilter = (key: string) => {
     if (key === ZONES_CHIP_KEY) setActiveZones(new Set(QUARTIERI));
+    else if (key === PERIOD_CHIP_KEY) setPeriod('all');
     else if (key === ONLY_NEW_CHIP_KEY) setOnlyNew(false);
     else if (key === ONLY_FAVORITES_CHIP_KEY) setOnlyFavorites(false);
     else if (key === SORT_CHIP_KEY) setSort('request_newest');
@@ -688,6 +740,8 @@ export default function FeedScreen() {
           toggleOnlyNew={() => setOnlyNew((v) => !v)}
           onlyFavorites={onlyFavorites}
           toggleOnlyFavorites={() => setOnlyFavorites((v) => !v)}
+          period={period}
+          setPeriod={setPeriod}
           sort={sort}
           setSort={setSort}
         />

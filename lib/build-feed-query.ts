@@ -59,6 +59,14 @@ export interface FeedFilters {
   statuses?: string[];
   onlyNew?: boolean;
   onlyFavorites?: boolean;
+  /**
+   * Inclusive lower bound on the request date (`source_updated_at`), as a plain
+   * `YYYY-MM-DD` string — the time-period filter. See `lib/feed-period.ts` for how
+   * a `FeedPeriod` becomes this bound. A permit with a NULL request date fails the
+   * `>=` comparison and is excluded, which is the intended behaviour for a
+   * "requested since …" filter.
+   */
+  requestedAfter?: string;
   sort?: SortOption;
 }
 
@@ -119,6 +127,13 @@ export function buildFeedWhere(filters: FeedFilters): {
   if (filters.statuses && filters.statuses.length > 0) {
     conditions.push(`status IN (${filters.statuses.map(() => '?').join(',')})`);
     params.push(...filters.statuses);
+  }
+
+  if (filters.requestedAfter) {
+    // Time-period filter: keep permits requested on/after the bound. Compared
+    // lexicographically — both sides are `YYYY-MM-DD` strings, so no date parsing.
+    conditions.push('source_updated_at >= ?');
+    params.push(filters.requestedAfter);
   }
 
   if (filters.onlyNew) {

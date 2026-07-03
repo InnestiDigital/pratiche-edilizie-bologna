@@ -1,5 +1,6 @@
 import { STATUS_LABELS, TAG_LABELS } from './constants';
 import { SORT_LABELS, type SortOption } from './build-feed-query';
+import { PERIOD_LABELS, type FeedPeriod } from './feed-period';
 
 /**
  * One dismissible summary chip for the feed's active-filter row.
@@ -16,6 +17,10 @@ export interface ActiveFilterState {
   zones: string[];
   /** Total number of selectable zones — the "no zone filter" baseline. */
   totalZones: number;
+  /** Selected time period; filtering is active when this differs from `defaultPeriod`. */
+  period: FeedPeriod;
+  /** The default period (`'all'`); any other value surfaces a removable chip. */
+  defaultPeriod: FeedPeriod;
   statuses: string[];
   tags: string[];
   onlyNew: boolean;
@@ -26,6 +31,7 @@ export interface ActiveFilterState {
 }
 
 export const ZONES_CHIP_KEY = 'zones';
+export const PERIOD_CHIP_KEY = 'period';
 export const ONLY_NEW_CHIP_KEY = 'onlyNew';
 export const ONLY_FAVORITES_CHIP_KEY = 'onlyFavorites';
 export const SORT_CHIP_KEY = 'sort';
@@ -36,8 +42,8 @@ export const TAG_CHIP_PREFIX = 'tag:';
  * Build the ordered list of active-filter chips from the feed's filter state.
  *
  * Pure and total: no chips means no active filters. Order is fixed (zones →
- * statuses → tags → only-new → only-saved → sort) so the row is stable across
- * re-renders. The feed screen maps each `key` back to a removal action.
+ * period → statuses → tags → only-new → only-saved → sort) so the row is stable
+ * across re-renders. The feed screen maps each `key` back to a removal action.
  */
 export function buildActiveFilterChips(state: ActiveFilterState): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
@@ -45,6 +51,10 @@ export function buildActiveFilterChips(state: ActiveFilterState): ActiveFilterCh
   if (state.zones.length < state.totalZones) {
     const label = state.zones.length === 1 ? state.zones[0] : `${state.zones.length} quartieri`;
     chips.push({ key: ZONES_CHIP_KEY, label });
+  }
+
+  if (state.period !== state.defaultPeriod) {
+    chips.push({ key: PERIOD_CHIP_KEY, label: PERIOD_LABELS[state.period] });
   }
 
   for (const s of state.statuses) {

@@ -71,6 +71,17 @@ describe('buildFeedQuery — WHERE construction', () => {
     expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).not.toContain('is_new');
   });
 
+  it('adds a source_updated_at lower-bound predicate for requestedAfter', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, requestedAfter: '2024-01-01' }, 50, 0);
+    expect(squish(sql)).toContain('source_updated_at >= ?');
+    // the bound binds before LIMIT/OFFSET
+    expect(params).toEqual(['2024-01-01', 50, 0]);
+  });
+
+  it('omits the request-date bound when requestedAfter is unset', () => {
+    expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).not.toContain('source_updated_at >=');
+  });
+
   it('adds a parameterless favorites EXISTS predicate for onlyFavorites', () => {
     const { sql, params } = buildFeedQuery({ ...EMPTY, onlyFavorites: true }, 50, 0);
     expect(squish(sql)).toContain(

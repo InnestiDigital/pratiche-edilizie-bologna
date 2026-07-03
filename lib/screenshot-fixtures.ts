@@ -200,6 +200,14 @@ export const STATS_FIXTURE = {
     'Santo Stefano': 1,
     Navile: 1,
   } as Record<string, number>,
+  byStatus: {
+    concluso: 3,
+    rilasciata: 1,
+    rilasciata_con_prescrizioni: 1,
+    archiviata: 1,
+    diniegata: 1,
+    in_attesa: 1,
+  } as Record<string, number>,
   newCount: PERMIT_FIXTURES.filter((p) => p.is_new === 1).length,
 };
 

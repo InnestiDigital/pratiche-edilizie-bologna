@@ -93,6 +93,7 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   total: number;
   byDataset: Record<string, number>;
   byZone: Record<string, number>;
+  byStatus: Record<string, number>;
   newCount: number;
 }> {
   const total =
@@ -113,7 +114,13 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   const byZone: Record<string, number> = {};
   for (const r of zoneRows) byZone[r.zone] = r.c;
 
-  return { total, byDataset, byZone, newCount };
+  const statusRows = await db.getAllAsync<{ status: string; c: number }>(
+    'SELECT status, COUNT(*) as c FROM permits WHERE status IS NOT NULL GROUP BY status ORDER BY c DESC'
+  );
+  const byStatus: Record<string, number> = {};
+  for (const r of statusRows) byStatus[r.status] = r.c;
+
+  return { total, byDataset, byZone, byStatus, newCount };
 }
 
 export async function countNewPermits(db: SQLite.SQLiteDatabase): Promise<number> {

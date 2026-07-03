@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../lib/sync';
 import { getDb } from '../../lib/db';
 import { getStats } from '../../lib/queries';
+import { buildStatusBreakdown } from '../../lib/status-breakdown';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 /* Dataset accent colors — same palette used for the filing-type badges across
@@ -25,6 +26,7 @@ export default function SyncScreen() {
     total: number;
     byDataset: Record<string, number>;
     byZone: Record<string, number>;
+    byStatus: Record<string, number>;
     newCount: number;
   } | null>(null);
 
@@ -311,6 +313,59 @@ export default function SyncScreen() {
                 ));
               })()}
             </View>
+
+            {/* Per Stato — status composition of the local DB, using the same
+                status accent colors as the feed/detail dots so it reads as one
+                language with the rest of the app. */}
+            {(() => {
+              const breakdown = buildStatusBreakdown(stats.byStatus, stats.total);
+              if (breakdown.length === 0) return null;
+              return (
+                <View className="mt-6">
+                  <Text className="mb-2 text-base font-bold text-ink-800">Per Stato</Text>
+                  <View
+                    className="overflow-hidden rounded-xl bg-white"
+                    style={{
+                      shadowColor: '#000',
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 1,
+                    }}>
+                    {breakdown.map((s, i) => (
+                      <View
+                        key={s.status}
+                        className={`px-4 py-3 ${
+                          i < breakdown.length - 1 ? 'border-b border-parchment-200' : ''
+                        }`}>
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-1 flex-row items-center">
+                            <View
+                              className="mr-2 h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: s.color }}
+                            />
+                            <Text className="flex-1 text-sm text-ink-600" numberOfLines={1}>
+                              {s.label}
+                            </Text>
+                          </View>
+                          <Text className="ml-2 text-sm font-bold text-ink-800">
+                            {s.count.toLocaleString('it-IT')}
+                          </Text>
+                        </View>
+                        <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-parchment-200">
+                          <View
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.max(6, s.pct)}%`,
+                              backgroundColor: s.color,
+                            }}
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              );
+            })()}
           </View>
         )}
       </View>

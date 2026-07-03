@@ -5,6 +5,7 @@ import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../li
 import { getDb } from '../../lib/db';
 import { getStats } from '../../lib/queries';
 import { buildStatusBreakdown } from '../../lib/status-breakdown';
+import { buildMonthlyActivity, monthlyActivityRangeLabel } from '../../lib/monthly-activity';
 import { syncFreshness } from '../../lib/sync-freshness';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -28,6 +29,7 @@ export default function SyncScreen() {
     byDataset: Record<string, number>;
     byZone: Record<string, number>;
     byStatus: Record<string, number>;
+    byMonth: Record<string, number>;
     newCount: number;
   } | null>(null);
 
@@ -310,6 +312,72 @@ export default function SyncScreen() {
                         </Text>
                       </View>
                     ))}
+                  </View>
+                </View>
+              );
+            })()}
+
+            {/* Pratiche per mese — trailing-months activity, bucketed by the
+                request date, anchored to the most recent month in the data (a
+                stale offline snapshot still shows its meaningful tail). Series +
+                labels come from the pure, tested buildMonthlyActivity. */}
+            {(() => {
+              const activity = buildMonthlyActivity(stats.byMonth);
+              if (activity.length === 0) return null;
+              const range = monthlyActivityRangeLabel(activity);
+              const BAR_MAX = 72;
+              return (
+                <View className="mb-6">
+                  <View className="mb-2 flex-row items-baseline justify-between">
+                    <Text className="text-base font-bold text-ink-800">Pratiche per mese</Text>
+                    {range && <Text className="text-xs text-stone-500">{range}</Text>}
+                  </View>
+                  <View
+                    className="rounded-xl bg-white p-4"
+                    style={{
+                      shadowColor: '#000',
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 1,
+                    }}>
+                    <View className="flex-row items-end">
+                      {activity.map((m) => {
+                        const barHeight =
+                          m.count === 0 ? 3 : Math.max(8, Math.round((m.pct / 100) * BAR_MAX));
+                        const barColor =
+                          m.count === 0
+                            ? 'bg-parchment-300'
+                            : m.isPeak
+                              ? 'bg-brick-600'
+                              : 'bg-brick-300';
+                        return (
+                          <View
+                            key={m.monthKey}
+                            className="flex-1 items-center"
+                            accessibilityRole="text"
+                            accessibilityLabel={`${m.label} ${m.year}: ${m.count} ${
+                              m.count === 1 ? 'pratica' : 'pratiche'
+                            }`}>
+                            {/* Count caption above each bar; transparent (not
+                                omitted) on empty months so every column keeps the
+                                same height and the bars share one baseline. */}
+                            <Text
+                              className={`mb-1 text-[11px] font-bold ${
+                                m.count === 0 ? 'text-transparent' : 'text-ink-700'
+                              }`}>
+                              {m.count}
+                            </Text>
+                            <View style={{ height: BAR_MAX }} className="w-full justify-end">
+                              <View
+                                className={`mx-auto w-4 rounded-t-md ${barColor}`}
+                                style={{ height: barHeight }}
+                              />
+                            </View>
+                            <Text className="mt-1.5 text-[11px] text-stone-500">{m.label}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
                   </View>
                 </View>
               );

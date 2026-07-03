@@ -26,6 +26,15 @@ import { loadPreferences } from '../../lib/preferences';
 import { listFavoriteIds } from '../../lib/favorites';
 import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
+import {
+  buildActiveFilterChips,
+  ZONES_CHIP_KEY,
+  ONLY_NEW_CHIP_KEY,
+  ONLY_FAVORITES_CHIP_KEY,
+  SORT_CHIP_KEY,
+  STATUS_CHIP_PREFIX,
+  TAG_CHIP_PREFIX,
+} from '../../lib/active-filters';
 import { PermitFeedSkeleton } from '../../components/PermitSkeleton';
 import {
   FILING_TYPE_ORDER,
@@ -393,6 +402,46 @@ function FilterPanel({
   );
 }
 
+/* ── Active Filter Chips ────────────────────────── */
+
+function ActiveFilterChips({
+  chips,
+  onRemove,
+  onClearAll,
+}: {
+  chips: { key: string; label: string }[];
+  onRemove: (key: string) => void;
+  onClearAll: () => void;
+}) {
+  return (
+    <View className="bg-white pb-2">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16 }}>
+        {chips.map((chip) => (
+          <Pressable
+            key={chip.key}
+            onPress={() => onRemove(chip.key)}
+            accessibilityRole="button"
+            accessibilityLabel={`Rimuovi filtro ${chip.label}`}
+            className="mr-2 flex-row items-center rounded-full bg-brick-50 py-1.5 pl-3.5 pr-2.5">
+            <Text className="text-xs font-semibold text-brick-600">{chip.label}</Text>
+            <Ionicons name="close" size={13} color="#9B2335" style={{ marginLeft: 4 }} />
+          </Pressable>
+        ))}
+        <Pressable
+          onPress={onClearAll}
+          accessibilityRole="button"
+          accessibilityLabel="Cancella tutti i filtri"
+          className="mr-4 flex-row items-center rounded-full border border-stone-300 px-3.5 py-1.5">
+          <Text className="text-xs font-semibold text-stone-600">Cancella</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
+}
+
 /* ── Main Feed Screen ───────────────────────────── */
 
 export default function FeedScreen() {
@@ -543,6 +592,28 @@ export default function FeedScreen() {
     setSearch('');
   };
 
+  // Glanceable summary of the active filters (built from a tested pure core), so
+  // the state hidden behind the collapsed panel is visible and one-tap removable.
+  const activeChips = buildActiveFilterChips({
+    zones: [...activeZones],
+    totalZones: QUARTIERI.length,
+    statuses: [...activeStatuses],
+    tags: [...activeTags],
+    onlyNew,
+    onlyFavorites,
+    sort,
+    defaultSort: 'request_newest',
+  });
+
+  const removeFilter = (key: string) => {
+    if (key === ZONES_CHIP_KEY) setActiveZones(new Set(QUARTIERI));
+    else if (key === ONLY_NEW_CHIP_KEY) setOnlyNew(false);
+    else if (key === ONLY_FAVORITES_CHIP_KEY) setOnlyFavorites(false);
+    else if (key === SORT_CHIP_KEY) setSort('request_newest');
+    else if (key.startsWith(STATUS_CHIP_PREFIX)) toggleStatus(key.slice(STATUS_CHIP_PREFIX.length));
+    else if (key.startsWith(TAG_CHIP_PREFIX)) toggleTag(key.slice(TAG_CHIP_PREFIX.length));
+  };
+
   return (
     <View className="flex-1 bg-parchment-100">
       {/* Search bar + filter button */}
@@ -598,6 +669,11 @@ export default function FeedScreen() {
           );
         })}
       </View>
+
+      {/* Active-filter summary — visible when the panel is collapsed */}
+      {!filtersOpen && activeChips.length > 0 && (
+        <ActiveFilterChips chips={activeChips} onRemove={removeFilter} onClearAll={resetFilters} />
+      )}
 
       {/* Expandable filter panel */}
       {filtersOpen && (

@@ -27,6 +27,16 @@ export const FILING_TYPE_LABELS: Record<FilingType, string> = {
   CILA: 'CILA',
 };
 
+// The per-filing-type brand palette used for badges/dots across every screen
+// (feed cards, detail header, settings). `bg` is the soft badge fill, `text` is
+// the saturated accent (also used as the dot color). Single source of truth so
+// the three filing colors never drift between screens.
+export const FILING_COLORS: Record<FilingType, { bg: string; text: string }> = {
+  PDC: { bg: '#FDF3E3', text: '#8B5E1A' },
+  SCIA: { bg: '#E8EEE6', text: '#3D5C38' },
+  CILA: { bg: '#E6E8F0', text: '#3A4A82' },
+};
+
 // The unabbreviated names of the three filing types, so the detail screen can
 // spell out what SCIA / CILA stand for (the feed only has room for the acronym).
 export const FILING_TYPE_FULL_NAMES: Record<FilingType, string> = {

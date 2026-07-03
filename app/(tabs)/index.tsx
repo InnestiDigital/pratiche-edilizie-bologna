@@ -45,6 +45,7 @@ import {
 import { PermitFeedSkeleton } from '../../components/PermitSkeleton';
 import {
   FILING_TYPE_ORDER,
+  FILING_COLORS,
   STATUS_LABELS,
   TAG_LABELS,
   QUARTIERI,
@@ -53,12 +54,6 @@ import {
 } from '../../lib/constants';
 
 /* ── Colors ─────────────────────────────────────── */
-
-const FILING_COLORS: Record<FilingType, { bg: string; text: string }> = {
-  PDC: { bg: '#FDF3E3', text: '#8B5E1A' },
-  SCIA: { bg: '#E8EEE6', text: '#3D5C38' },
-  CILA: { bg: '#E6E8F0', text: '#3A4A82' },
-};
 
 const STATUS_DOT: Record<string, string> = {
   rilasciata: '#22c55e',

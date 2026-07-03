@@ -21,6 +21,17 @@ export type FilingType = 'PDC' | 'SCIA' | 'CILA';
 
 export const FILING_TYPE_ORDER: FilingType[] = ['PDC', 'SCIA', 'CILA'];
 
+// Reverse of DATASETS: a filing type → its dataset key ('pdc' | 'scia' | 'cila').
+// getStats().byDataset is keyed by the lowercase dataset key, but the UI works in
+// FilingType ('PDC'…); this derives the bridge from DATASETS so the mapping stays
+// a single source of truth (add a dataset → it's wired automatically).
+export const FILING_DATASET_KEY = Object.fromEntries(
+  (Object.entries(DATASETS) as [DatasetKey, (typeof DATASETS)[DatasetKey]][]).map(([key, d]) => [
+    d.filingType,
+    key,
+  ])
+) as Record<FilingType, DatasetKey>;
+
 export const FILING_TYPE_LABELS: Record<FilingType, string> = {
   PDC: 'Permesso di Costruire',
   SCIA: 'SCIA',

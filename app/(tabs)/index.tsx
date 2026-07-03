@@ -24,7 +24,7 @@ import {
 } from '../../lib/queries';
 import { loadPreferences } from '../../lib/preferences';
 import { listFavoriteIds } from '../../lib/favorites';
-import { formatItDate } from '../../lib/format-date';
+import { feedCardDate } from '../../lib/feed-card-date';
 import { formatProtocol } from '../../lib/format-protocol';
 import {
   buildActiveFilterChips,
@@ -85,16 +85,21 @@ function TagBadge({ tag }: { tag: string }) {
 function PermitCard({
   permit,
   isSaved,
+  sort,
   onPress,
 }: {
   permit: Permit;
   isSaved: boolean;
+  sort: SortOption;
   onPress: () => void;
 }) {
   const tags = parsePermitTags(permit.tags);
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
   const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
   const fc = FILING_COLORS[permit.filing_type as FilingType] ?? FILING_COLORS.PDC;
+  // Date shown in the footer, chosen + labelled to match the active sort so the
+  // card never displays a date that disagrees with how the feed is ordered.
+  const cardDate = feedCardDate(permit, sort);
 
   const a11yLabel = [
     permit.filing_type,
@@ -159,13 +164,17 @@ function PermitCard({
         </Text>
       )}
 
-      {/* Footer: date + protocol */}
+      {/* Footer: date (labelled to match the active sort) + protocol */}
       <View className="mt-2 flex-row items-center">
-        {(permit.date_issued || permit.source_updated_at) && (
+        {cardDate && (
           <View className="mr-3 flex-row items-center">
-            <Ionicons name="calendar-outline" size={12} color="#70593f" />
+            <Ionicons
+              name={cardDate.icon as keyof typeof Ionicons.glyphMap}
+              size={12}
+              color="#70593f"
+            />
             <Text className="ml-1 text-xs text-stone-600">
-              {formatItDate(permit.date_issued ?? permit.source_updated_at)}
+              <Text className="font-semibold">{cardDate.label}</Text> {cardDate.date}
             </Text>
           </View>
         )}
@@ -772,6 +781,7 @@ export default function FeedScreen() {
           <PermitCard
             permit={item}
             isSaved={favoriteIds.has(item.source_id)}
+            sort={sort}
             onPress={() => router.push(`/permit/${item.id}`)}
           />
         )}

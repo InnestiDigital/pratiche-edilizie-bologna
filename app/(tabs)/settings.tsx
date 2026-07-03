@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, Alert } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import {
   QUARTIERI,
@@ -18,6 +19,9 @@ import {
 } from '../../lib/preferences';
 import { requestNotificationPermissions } from '../../lib/notifications';
 import { registerBackgroundSync, unregisterBackgroundSync } from '../../lib/background-sync';
+import { getDb } from '../../lib/db';
+import { countPermits } from '../../lib/queries';
+import { buildMatchSummary } from '../../lib/settings-match-summary';
 
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
@@ -74,6 +78,11 @@ export default function SettingsScreen() {
   const [tags, setTags] = useState<Set<string>>(new Set());
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Live "how many permits match these filters" preview + the DB total. Either is
+  // null while its count is loading. `matchCount` recomputes whenever a filter set
+  // changes so the impact of a toggle is visible without leaving the screen.
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([loadPreferences(), isNotificationsEnabled()]).then(([prefs, notifEnabled]) => {
@@ -84,6 +93,40 @@ export default function SettingsScreen() {
       setLoaded(true);
     });
   }, []);
+
+  // The unfiltered DB total — fetched once (an empty filter set adds no WHERE, so
+  // this COUNT(*) is every stored permit regardless of the user's saved filters).
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    getDb()
+      .then((db) => countPermits(db, { zones: [], filingTypes: [], tags: [] }))
+      .then((c) => {
+        if (!cancelled) setTotalCount(c);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded]);
+
+  // Count of permits matching the currently-saved filters; re-runs on every toggle
+  // (each toggle replaces the Set, changing the dep identity). A stale async result
+  // is dropped via the cancelled flag so out-of-order counts can't flash.
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    setMatchCount(null);
+    getDb()
+      .then((db) =>
+        countPermits(db, { zones: [...zones], filingTypes: [...filingTypes], tags: [...tags] })
+      )
+      .then((c) => {
+        if (!cancelled) setMatchCount(c);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded, zones, filingTypes, tags]);
 
   const handleToggleNotifications = async (value: boolean) => {
     if (value) {
@@ -176,9 +219,31 @@ export default function SettingsScreen() {
   // Single source of truth for the app version: app.json (CFBundleShortVersionString),
   // surfaced by expo-constants — never hardcode it in the UI or it drifts on each release.
   const appVersion = Constants.expoConfig?.version ?? '';
+  const summary = buildMatchSummary(matchCount, totalCount);
 
   return (
     <ScrollView className="flex-1 bg-parchment-100">
+      {/* Live preview: how many stored permits match the filters set below. Gives
+          immediate feedback on a toggle without switching to the feed tab. */}
+      <View
+        className="mx-4 mt-4 flex-row items-center rounded-2xl bg-white p-5"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}
+        accessibilityRole="summary"
+        accessibilityLabel={`${summary.number} ${summary.label}, ${summary.caption}`}>
+        <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-brick-50">
+          <Ionicons name="funnel" size={22} color="#9B2335" />
+        </View>
+        <View className="flex-1">
+          <View className="flex-row items-baseline">
+            <Text className="text-3xl font-extrabold text-ink-800">{summary.number}</Text>
+            <Text className="ml-2 flex-1 text-sm font-semibold text-stone-600">
+              {summary.label}
+            </Text>
+          </View>
+          <Text className="mt-0.5 text-xs text-stone-600">{summary.caption}</Text>
+        </View>
+      </View>
+
       <SectionHeader
         title="Notifiche"
         hint="Controlla in background e avvisa quando ci sono nuove pratiche"

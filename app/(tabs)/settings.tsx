@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, Switch, Alert, Linking } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
+import { TowersMark } from '../../components/TowersMark';
 import {
   QUARTIERI,
   FILING_TYPE_ORDER,
@@ -23,6 +24,44 @@ import { registerBackgroundSync, unregisterBackgroundSync } from '../../lib/back
 import { getDb } from '../../lib/db';
 import { countPermits, getStats } from '../../lib/queries';
 import { buildMatchSummary } from '../../lib/settings-match-summary';
+
+/** Read-only, non-personal source Bologna publishes the open data under. */
+const OPEN_DATA_PORTAL_URL = 'https://opendata.comune.bologna.it';
+const DATA_LICENSE_URL = 'https://creativecommons.org/licenses/by/4.0/deed.it';
+
+/** One tappable row in the "Informazioni" card: leading icon, label + sublabel,
+ *  trailing external-link chevron. Opens `url` in the browser. */
+function InfoLinkRow({
+  icon,
+  label,
+  sublabel,
+  url,
+  isLast,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  sublabel: string;
+  url: string;
+  isLast?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={() => Linking.openURL(url)}
+      accessibilityRole="link"
+      accessibilityLabel={`${label}, ${sublabel}`}
+      accessibilityHint="Apre il collegamento nel browser"
+      className={`flex-row items-center px-4 py-3 ${!isLast ? 'border-b border-parchment-200' : ''}`}>
+      <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-parchment-100">
+        <Ionicons name={icon} size={17} color="#8B7355" />
+      </View>
+      <View className="flex-1">
+        <Text className="text-[15px] font-semibold text-ink-800">{label}</Text>
+        <Text className="text-xs text-stone-500">{sublabel}</Text>
+      </View>
+      <Ionicons name="open-outline" size={16} color="#a89888" />
+    </Pressable>
+  );
+}
 
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
@@ -333,7 +372,7 @@ export default function SettingsScreen() {
         ))}
       </View>
 
-      <View className="p-4 pb-10">
+      <View className="p-4">
         <Pressable
           onPress={handleReset}
           accessibilityRole="button"
@@ -342,14 +381,57 @@ export default function SettingsScreen() {
           className="items-center rounded-xl border border-stone-300 bg-white py-3">
           <Text className="font-semibold text-stone-600">Ripristina Predefiniti</Text>
         </Pressable>
-
-        <Text className="mt-6 text-center text-xs text-stone-600">
-          Pratiche Edilizie Bologna{appVersion ? ` v${appVersion}` : ''}
-          {'\n'}
-          Dati da opendata.comune.bologna.it{'\n'}
-          Licenza CC BY 4.0
-        </Text>
       </View>
+
+      <SectionHeader title="Informazioni" />
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+        {/* App identity — brand mark, name, version (single source: app.json) */}
+        <View className="flex-row items-center border-b border-parchment-200 px-4 py-4">
+          <View className="mr-3 h-11 w-11 items-center justify-center rounded-2xl bg-brick-600">
+            <TowersMark size={24} color="#F5F0E8" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-ink-800">Pratiche Edilizie Bologna</Text>
+            <Text className="text-xs text-stone-500">
+              {appVersion ? `Versione ${appVersion}` : 'Dati aperti del Comune di Bologna'}
+            </Text>
+          </View>
+        </View>
+
+        {/* On-device privacy — the app's core promise, worth stating plainly */}
+        <View className="flex-row items-start border-b border-parchment-200 px-4 py-3">
+          <View className="mr-3 mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
+            <Ionicons name="lock-closed-outline" size={17} color="#9B2335" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[15px] font-semibold text-ink-800">
+              Tutto sul tuo dispositivo
+            </Text>
+            <Text className="mt-0.5 text-xs leading-5 text-stone-500">
+              Nessun account, nessun tracciamento. I dati restano solo sul telefono.
+            </Text>
+          </View>
+        </View>
+
+        {/* Attribution — CC BY 4.0 requires crediting the source; both tappable */}
+        <InfoLinkRow
+          icon="globe-outline"
+          label="Portale Open Data"
+          sublabel="opendata.comune.bologna.it"
+          url={OPEN_DATA_PORTAL_URL}
+        />
+        <InfoLinkRow
+          icon="document-text-outline"
+          label="Licenza dati"
+          sublabel="Creative Commons BY 4.0"
+          url={DATA_LICENSE_URL}
+          isLast
+        />
+      </View>
+
+      <View className="h-10" />
     </ScrollView>
   );
 }

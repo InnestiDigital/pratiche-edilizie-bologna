@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   Pressable,
   RefreshControl,
   TextInput,
@@ -25,6 +25,7 @@ import {
 import { loadPreferences } from '../../lib/preferences';
 import { listFavoriteIds } from '../../lib/favorites';
 import { feedCardDate } from '../../lib/feed-card-date';
+import { groupPermitsBySection } from '../../lib/feed-sections';
 import { formatProtocol } from '../../lib/format-protocol';
 import {
   buildActiveFilterChips,
@@ -478,6 +479,22 @@ function ActiveFilterChips({
   );
 }
 
+/* ── Date Section Header ────────────────────────── */
+
+/** Sticky month header ("Novembre 2024") over a run of same-month cards. */
+function FeedSectionHeader({ title, count }: { title: string; count: number }) {
+  return (
+    <View className="flex-row items-center justify-between bg-parchment-100 px-4 pb-1.5 pt-3">
+      <Text
+        className="text-xs font-bold uppercase tracking-wider text-stone-600"
+        accessibilityRole="header">
+        {title}
+      </Text>
+      <Text className="text-xs font-semibold text-stone-500">{count}</Text>
+    </View>
+  );
+}
+
 /* ── Main Feed Screen ───────────────────────────── */
 
 export default function FeedScreen() {
@@ -660,6 +677,11 @@ export default function FeedScreen() {
     defaultSort: 'request_newest',
   });
 
+  // Partition the loaded permits into calendar-month sections keyed on the active
+  // sort's date field, so the feed reads as a scannable timeline. Adjacent-run
+  // grouping never reorders — it mirrors the SQL order and only inserts headers.
+  const sections = useMemo(() => groupPermitsBySection(permits, sort), [permits, sort]);
+
   const removeFilter = (key: string) => {
     if (key === ZONES_CHIP_KEY) setActiveZones(new Set(QUARTIERI));
     else if (key === PERIOD_CHIP_KEY) setPeriod('all');
@@ -774,8 +796,8 @@ export default function FeedScreen() {
         </View>
       )}
 
-      <FlatList
-        data={permits}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.source_id}
         renderItem={({ item }) => (
           <PermitCard
@@ -785,7 +807,10 @@ export default function FeedScreen() {
             onPress={() => router.push(`/permit/${item.id}`)}
           />
         )}
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
+        renderSectionHeader={({ section }) => (
+          <FeedSectionHeader title={section.title} count={section.data.length} />
+        )}
+        contentContainerStyle={{ paddingBottom: 24 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9B2335" />
         }

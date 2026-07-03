@@ -82,25 +82,58 @@ const PREFERENCE: Record<SortOption, FeedCardDateKind[]> = {
   oldest: ['rilevata', 'richiesta', 'chiusura'],
 };
 
+/** The date field chosen for a permit under a sort — with its raw ODS string. */
+export interface PickedFeedDateField {
+  kind: FeedCardDateKind;
+  label: string;
+  icon: string;
+  /** The raw ODS date string of the chosen field (before Italian formatting). */
+  raw: string;
+}
+
+/**
+ * Pick which of a permit's dates leads for the given sort, returning the raw ODS
+ * string so callers can both format it (feed card) and bucket by month (feed
+ * section headers) from one source of truth.
+ *
+ * Walks the sort's preference order and returns the first field whose date is
+ * confidently formattable (`formatItDate` non-null). Returns `null` only when the
+ * permit has no parseable date at all (all three fields null/blank).
+ */
+export function pickFeedDateField(
+  permit: FeedCardDateInput,
+  sort: SortOption | undefined
+): PickedFeedDateField | null {
+  const order = PREFERENCE[sort ?? 'newest'];
+  for (const kind of order) {
+    const field = FIELDS[kind];
+    const raw = field.raw(permit);
+    if (formatItDate(raw) !== null) {
+      // raw is non-null here: formatItDate only returns non-null for a non-blank string.
+      return { kind: field.kind, label: field.label, icon: field.icon, raw: raw as string };
+    }
+  }
+  return null;
+}
+
 /**
  * Pick the labelled date a feed card should show for the given sort.
  *
- * Walks the sort's preference order and returns the first field with a
- * confidently formattable date. Returns `null` only if the permit has no
- * parseable date at all (all three fields null/blank), in which case the card
- * renders no date row.
+ * Returns `null` only if the permit has no parseable date at all (all three
+ * fields null/blank), in which case the card renders no date row.
  */
 export function feedCardDate(
   permit: FeedCardDateInput,
   sort: SortOption | undefined
 ): FeedCardDate | null {
-  const order = PREFERENCE[sort ?? 'newest'];
-  for (const kind of order) {
-    const field = FIELDS[kind];
-    const formatted = formatItDate(field.raw(permit));
-    if (formatted !== null) {
-      return { kind: field.kind, label: field.label, icon: field.icon, date: formatted };
-    }
-  }
-  return null;
+  const picked = pickFeedDateField(permit, sort);
+  if (picked === null) return null;
+  // formatItDate(picked.raw) is non-null: pickFeedDateField only accepts a field
+  // whose formatItDate is non-null, so this re-format cannot be null.
+  return {
+    kind: picked.kind,
+    label: picked.label,
+    icon: picked.icon,
+    date: formatItDate(picked.raw) as string,
+  };
 }

@@ -112,6 +112,7 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   byDataset: Record<string, number>;
   byZone: Record<string, number>;
   byStatus: Record<string, number>;
+  byMonth: Record<string, number>;
   newCount: number;
 }> {
   const total =
@@ -138,7 +139,18 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   const byStatus: Record<string, number> = {};
   for (const r of statusRows) byStatus[r.status] = r.c;
 
-  return { total, byDataset, byZone, byStatus, newCount };
+  // Permits bucketed by the month their request was filed (richiesta_data →
+  // source_updated_at), keyed `YYYY-MM`. Guarded to well-formed date strings so
+  // a truncated/legacy value can't produce a junk bucket; the pure
+  // `buildMonthlyActivity` builds the trailing-months chart series from this.
+  const monthRows = await db.getAllAsync<{ m: string; c: number }>(
+    'SELECT substr(source_updated_at, 1, 7) AS m, COUNT(*) AS c FROM permits ' +
+      'WHERE source_updated_at IS NOT NULL AND length(source_updated_at) >= 7 GROUP BY m'
+  );
+  const byMonth: Record<string, number> = {};
+  for (const r of monthRows) byMonth[r.m] = r.c;
+
+  return { total, byDataset, byZone, byStatus, byMonth, newCount };
 }
 
 export async function countNewPermits(db: SQLite.SQLiteDatabase): Promise<number> {

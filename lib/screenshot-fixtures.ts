@@ -208,6 +208,16 @@ export const STATS_FIXTURE = {
     diniegata: 1,
     in_attesa: 1,
   } as Record<string, number>,
+  // Permits bucketed by request month (`source_updated_at` → `YYYY-MM`),
+  // derived from the fixtures so it never drifts from the rows above — mirrors
+  // the native `getStats` GROUP BY that feeds `buildMonthlyActivity`.
+  byMonth: PERMIT_FIXTURES.reduce<Record<string, number>>((acc, p) => {
+    if (p.source_updated_at && p.source_updated_at.length >= 7) {
+      const m = p.source_updated_at.slice(0, 7);
+      acc[m] = (acc[m] ?? 0) + 1;
+    }
+    return acc;
+  }, {}),
   newCount: PERMIT_FIXTURES.filter((p) => p.is_new === 1).length,
 };
 

@@ -3,6 +3,7 @@ import {
   buildFeedQuery,
   buildFeedCountQuery,
   buildFeedWhere,
+  buildProtocolSearchPatterns,
   escapeLike,
   SORT_LABELS,
   type FeedFilters,
@@ -116,6 +117,73 @@ describe('buildFeedQuery — WHERE construction', () => {
     );
     // zone, filing_type, search x2, status, then LIMIT/OFFSET (is_new binds nothing)
     expect(params).toEqual(['Navile', 'PDC', '%via%', '%via%', 'rilasciata', 10, 20]);
+  });
+});
+
+describe('buildProtocolSearchPatterns', () => {
+  it('returns [] for a text (non-protocol) query so address search is untouched', () => {
+    expect(buildProtocolSearchPatterns('Indipendenza')).toEqual([]);
+    expect(buildProtocolSearchPatterns('via Marconi')).toEqual([]);
+    // A mixed alphanumeric term (a letter present) is still a text search.
+    expect(buildProtocolSearchPatterns('PDC-2024')).toEqual([]);
+  });
+
+  it('returns a single %number% pattern for a bare number', () => {
+    expect(buildProtocolSearchPatterns('481')).toEqual(['%481%']);
+    expect(buildProtocolSearchPatterns('000481')).toEqual(['%000481%']);
+  });
+
+  it('splits the displayed number/year protocol into order-independent groups', () => {
+    // Displayed as `000481/2024`; source_id is `PDC-2024-000481` (year before
+    // number), so both groups are ANDed as substrings rather than one ordered pattern.
+    expect(buildProtocolSearchPatterns('000481/2024')).toEqual(['%000481%', '%2024%']);
+    expect(buildProtocolSearchPatterns('481/2024')).toEqual(['%481%', '%2024%']);
+  });
+
+  it('accepts any protocol separator (slash, dash, whitespace)', () => {
+    expect(buildProtocolSearchPatterns('000481 2024')).toEqual(['%000481%', '%2024%']);
+    expect(buildProtocolSearchPatterns('000481-2024')).toEqual(['%000481%', '%2024%']);
+  });
+
+  it('trims and ignores separator-only / empty input', () => {
+    expect(buildProtocolSearchPatterns('  481  ')).toEqual(['%481%']);
+    expect(buildProtocolSearchPatterns('/')).toEqual([]);
+    expect(buildProtocolSearchPatterns('')).toEqual([]);
+  });
+});
+
+describe('buildFeedQuery — protocol-aware search', () => {
+  it('ORs a source_id LIKE branch onto the search for a bare number', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, searchQuery: '481' }, 50, 0);
+    expect(squish(sql)).toContain(
+      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR (source_id LIKE ? ESCAPE '\\'))"
+    );
+    // address, procedimento, then the single protocol pattern, then LIMIT/OFFSET
+    expect(params).toEqual(['%481%', '%481%', '%481%', 50, 0]);
+  });
+
+  it('ANDs each numeric group of a number/year protocol inside the source_id branch', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, searchQuery: '000481/2024' }, 50, 0);
+    expect(squish(sql)).toContain(
+      "OR (source_id LIKE ? ESCAPE '\\' AND source_id LIKE ? ESCAPE '\\')"
+    );
+    expect(params).toEqual(['%000481/2024%', '%000481/2024%', '%000481%', '%2024%', 50, 0]);
+  });
+
+  it('leaves a text search with no source_id branch (clause unchanged)', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, searchQuery: 'Marconi' }, 50, 0);
+    expect(squish(sql)).toContain(
+      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')"
+    );
+    expect(squish(sql)).not.toContain('source_id');
+    expect(params).toEqual(['%Marconi%', '%Marconi%', 50, 0]);
+  });
+
+  it('keeps the count query consistent with the protocol-aware feed WHERE', () => {
+    const filters: FeedFilters = { ...EMPTY, searchQuery: '000481/2024' };
+    const feed = buildFeedQuery(filters, 10, 20);
+    const count = buildFeedCountQuery(filters);
+    expect(count.params).toEqual(feed.params.slice(0, -2));
   });
 });
 

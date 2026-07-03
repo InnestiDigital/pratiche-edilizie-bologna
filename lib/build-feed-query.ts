@@ -83,6 +83,34 @@ export function escapeLike(term: string): string {
   return term.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }
 
+/**
+ * If a feed search term looks like a permit protocol / number, build the set of
+ * SQLite `LIKE` patterns (already LIKE-escaped, each wrapped as `%group%`) to match
+ * the stored `source_id` (`<dataset>-<year>-<number>`, e.g. `PDC-2024-000481`).
+ *
+ * On every card and the detail header the protocol is shown as `<number>/<year>`
+ * (e.g. `000481/2024`) — the reverse field order of the source_id — so we cannot
+ * build one ordered pattern. Instead we split the query on the separators a user
+ * would type (`/`, `-`, whitespace) and return one `%group%` pattern per numeric
+ * group; the caller ANDs them, which is order-independent: `000481/2024` becomes
+ * `%000481%` AND `%2024%`, both of which are substrings of `PDC-2024-000481`.
+ * A bare number (`481`) returns the single `%481%`.
+ *
+ * Returns an empty array when the term contains any non-protocol character (a
+ * letter — i.e. an address / procedure search), so those searches are left
+ * untouched and never gain a spurious source_id branch.
+ */
+export function buildProtocolSearchPatterns(query: string): string[] {
+  const trimmed = query.trim();
+  // Only digits and the separators a protocol is written with. Any letter → this
+  // is a text search, not a protocol lookup.
+  if (!/^[\d/\s-]+$/.test(trimmed)) return [];
+  return trimmed
+    .split(/[/\s-]+/)
+    .filter(Boolean)
+    .map((group) => `%${escapeLike(group)}%`);
+}
+
 /** The SQL text plus its ordered bind parameters for a feed query. */
 export interface FeedQuery {
   sql: string;
@@ -119,9 +147,23 @@ export function buildFeedWhere(filters: FeedFilters): {
   }
 
   if (filters.searchQuery) {
-    conditions.push("(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')");
     const q = `%${escapeLike(filters.searchQuery)}%`;
-    params.push(q, q);
+    const clauses = ["address LIKE ? ESCAPE '\\'", "procedimento LIKE ? ESCAPE '\\'"];
+    const searchParams: string[] = [q, q];
+    // A protocol/number query additionally matches the source_id. Each numeric
+    // group is ANDed (order-independent) so the displayed `number/year` form finds
+    // the `dataset-year-number` source_id; ORed with the text search above so a
+    // bare number that also appears in an address still matches both ways.
+    const protocolPatterns = buildProtocolSearchPatterns(filters.searchQuery);
+    if (protocolPatterns.length > 0) {
+      const protocolClause = protocolPatterns
+        .map(() => "source_id LIKE ? ESCAPE '\\'")
+        .join(' AND ');
+      clauses.push(`(${protocolClause})`);
+      searchParams.push(...protocolPatterns);
+    }
+    conditions.push(`(${clauses.join(' OR ')})`);
+    params.push(...searchParams);
   }
 
   if (filters.statuses && filters.statuses.length > 0) {

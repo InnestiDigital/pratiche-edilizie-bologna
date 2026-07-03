@@ -10,6 +10,7 @@ import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
 import { pendingDurationLabel } from '../../lib/pending-duration';
 import { buildShareMessage } from '../../lib/share-message';
+import { extractStreetName } from '../../lib/street-name';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
   FILING_TYPE_LABELS,
@@ -224,6 +225,14 @@ export default function PermitDetail() {
   const mapsUrl = buildMapsUrl(permit.address, Platform.OS);
   const timeline = buildPermitTimeline(permit);
 
+  // Street name (address minus the civic number) → a "see all permits on this
+  // street" search, narrower than the zone-wide "Nella stessa zona" card below.
+  // Only offered when a civic number was actually stripped (street differs from
+  // the full address), so a bare street with no number does not show a redundant
+  // "other permits in <the same address>" link.
+  const streetName = extractStreetName(permit.address);
+  const showStreetLink = streetName !== null && streetName !== permit.address?.trim();
+
   // Plain-Italian meaning of the current status (jargon like "Decaduta" tells the
   // citizen nothing). Only shown for a recognized status; 'altro'/unknown → none.
   const statusDescription = STATUS_DESCRIPTIONS[permit.status];
@@ -323,6 +332,35 @@ export default function PermitDetail() {
             <Text className="mt-2 text-[13px] leading-5 text-stone-600">{statusDescription}</Text>
           )}
         </View>
+
+        {/* Street shortcut — jump to the feed filtered to this street. Reuses the
+            feed's address search (the `q` deep link) so it stays a single source
+            of truth for what "on this street" means. */}
+        {showStreetLink && (
+          <Pressable
+            onPress={() =>
+              router.navigate({
+                pathname: '/(tabs)',
+                params: { q: streetName, t: String(Date.now()) },
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel={`Altre pratiche in ${streetName}`}
+            accessibilityHint="Apre il feed con la ricerca su questa via"
+            className="mt-3 flex-row items-center rounded-2xl bg-white p-4"
+            style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+            <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-parchment-100">
+              <Ionicons name="trail-sign-outline" size={18} color="#8B7355" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-stone-600">Altre pratiche in</Text>
+              <Text className="text-[15px] font-semibold text-ink-800" numberOfLines={1}>
+                {streetName}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#a89888" />
+          </Pressable>
+        )}
 
         {/* Che cos'è — plain-Italian explainer of the filing procedure */}
         {filingDescription && (

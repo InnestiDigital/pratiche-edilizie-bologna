@@ -94,6 +94,51 @@ function Timeline({ events }: { events: ReturnType<typeof buildPermitTimeline> }
   );
 }
 
+/** One compact button in the secondary action row (Salva · Mappe · Condividi):
+ *  stacked icon + label, equal-width via flex-1. `active` tints it brick (used for
+ *  the saved state); otherwise a neutral outline that reads as secondary to the
+ *  full-width primary CTA above it. */
+function SecondaryAction({
+  icon,
+  label,
+  onPress,
+  active,
+  role = 'button',
+  accessibilityLabel,
+  accessibilityHint,
+  selected,
+  isFirst,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  active?: boolean;
+  role?: 'button' | 'link';
+  accessibilityLabel: string;
+  accessibilityHint?: string;
+  selected?: boolean;
+  isFirst?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole={role}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={selected !== undefined ? { selected } : undefined}
+      className={`flex-1 items-center justify-center rounded-xl border py-3 ${
+        isFirst ? '' : 'ml-2'
+      } ${active ? 'border-brick-600 bg-brick-50' : 'border-stone-300 bg-white'}`}>
+      <Ionicons name={icon} size={20} color={active ? '#9B2335' : '#5c5248'} />
+      <Text
+        className={`mt-1 text-xs font-semibold ${active ? 'text-brick-600' : 'text-ink-600'}`}
+        numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 /** One tappable row in the "Nella stessa zona" card — filing badge, address, status. */
 function RelatedRow({
   permit,
@@ -387,7 +432,9 @@ export default function PermitDetail() {
           </View>
         )}
 
-        {/* Actions */}
+        {/* Actions — one full-width primary CTA (the official record) over a
+            compact equal-width secondary row (Salva · Mappe · Condividi), so the
+            three secondary actions read as secondary and cost one row, not three. */}
         <View className="mt-4">
           {permit.source_link && (
             <Pressable
@@ -408,40 +455,33 @@ export default function PermitDetail() {
             </Pressable>
           )}
 
-          <Pressable
-            onPress={handleToggleSave}
-            accessibilityRole="button"
-            accessibilityLabel={saved ? 'Rimuovi dai salvati' : 'Salva pratica'}
-            accessibilityState={{ selected: saved }}
-            className={`mt-2 flex-row items-center justify-center rounded-xl border py-3.5 ${
-              saved ? 'border-brick-600 bg-brick-50' : 'border-stone-300 bg-white'
-            }`}>
-            <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color="#9B2335" />
-            <Text className="ml-2 text-base font-semibold text-brick-600">
-              {saved ? 'Salvata' : 'Salva'}
-            </Text>
-          </Pressable>
-
-          {mapsUrl && (
-            <Pressable
-              onPress={() => Linking.openURL(mapsUrl)}
-              accessibilityRole="link"
-              accessibilityLabel="Apri in Mappe"
-              accessibilityHint="Apre la posizione della pratica nell'app mappe"
-              className="mt-2 flex-row items-center justify-center rounded-xl border border-stone-300 bg-white py-3.5">
-              <Ionicons name="navigate-outline" size={18} color="#9B2335" />
-              <Text className="ml-2 text-base font-semibold text-ink-600">Apri in Mappe</Text>
-            </Pressable>
-          )}
-
-          <Pressable
-            onPress={handleShare}
-            accessibilityRole="button"
-            accessibilityLabel="Condividi"
-            className="mt-2 flex-row items-center justify-center rounded-xl border border-stone-300 bg-white py-3.5">
-            <Ionicons name="share-outline" size={18} color="#5c5248" />
-            <Text className="ml-2 text-base font-semibold text-ink-600">Condividi</Text>
-          </Pressable>
+          <View className={`flex-row ${permit.source_link ? 'mt-2' : ''}`}>
+            <SecondaryAction
+              isFirst
+              icon={saved ? 'bookmark' : 'bookmark-outline'}
+              label={saved ? 'Salvata' : 'Salva'}
+              onPress={handleToggleSave}
+              active={saved}
+              accessibilityLabel={saved ? 'Rimuovi dai salvati' : 'Salva pratica'}
+              selected={saved}
+            />
+            {mapsUrl && (
+              <SecondaryAction
+                icon="navigate-outline"
+                label="Mappe"
+                onPress={() => Linking.openURL(mapsUrl)}
+                role="link"
+                accessibilityLabel="Apri in Mappe"
+                accessibilityHint="Apre la posizione della pratica nell'app mappe"
+              />
+            )}
+            <SecondaryAction
+              icon="share-outline"
+              label="Condividi"
+              onPress={handleShare}
+              accessibilityLabel="Condividi"
+            />
+          </View>
         </View>
 
         <View className="h-10" />

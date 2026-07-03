@@ -566,7 +566,13 @@ export default function FeedScreen() {
   // Deep link from the Sync "Per Quartiere" rows: `?zone=<quartiere>&t=<nonce>`.
   // The nonce lets tapping the SAME zone twice re-apply the filter (the param
   // value changes, so the effect below refires even when `zone` is unchanged).
-  const { zone: zoneParam, t: zoneNonce } = useLocalSearchParams<{ zone?: string; t?: string }>();
+  // Deep link from the detail "Altre pratiche in <via>" action carries `q` (a
+  // street name) + the shared `t` nonce; it prefills the search box below.
+  const {
+    zone: zoneParam,
+    q: searchParam,
+    t: linkNonce,
+  } = useLocalSearchParams<{ zone?: string; q?: string; t?: string }>();
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -673,8 +679,15 @@ export default function FeedScreen() {
   useEffect(() => {
     const zone = parseZoneParam(zoneParam);
     if (zone) setActiveZones(new Set([zone]));
-    // zoneNonce is listed only to retrigger this effect on a same-zone re-tap.
-  }, [zoneParam, zoneNonce]);
+    // linkNonce is listed only to retrigger this effect on a same-zone re-tap.
+  }, [zoneParam, linkNonce]);
+
+  // Apply a `q` deep link from a permit detail's "Altre pratiche in <via>"
+  // action: prefill the search box with the street name so the feed narrows to
+  // that street. Ignored when blank; refires on the nonce so re-tapping works.
+  useEffect(() => {
+    if (typeof searchParam === 'string' && searchParam.trim()) setSearch(searchParam);
+  }, [searchParam, linkNonce]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

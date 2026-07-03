@@ -5,6 +5,7 @@ import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../li
 import { getDb } from '../../lib/db';
 import { getStats } from '../../lib/queries';
 import { buildStatusBreakdown } from '../../lib/status-breakdown';
+import { syncFreshness } from '../../lib/sync-freshness';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 /* Dataset accent colors — same palette used for the filing-type badges across
@@ -159,11 +160,40 @@ export default function SyncScreen() {
           </Pressable>
         )}
 
-        {lastSync && (
-          <Text className="mt-3 text-center text-xs text-stone-600">
-            Ultimo aggiornamento: {formatDate(lastSync)}
-          </Text>
-        )}
+        {lastSync &&
+          (() => {
+            // Freshness cue: turn the raw timestamp into a human "Aggiornato N …
+            // fa" and, once the local snapshot is stale, flag it (amber + icon) to
+            // nudge a resync. `new Date()` (the real clock) is read only here; the
+            // label/staleness mapping is the pure, tested `syncFreshness`.
+            const fresh = syncFreshness(lastSync, new Date());
+            return (
+              <View className="mt-3 items-center">
+                <View className="flex-row items-center">
+                  {fresh?.stale && (
+                    <Ionicons
+                      name="alert-circle"
+                      size={13}
+                      color="#b45309"
+                      style={{ marginRight: 4 }}
+                    />
+                  )}
+                  <Text
+                    className={`text-xs font-semibold ${
+                      fresh?.stale ? 'text-amber-700' : 'text-stone-700'
+                    }`}>
+                    {fresh ? `Aggiornato ${fresh.label}` : 'Ultimo aggiornamento'}
+                  </Text>
+                </View>
+                <Text className="mt-0.5 text-[11px] text-stone-400">{formatDate(lastSync)}</Text>
+                {fresh?.stale && (
+                  <Text className="mt-0.5 text-[11px] text-amber-700">
+                    Tocca Aggiornamento Rapido per aggiornare i dati.
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
 
         {/* Progress */}
         {progress.length > 0 && (

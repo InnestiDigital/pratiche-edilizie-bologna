@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildActiveFilterChips,
   ZONES_CHIP_KEY,
+  PERIOD_CHIP_KEY,
   ONLY_NEW_CHIP_KEY,
   ONLY_FAVORITES_CHIP_KEY,
   SORT_CHIP_KEY,
@@ -11,10 +12,13 @@ import {
 } from './active-filters';
 import { STATUS_LABELS, TAG_LABELS } from './constants';
 import { SORT_LABELS } from './build-feed-query';
+import { PERIOD_LABELS } from './feed-period';
 
 const base: ActiveFilterState = {
   zones: ['A', 'B', 'C'],
   totalZones: 3,
+  period: 'all',
+  defaultPeriod: 'all',
   statuses: [],
   tags: [],
   onlyNew: false,
@@ -65,6 +69,14 @@ describe('buildActiveFilterChips', () => {
     expect(chips).toContainEqual({ key: `${TAG_CHIP_PREFIX}${t}`, label: TAG_LABELS[t] });
   });
 
+  it('adds a period chip only when period differs from the default', () => {
+    expect(
+      buildActiveFilterChips({ ...base, period: 'all' }).find((c) => c.key === PERIOD_CHIP_KEY)
+    ).toBeUndefined();
+    const chips = buildActiveFilterChips({ ...base, period: 'last_3_months' });
+    expect(chips).toContainEqual({ key: PERIOD_CHIP_KEY, label: PERIOD_LABELS.last_3_months });
+  });
+
   it('adds only-new and only-favorites chips', () => {
     const chips = buildActiveFilterChips({ ...base, onlyNew: true, onlyFavorites: true });
     expect(chips).toContainEqual({ key: ONLY_NEW_CHIP_KEY, label: 'Solo nuovi' });
@@ -81,12 +93,14 @@ describe('buildActiveFilterChips', () => {
     expect(chips).toContainEqual({ key: SORT_CHIP_KEY, label: SORT_LABELS.closing_newest });
   });
 
-  it('orders chips zones → statuses → tags → onlyNew → onlyFavorites → sort', () => {
+  it('orders chips zones → period → statuses → tags → onlyNew → onlyFavorites → sort', () => {
     const s = Object.keys(STATUS_LABELS)[0];
     const t = Object.keys(TAG_LABELS)[0];
     const chips = buildActiveFilterChips({
       zones: ['A'],
       totalZones: 6,
+      period: 'last_month',
+      defaultPeriod: 'all',
       statuses: [s],
       tags: [t],
       onlyNew: true,
@@ -96,6 +110,7 @@ describe('buildActiveFilterChips', () => {
     });
     expect(chips.map((c) => c.key)).toEqual([
       ZONES_CHIP_KEY,
+      PERIOD_CHIP_KEY,
       `${STATUS_CHIP_PREFIX}${s}`,
       `${TAG_CHIP_PREFIX}${t}`,
       ONLY_NEW_CHIP_KEY,

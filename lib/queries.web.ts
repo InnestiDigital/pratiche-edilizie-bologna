@@ -74,6 +74,10 @@ function filterFixtures(filters: FeedFilters): Permit[] {
   if (filters.statuses?.length) rows = rows.filter((p) => filters.statuses!.includes(p.status));
   if (filters.onlyNew) rows = rows.filter((p) => p.is_new === 1);
   if (filters.onlyFavorites) rows = rows.filter((p) => FAVORITE_SOURCE_IDS.has(p.source_id));
+  if (filters.requestedAfter)
+    rows = rows.filter(
+      (p) => p.source_updated_at !== null && p.source_updated_at >= filters.requestedAfter!
+    );
   if (filters.searchQuery?.trim()) {
     const q = filters.searchQuery.trim().toLowerCase();
     rows = rows.filter((p) => (p.address ?? '').toLowerCase().includes(q));

@@ -12,6 +12,30 @@ import {
 import { completeOnboarding } from '../lib/preferences';
 import { TowersMark } from '../components/TowersMark';
 
+/** One row in the first-run "come funziona" card: brand-tinted icon + a plain
+ *  line describing what the app does — mirrors the Settings "Informazioni" card. */
+function FeatureRow({
+  icon,
+  text,
+  isLast,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+  isLast?: boolean;
+}) {
+  return (
+    <View
+      className={`flex-row items-center px-4 py-3.5 ${
+        !isLast ? 'border-b border-parchment-200' : ''
+      }`}>
+      <View className="mr-3.5 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
+        <Ionicons name={icon} size={18} color="#9B2335" />
+      </View>
+      <Text className="flex-1 text-sm leading-5 text-ink-600">{text}</Text>
+    </View>
+  );
+}
+
 function ZoneChip({
   zone,
   selected,
@@ -115,7 +139,7 @@ export default function OnboardingScreen() {
     <ScrollView className="flex-1 bg-parchment-100" contentContainerStyle={{ flexGrow: 1 }}>
       <View className="flex-1 px-6 pb-10 pt-16">
         {/* Header */}
-        <View className="mb-10 items-center">
+        <View className="mb-6 items-center">
           <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-brick-600">
             <TowersMark size={38} />
           </View>
@@ -123,9 +147,29 @@ export default function OnboardingScreen() {
             Pratiche Edilizie Bologna
           </Text>
           <Text className="mt-2 text-center text-base leading-6 text-stone-500">
-            Consulta le pratiche edilizie del Comune di Bologna.{'\n'}
-            Scegli i quartieri e i tipi di pratica che ti interessano.
+            Consulta le pratiche edilizie del Comune di Bologna.
           </Text>
+        </View>
+
+        {/* What the app does — sells the value prop + on-device privacy stance
+            before the user commits to picking filters (the rest of the app leans
+            on this promise; the first-run screen shouldn't stay silent on it). */}
+        <View
+          className="mb-8 overflow-hidden rounded-2xl bg-white"
+          style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
+          <FeatureRow
+            icon="funnel-outline"
+            text="Segui solo i quartieri e i tipi di pratica che ti interessano."
+          />
+          <FeatureRow
+            icon="notifications-outline"
+            text="Ricevi un avviso quando vengono pubblicate nuove pratiche."
+          />
+          <FeatureRow
+            icon="lock-closed-outline"
+            text="Tutto sul tuo dispositivo: nessun account, nessun tracciamento."
+            isLast
+          />
         </View>
 
         {/* Quartieri */}

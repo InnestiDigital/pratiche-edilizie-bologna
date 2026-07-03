@@ -9,6 +9,7 @@ import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
 import { buildShareMessage } from '../../lib/share-message';
+import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
   FILING_TYPE_LABELS,
   FILING_TYPE_FULL_NAMES,
@@ -162,11 +163,7 @@ export default function PermitDetail() {
   };
 
   if (!permit) {
-    return (
-      <View className="flex-1 items-center justify-center bg-parchment-100">
-        <Text className="text-stone-600">Caricamento...</Text>
-      </View>
-    );
+    return <DetailSkeleton />;
   }
 
   const tags = parsePermitTags(permit.tags);

@@ -127,6 +127,7 @@ export async function getStats(_db: SQLite.SQLiteDatabase): Promise<{
   byZone: Record<string, number>;
   byStatus: Record<string, number>;
   byMonth: Record<string, number>;
+  byTag: Record<string, number>;
   newCount: number;
 }> {
   return STATS_FIXTURE;

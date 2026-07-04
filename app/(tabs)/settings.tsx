@@ -138,6 +138,7 @@ export default function SettingsScreen() {
   // the user sees how much data a filter holds before turning it on/off.
   const [byZone, setByZone] = useState<Record<string, number>>({});
   const [byDataset, setByDataset] = useState<Record<string, number>>({});
+  const [byTag, setByTag] = useState<Record<string, number>>({});
 
   useEffect(() => {
     Promise.all([loadPreferences(), isNotificationsEnabled()]).then(([prefs, notifEnabled]) => {
@@ -162,6 +163,7 @@ export default function SettingsScreen() {
         setTotalCount(stats.total);
         setByZone(stats.byZone);
         setByDataset(stats.byDataset);
+        setByTag(stats.byTag);
       });
     return () => {
       cancelled = true;
@@ -368,6 +370,7 @@ export default function SettingsScreen() {
             value={tags.has(tag)}
             onToggle={() => toggleTag(tag)}
             isLast={i === tagEntries.length - 1}
+            count={statsLoaded ? (byTag[tag] ?? 0) : undefined}
           />
         ))}
       </View>

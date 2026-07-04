@@ -3,9 +3,15 @@ import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-nati
 import { useRouter } from 'expo-router';
 import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../lib/sync';
 import { getDb } from '../../lib/db';
-import { getStats } from '../../lib/queries';
+import { getStats, getReleasedDatePairs } from '../../lib/queries';
 import { buildStatusBreakdown } from '../../lib/status-breakdown';
 import { buildMonthlyActivity, monthlyActivityRangeLabel } from '../../lib/monthly-activity';
+import {
+  buildProcessingStats,
+  processingRangeLabel,
+  type ProcessingStats,
+} from '../../lib/processing-stats';
+import { italianDaySpan } from '../../lib/duration-span';
 import { syncFreshness } from '../../lib/sync-freshness';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -32,6 +38,9 @@ export default function SyncScreen() {
     byMonth: Record<string, number>;
     newCount: number;
   } | null>(null);
+  // Typical request→release time across released permits (median + range), or null
+  // when too few concluded permits exist to state a "typical" time honestly.
+  const [processing, setProcessing] = useState<ProcessingStats | null>(null);
 
   useEffect(() => {
     loadInfo();
@@ -42,6 +51,7 @@ export default function SyncScreen() {
     const db = await getDb();
     const s = await getStats(db);
     setStats(s);
+    setProcessing(buildProcessingStats(await getReleasedDatePairs(db)));
   }
 
   async function handleSync(full: boolean) {
@@ -382,6 +392,49 @@ export default function SyncScreen() {
                 </View>
               );
             })()}
+
+            {/* Tempi di rilascio — the typical time from request to release
+                across released permits (median, robust to outliers) plus the
+                observed range. Aggregate counterpart to the per-permit
+                "Conclusa in …" caption; hidden below a small sample. */}
+            {processing && (
+              <View className="mb-6">
+                <View className="mb-2 flex-row items-baseline justify-between">
+                  <Text className="text-base font-bold text-ink-800">Tempi di rilascio</Text>
+                  <Text className="text-xs text-stone-500">
+                    su {processing.count.toLocaleString('it-IT')}{' '}
+                    {processing.count === 1 ? 'pratica' : 'pratiche'}
+                  </Text>
+                </View>
+                <View
+                  className="flex-row items-center rounded-xl bg-white p-4"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    elevation: 1,
+                  }}
+                  accessibilityRole="summary"
+                  accessibilityLabel={`Tempo tipico dalla richiesta al rilascio: ${italianDaySpan(
+                    processing.medianDays
+                  )}. Intervallo osservato: ${processingRangeLabel(processing)}.`}>
+                  <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-green-50">
+                    <Ionicons name="time-outline" size={24} color="#22c55e" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-2xl font-bold text-ink-800">
+                      {italianDaySpan(processing.medianDays)}
+                    </Text>
+                    <Text className="text-xs text-stone-600">
+                      tempo tipico dalla richiesta al rilascio
+                    </Text>
+                    <Text className="mt-1 text-[11px] text-stone-500">
+                      Intervallo: {processingRangeLabel(processing)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
             <Text className="mb-2 text-base font-bold text-ink-800">Per Quartiere</Text>
             <View

@@ -1,7 +1,8 @@
 import type * as SQLite from 'expo-sqlite';
-import type { FilingType } from './constants';
+import { RELEASED_STATUSES, type FilingType } from './constants';
 import { buildFeedQuery, buildFeedCountQuery, type FeedFilters } from './build-feed-query';
 import { buildRelatedPermitsQuery, RELATED_PERMITS_LIMIT } from './related-query';
+import type { ProcessingDatePair } from './processing-stats';
 
 // The feed-query primitives live in the pure, db-free `build-feed-query` module
 // so the SQL construction is unit-testable in isolation. Re-exported here so the
@@ -164,6 +165,24 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   for (const r of tagRows) byTag[r.tag] = r.c;
 
   return { total, byDataset, byZone, byStatus, byMonth, byTag, newCount };
+}
+
+/**
+ * Request/closing date pairs for released permits (positive-outcome statuses),
+ * feeding the pure `buildProcessingStats` "Tempi di rilascio" aggregate. Only
+ * rows with both dates present are returned; the pure core drops any pair whose
+ * closing precedes the request, so no date validation happens here.
+ */
+export async function getReleasedDatePairs(
+  db: SQLite.SQLiteDatabase
+): Promise<ProcessingDatePair[]> {
+  const placeholders = RELEASED_STATUSES.map(() => '?').join(', ');
+  return db.getAllAsync<ProcessingDatePair>(
+    `SELECT source_updated_at AS request, date_issued AS closing FROM permits ` +
+      `WHERE date_issued IS NOT NULL AND source_updated_at IS NOT NULL ` +
+      `AND status IN (${placeholders})`,
+    ...RELEASED_STATUSES
+  );
 }
 
 export async function countNewPermits(db: SQLite.SQLiteDatabase): Promise<number> {

@@ -12,8 +12,9 @@
  * Native + vitest use `queries.ts` and never load this file.
  */
 import type * as SQLite from 'expo-sqlite';
-import type { FilingType } from './constants';
+import { RELEASED_STATUSES, type FilingType } from './constants';
 import type { FeedFilters } from './build-feed-query';
+import type { ProcessingDatePair } from './processing-stats';
 import { PERMIT_FIXTURES, STATS_FIXTURE, FAVORITE_SOURCE_IDS } from './screenshot-fixtures';
 
 // Re-export the pure, db-free query primitives from their real home (safe: the
@@ -131,6 +132,15 @@ export async function getStats(_db: SQLite.SQLiteDatabase): Promise<{
   newCount: number;
 }> {
   return STATS_FIXTURE;
+}
+
+export async function getReleasedDatePairs(
+  _db: SQLite.SQLiteDatabase
+): Promise<ProcessingDatePair[]> {
+  const released: readonly string[] = RELEASED_STATUSES;
+  return FIXTURES.filter(
+    (p) => released.includes(p.status) && p.date_issued !== null && p.source_updated_at !== null
+  ).map((p) => ({ request: p.source_updated_at, closing: p.date_issued }));
 }
 
 export async function countNewPermits(_db: SQLite.SQLiteDatabase): Promise<number> {

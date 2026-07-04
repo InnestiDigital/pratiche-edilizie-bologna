@@ -368,18 +368,24 @@ export default function SyncScreen() {
                             accessibilityLabel={`${m.label} ${m.year}: ${m.count} ${
                               m.count === 1 ? 'pratica' : 'pratiche'
                             }`}>
-                            {/* Count caption above each bar; transparent (not
-                                omitted) on empty months so every column keeps the
-                                same height and the bars share one baseline. */}
-                            <Text
-                              className={`mb-1 text-[11px] font-bold ${
-                                m.count === 0 ? 'text-transparent' : 'text-ink-700'
-                              }`}>
-                              {m.count}
-                            </Text>
-                            <View style={{ height: BAR_MAX }} className="w-full justify-end">
+                            {/* Count caption rides directly on top of its bar (not
+                                pinned to the column top) so short bars don't leave
+                                their number floating — every column reads as one
+                                connected unit. justify-end keeps the shared baseline;
+                                the +20 headroom fits the caption above a full-height
+                                peak bar. Empty months keep a transparent caption so
+                                columns stay the same height. */}
+                            <View
+                              style={{ height: BAR_MAX + 20 }}
+                              className="w-full items-center justify-end">
+                              <Text
+                                className={`mb-1 text-[11px] font-bold ${
+                                  m.count === 0 ? 'text-transparent' : 'text-ink-700'
+                                }`}>
+                                {m.count}
+                              </Text>
                               <View
-                                className={`mx-auto w-4 rounded-t-md ${barColor}`}
+                                className={`w-4 rounded-t-md ${barColor}`}
                                 style={{ height: barHeight }}
                               />
                             </View>

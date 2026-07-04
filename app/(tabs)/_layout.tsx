@@ -43,10 +43,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Filtri',
+          // Tab label matches the screen header ("Impostazioni") — the screen holds
+          // notification + follow preferences, not just filters. A gear icon (not the
+          // sliders `options-outline`) also disambiguates it from the feed's in-list
+          // filter button, which owns that sliders glyph.
+          title: 'Impostazioni',
           headerTitle: () => <HeaderBrand title="Impostazioni" />,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="options-outline" size={size} color={color} />
+            <Ionicons name="settings-outline" size={size} color={color} />
           ),
         }}
       />

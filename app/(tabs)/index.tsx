@@ -30,6 +30,7 @@ import { parseZoneParam } from '../../lib/zone-param';
 import { debounce } from '../../lib/debounce';
 import { groupPermitsBySection } from '../../lib/feed-sections';
 import { sectionCountLabel } from '../../lib/section-count-label';
+import { buildResultCount } from '../../lib/result-count-label';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import {
@@ -581,6 +582,9 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasData, setHasData] = useState(true);
   const [resultCount, setResultCount] = useState<number | null>(null);
+  // Unfiltered total (base prefs only) — lets the header say "12 di 480 pratiche"
+  // when the view is narrowed, so the count reads as a slice not the whole set.
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [newCount, setNewCount] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -646,6 +650,9 @@ export default function FeedScreen() {
         // Total matching the active filters (pagination-independent) for the
         // result-count header; shares getPermits' WHERE so the number is exact.
         setResultCount(await countPermits(db, filters));
+        // Unfiltered total (base prefs, no in-feed refinement) — the denominator
+        // for the "N di TOTAL" header when the view is narrowed.
+        setTotalCount(await countPermits(db, allFilters));
         // New (unseen) permits across the whole DB — drives the "mark all seen"
         // action; global, matching markAllSeen's global UPDATE.
         setNewCount(await countNewPermits(db));
@@ -914,15 +921,26 @@ export default function FeedScreen() {
         />
       )}
 
-      {/* Result count — reflects the active filters + search */}
+      {/* Result count — reflects the active filters + search; when the view is
+          narrowed below the followed total it reads "N di TOTAL pratiche". */}
       {!loading && hasData && resultCount !== null && (
         <View className="flex-row items-center bg-parchment-100 px-4 pb-1 pt-2.5">
-          <Text
-            className="text-xs font-semibold text-stone-600"
-            accessibilityRole="header"
-            accessibilityLabel={`${resultCount} ${resultCount === 1 ? 'pratica' : 'pratiche'}`}>
-            {resultCount.toLocaleString('it-IT')} {resultCount === 1 ? 'pratica' : 'pratiche'}
-          </Text>
+          {(() => {
+            const rc = buildResultCount(resultCount, totalCount ?? resultCount);
+            const shownFmt = rc.shown.toLocaleString('it-IT');
+            const totalFmt = rc.total.toLocaleString('it-IT');
+            return (
+              <Text
+                className="text-xs font-semibold text-stone-600"
+                accessibilityRole="header"
+                accessibilityLabel={
+                  rc.showTotal ? `${rc.shown} di ${rc.total} ${rc.noun}` : `${rc.shown} ${rc.noun}`
+                }>
+                {shownFmt}
+                {rc.showTotal ? ` di ${totalFmt}` : ''} {rc.noun}
+              </Text>
+            );
+          })()}
           {/* Mark-all-seen — clears the NUOVO badges when unseen permits exist */}
           {newCount > 0 && (
             <Pressable

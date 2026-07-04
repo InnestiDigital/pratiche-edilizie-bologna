@@ -9,6 +9,7 @@ import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
 import { pendingDurationLabel } from '../../lib/pending-duration';
+import { processingDurationLabel } from '../../lib/processing-duration';
 import { buildShareMessage } from '../../lib/share-message';
 import { extractStreetName } from '../../lib/street-name';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
@@ -245,6 +246,15 @@ export default function PermitDetail() {
       ? pendingDurationLabel(permit.source_updated_at, new Date())
       : null;
 
+  // For a concluded permit, the counterpart fact: how long the Comune took from
+  // the request to the closing date. Only shown when a closing date exists and is
+  // on/after the request (the pure builder returns null on a missing/backwards
+  // date), so a still-pending permit — with no closing date — never shows it.
+  const processingLabel =
+    permit.status === 'in_attesa'
+      ? null
+      : processingDurationLabel(permit.source_updated_at, permit.date_issued);
+
   // Plain-Italian explainer for the filing procedure. Only render it for a known
   // type — an unrecognized filing_type gets no card rather than a wrong caption.
   const filingFullName = FILING_TYPE_FULL_NAMES[filingType];
@@ -322,6 +332,17 @@ export default function PermitDetail() {
               <Ionicons name="hourglass-outline" size={14} color="#3b82f6" />
               <Text className="ml-1.5 text-[13px] font-semibold" style={{ color: '#3b82f6' }}>
                 {pendingLabel}
+              </Text>
+            </View>
+          )}
+
+          {/* How long a concluded permit took from request to closing — the
+              green, resolved counterpart to the blue pending countdown. */}
+          {processingLabel && (
+            <View className="mt-2 flex-row items-center">
+              <Ionicons name="checkmark-circle-outline" size={14} color="#22c55e" />
+              <Text className="ml-1.5 text-[13px] font-semibold" style={{ color: '#22c55e' }}>
+                {processingLabel}
               </Text>
             </View>
           )}

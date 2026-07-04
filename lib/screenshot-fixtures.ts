@@ -15,6 +15,8 @@
  * (`SyncResult`) — tsc will flag drift where a screen reads a field absent here.
  */
 
+import { tallyTags } from './tally-tags';
+
 export interface ScreenshotPermit {
   id: number;
   dataset: string;
@@ -218,6 +220,9 @@ export const STATS_FIXTURE = {
     }
     return acc;
   }, {}),
+  // Per-tag stored-permit counts, derived from the fixture rows via the same
+  // pure `tallyTags` the native GROUP BY mirrors — never drifts from the rows.
+  byTag: tallyTags(PERMIT_FIXTURES),
   newCount: PERMIT_FIXTURES.filter((p) => p.is_new === 1).length,
 };
 

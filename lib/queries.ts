@@ -113,6 +113,7 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   byZone: Record<string, number>;
   byStatus: Record<string, number>;
   byMonth: Record<string, number>;
+  byTag: Record<string, number>;
   newCount: number;
 }> {
   const total =
@@ -150,7 +151,19 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   const byMonth: Record<string, number> = {};
   for (const r of monthRows) byMonth[r.m] = r.c;
 
-  return { total, byDataset, byZone, byStatus, byMonth, newCount };
+  // Permits carrying each topic tag: json_each expands the JSON `tags` array so
+  // one permit contributes to every label it holds (mirrors the pure `tallyTags`
+  // used by the web shim). The inner subquery gates on json_valid so a malformed
+  // row can't make json_each raise "malformed JSON" — it is skipped instead.
+  const tagRows = await db.getAllAsync<{ tag: string; c: number }>(
+    'SELECT je.value AS tag, COUNT(*) AS c FROM ' +
+      '(SELECT tags FROM permits WHERE json_valid(tags)) p, json_each(p.tags) je ' +
+      "WHERE json_type(je.value) = 'text' GROUP BY je.value"
+  );
+  const byTag: Record<string, number> = {};
+  for (const r of tagRows) byTag[r.tag] = r.c;
+
+  return { total, byDataset, byZone, byStatus, byMonth, byTag, newCount };
 }
 
 export async function countNewPermits(db: SQLite.SQLiteDatabase): Promise<number> {

@@ -467,7 +467,7 @@ function FilterPanel({
               accessibilityLabel={`Stato ${STATUS_LABELS[s]}`}
               accessibilityState={{ selected: active }}
               className={`mb-1.5 mr-1.5 flex-row items-center rounded-full px-3 py-1.5 ${
-                active ? 'bg-ink-800' : 'bg-parchment-100'
+                active ? 'bg-brick-600' : 'bg-parchment-100'
               }`}>
               <View
                 className="mr-1.5 h-2 w-2 rounded-full"

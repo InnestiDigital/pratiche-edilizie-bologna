@@ -121,6 +121,12 @@ export const TAG_LABELS: Record<string, string> = {
   urbanistica: 'Urbanistica',
 };
 
+// Statuses whose request→closing span is a meaningful "time to release" — the
+// positive-outcome procedures (granted / concluded). A denied, archived, lapsed,
+// or withdrawn permit's closing date is not a release, so those are excluded from
+// the sync-screen "Tempi di rilascio" aggregate (see `processing-stats.ts`).
+export const RELEASED_STATUSES = ['rilasciata', 'rilasciata_con_prescrizioni', 'concluso'] as const;
+
 export const STATUS_LABELS: Record<string, string> = {
   rilasciata: 'Rilasciata',
   rilasciata_con_prescrizioni: 'Rilasciata con prescrizioni',

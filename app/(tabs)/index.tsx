@@ -47,6 +47,7 @@ import {
   type FeedPeriod,
 } from '../../lib/feed-period';
 import { PermitFeedSkeleton } from '../../components/PermitSkeleton';
+import { FadeScrollRow } from '../../components/FadeScrollRow';
 import {
   FILING_TYPE_ORDER,
   FILING_COLORS,
@@ -388,7 +389,7 @@ function FilterPanel({
 
       {/* Period (request date) */}
       <Text className="mb-1.5 text-xs font-semibold text-stone-600">Periodo (richiesta)</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+      <FadeScrollRow className="mb-3">
         {FEED_PERIOD_ORDER.map((p) => (
           <Pressable
             key={p}
@@ -405,11 +406,11 @@ function FilterPanel({
             </Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </FadeScrollRow>
 
       {/* Sort */}
       <Text className="mb-1.5 text-xs font-semibold text-stone-600">Ordina per</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+      <FadeScrollRow className="mb-3">
         {SORT_OPTIONS.map((s) => (
           <Pressable
             key={s}
@@ -426,7 +427,7 @@ function FilterPanel({
             </Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </FadeScrollRow>
 
       {/* Zone chips */}
       <Text className="mb-1.5 text-xs font-semibold text-stone-600">Quartiere</Text>

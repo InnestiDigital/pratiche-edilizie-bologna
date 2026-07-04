@@ -388,6 +388,17 @@ export default function SyncScreen() {
                         );
                       })}
                     </View>
+                    {/* Legend — the two brick tints read as two categories to a
+                        first-time viewer; one line names the darker bar so the
+                        highlight-the-max idiom is unambiguous (lighter bars are
+                        then obviously "the rest"). */}
+                    <View
+                      className="mt-3 flex-row items-center border-t border-parchment-200 pt-2.5"
+                      accessibilityRole="text"
+                      accessibilityLabel="Il mese più attivo è evidenziato in scuro">
+                      <View className="mr-1.5 h-2.5 w-2.5 rounded-full bg-brick-600" />
+                      <Text className="text-[11px] text-stone-500">mese più attivo</Text>
+                    </View>
                   </View>
                 </View>
               );

@@ -297,9 +297,13 @@ function EmptyFilterState({ onReset }: { onReset: () => void }) {
     <View
       className="mx-6 mt-16 items-center rounded-2xl bg-white p-8"
       style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
-      <Ionicons name="filter-outline" size={36} color="#a89888" />
-      <Text className="mt-3 text-base font-semibold text-ink-700">Nessun risultato</Text>
-      <Text className="mt-1 text-sm text-stone-500">Prova a modificare i filtri o la ricerca.</Text>
+      <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-brick-50">
+        <Ionicons name="filter-outline" size={28} color="#9B2335" />
+      </View>
+      <Text className="text-lg font-bold text-ink-800">Nessun risultato</Text>
+      <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
+        Nessuna pratica corrisponde ai filtri attivi. Prova ad allargarli o azzerarli.
+      </Text>
       <Pressable
         onPress={onReset}
         accessibilityRole="button"

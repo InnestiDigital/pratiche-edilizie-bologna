@@ -27,6 +27,7 @@ import { listFavoriteIds, toggleFavorite } from '../../lib/favorites';
 import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
+import { debounce } from '../../lib/debounce';
 import { groupPermitsBySection } from '../../lib/feed-sections';
 import { sectionCountLabel } from '../../lib/section-count-label';
 import { formatSearchTerm } from '../../lib/search-empty-message';
@@ -592,7 +593,13 @@ export default function FeedScreen() {
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [period, setPeriod] = useState<FeedPeriod>('all');
   const [sort, setSort] = useState<SortOption>('request_newest');
+  // `searchInput` drives the text box (updates on every keystroke so typing
+  // stays responsive); `search` is the applied query that drives the feed
+  // reload. A trailing debounce copies the former into the latter so the
+  // multi-query reload fires once the user pauses, not on every keystroke.
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const debouncedApplySearch = useMemo(() => debounce(setSearch, 250), []);
   const offsetRef = useRef(0);
   const [hasMore, setHasMore] = useState(true);
 
@@ -687,9 +694,35 @@ export default function FeedScreen() {
   // Apply a `q` deep link from a permit detail's "Altre pratiche in <via>"
   // action: prefill the search box with the street name so the feed narrows to
   // that street. Ignored when blank; refires on the nonce so re-tapping works.
+  // Applied immediately (both states + debounce cancelled) — a deep-link jump
+  // should narrow the feed at once, not wait out the typing debounce.
   useEffect(() => {
-    if (typeof searchParam === 'string' && searchParam.trim()) setSearch(searchParam);
-  }, [searchParam, linkNonce]);
+    if (typeof searchParam === 'string' && searchParam.trim()) {
+      debouncedApplySearch.cancel();
+      setSearchInput(searchParam);
+      setSearch(searchParam);
+    }
+  }, [searchParam, linkNonce, debouncedApplySearch]);
+
+  // Feed the text box on every keystroke, but debounce the applied query.
+  const onChangeSearch = useCallback(
+    (text: string) => {
+      setSearchInput(text);
+      debouncedApplySearch(text);
+    },
+    [debouncedApplySearch]
+  );
+
+  // Clear the search box AND the applied query at once (used by empty-state /
+  // reset actions); a pending debounce must be dropped so it can't re-apply.
+  const clearSearch = useCallback(() => {
+    debouncedApplySearch.cancel();
+    setSearchInput('');
+    setSearch('');
+  }, [debouncedApplySearch]);
+
+  // Drop any pending debounced reload when the screen unmounts.
+  useEffect(() => debouncedApplySearch.cancel, [debouncedApplySearch]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -762,7 +795,7 @@ export default function FeedScreen() {
     setOnlyFavorites(false);
     setPeriod('all');
     setSort('request_newest');
-    setSearch('');
+    clearSearch();
   };
 
   // Glanceable summary of the active filters (built from a tested pure core), so
@@ -808,8 +841,8 @@ export default function FeedScreen() {
           className="flex-1 rounded-lg bg-parchment-100 px-4 py-2.5 text-base text-ink-800"
           placeholder="Cerca indirizzo o protocollo..."
           placeholderTextColor="#a89888"
-          value={search}
-          onChangeText={setSearch}
+          value={searchInput}
+          onChangeText={onChangeSearch}
           clearButtonMode="while-editing"
           accessibilityLabel="Cerca indirizzo, procedimento o protocollo"
         />
@@ -939,7 +972,7 @@ export default function FeedScreen() {
             // A search is active and matched nothing: point at the likely culprit
             // (the query) and offer to clear ONLY the search, so the user's
             // carefully-set zone/type/tag filters survive.
-            <EmptySearchState term={searchTermForEmpty} onClearSearch={() => setSearch('')} />
+            <EmptySearchState term={searchTermForEmpty} onClearSearch={clearSearch} />
           ) : (
             <EmptyFilterState onReset={resetFilters} />
           )

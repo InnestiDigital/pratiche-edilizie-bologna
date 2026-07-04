@@ -28,6 +28,7 @@ import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
 import { groupPermitsBySection } from '../../lib/feed-sections';
+import { sectionCountLabel } from '../../lib/section-count-label';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import {
@@ -555,7 +556,7 @@ function FeedSectionHeader({ title, count }: { title: string; count: number }) {
         accessibilityRole="header">
         {title}
       </Text>
-      <Text className="text-xs font-semibold text-stone-500">{count}</Text>
+      <Text className="text-xs font-semibold text-stone-500">{sectionCountLabel(count)}</Text>
     </View>
   );
 }

@@ -14,8 +14,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermitById, getRelatedPermits, parsePermitTags, type Permit } from '../../lib/queries';
 import { isFavorite, toggleFavorite } from '../../lib/favorites';
-import { getNote, setNote, deleteNote } from '../../lib/notes';
+import { getNoteRecord, setNote, deleteNote } from '../../lib/notes';
 import { normalizeNote, NOTE_MAX_LENGTH } from '../../lib/note-text';
+import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
@@ -201,6 +202,7 @@ function RelatedRow({
  *  deletes it (via `normalizeNote` → null). */
 function NotesSection({ sourceId }: { sourceId: string }) {
   const [noteText, setNoteText] = useState<string | null>(null);
+  const [noteUpdatedAt, setNoteUpdatedAt] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -210,9 +212,10 @@ function NotesSection({ sourceId }: { sourceId: string }) {
     setLoaded(false);
     setEditing(false);
     getDb().then((db) =>
-      getNote(db, sourceId).then((n) => {
+      getNoteRecord(db, sourceId).then((rec) => {
         if (!active) return;
-        setNoteText(n);
+        setNoteText(rec?.note ?? null);
+        setNoteUpdatedAt(rec?.updatedAt ?? null);
         setLoaded(true);
       })
     );
@@ -235,11 +238,14 @@ function NotesSection({ sourceId }: { sourceId: string }) {
     const clean = normalizeNote(draft);
     const db = await getDb();
     if (clean) {
-      await setNote(db, sourceId, clean, new Date().toISOString());
+      const now = new Date().toISOString();
+      await setNote(db, sourceId, clean, now);
       setNoteText(clean);
+      setNoteUpdatedAt(now);
     } else {
       await deleteNote(db, sourceId);
       setNoteText(null);
+      setNoteUpdatedAt(null);
     }
     setEditing(false);
     setDraft('');
@@ -339,6 +345,11 @@ function NotesSection({ sourceId }: { sourceId: string }) {
       <Text className="text-[15px] leading-6 text-ink-800" selectable>
         {noteText}
       </Text>
+      {noteUpdatedAt && formatItDate(noteUpdatedAt) && (
+        <Text className="mt-2 text-[11px] text-stone-400">
+          Aggiornata il {formatItDate(noteUpdatedAt)}
+        </Text>
+      )}
     </View>
   );
 }

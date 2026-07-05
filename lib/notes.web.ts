@@ -10,15 +10,16 @@
  */
 import type * as SQLite from 'expo-sqlite';
 import { NOTE_FIXTURES } from './screenshot-fixtures';
+import type { NoteRecord } from './notes';
 
 export function createNotesTableSql(): string {
   return '';
 }
 
-export async function getNote(
+export async function getNoteRecord(
   _db: SQLite.SQLiteDatabase,
   sourceId: string
-): Promise<string | null> {
+): Promise<NoteRecord | null> {
   return NOTE_FIXTURES[sourceId] ?? null;
 }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type * as SQLite from 'expo-sqlite';
-import { createNotesTableSql, getNote, setNote, deleteNote, listNotedIds } from './notes';
+import { createNotesTableSql, getNoteRecord, setNote, deleteNote, listNotedIds } from './notes';
 
 interface RecordedCall {
   sql: string;
@@ -41,17 +41,24 @@ describe('createNotesTableSql', () => {
   });
 });
 
-describe('getNote', () => {
-  it('returns the stored note text when a row exists', async () => {
-    const { db, calls } = makeFakeDb({ getFirst: { note: 'ho chiamato' } });
-    expect(await getNote(db, 'PDC-2024-000481')).toBe('ho chiamato');
-    expect(squish(calls[0].sql)).toBe('SELECT note FROM permit_notes WHERE source_id = ?');
+describe('getNoteRecord', () => {
+  it('returns the stored note text + updated_at timestamp when a row exists', async () => {
+    const { db, calls } = makeFakeDb({
+      getFirst: { note: 'ho chiamato', updated_at: '2024-11-18T09:30:00.000Z' },
+    });
+    expect(await getNoteRecord(db, 'PDC-2024-000481')).toEqual({
+      note: 'ho chiamato',
+      updatedAt: '2024-11-18T09:30:00.000Z',
+    });
+    expect(squish(calls[0].sql)).toBe(
+      'SELECT note, updated_at FROM permit_notes WHERE source_id = ?'
+    );
     expect(calls[0].params).toEqual(['PDC-2024-000481']);
   });
 
   it('returns null when no row exists', async () => {
     const { db } = makeFakeDb({ getFirst: null });
-    expect(await getNote(db, 'nope')).toBeNull();
+    expect(await getNoteRecord(db, 'nope')).toBeNull();
   });
 });
 

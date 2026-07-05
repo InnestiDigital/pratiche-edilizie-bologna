@@ -36,13 +36,27 @@ export function createNotesTableSql(): string {
 );`;
 }
 
-/** The stored note for a permit (by `source_id`), or `null` when none exists. */
-export async function getNote(db: SQLite.SQLiteDatabase, sourceId: string): Promise<string | null> {
-  const row = await db.getFirstAsync<{ note: string }>(
-    'SELECT note FROM permit_notes WHERE source_id = ?',
+/** A stored note plus when it was last saved (an ISO timestamp). */
+export interface NoteRecord {
+  note: string;
+  updatedAt: string;
+}
+
+/**
+ * The stored note for a permit (by `source_id`) together with its `updated_at`
+ * timestamp, or `null` when none exists. The detail screen surfaces the timestamp
+ * as an "Aggiornata il …" caption so a resident can see how fresh their own note
+ * is. `updated_at` is stored (by `setNote`), so no clock is read here.
+ */
+export async function getNoteRecord(
+  db: SQLite.SQLiteDatabase,
+  sourceId: string
+): Promise<NoteRecord | null> {
+  const row = await db.getFirstAsync<{ note: string; updated_at: string }>(
+    'SELECT note, updated_at FROM permit_notes WHERE source_id = ?',
     sourceId
   );
-  return row?.note ?? null;
+  return row ? { note: row.note, updatedAt: row.updated_at } : null;
 }
 
 /**

@@ -242,7 +242,9 @@ export const FAVORITE_SOURCE_IDS = new Set<string>(['PDC-2024-000481', 'PDC-2024
  * route is `/permit/1` (`PDC-2024-000481`), so a note on that permit renders the
  * populated "Le mie note" card.
  */
-export const NOTE_FIXTURES: Record<string, string> = {
-  'PDC-2024-000481':
-    'Ho chiamato lo Sportello Edilizia: la pratica è in attesa del parere della Soprintendenza. Richiamare dopo il 15.',
+export const NOTE_FIXTURES: Record<string, { note: string; updatedAt: string }> = {
+  'PDC-2024-000481': {
+    note: 'Ho chiamato lo Sportello Edilizia: la pratica è in attesa del parere della Soprintendenza. Richiamare dopo il 15.',
+    updatedAt: '2024-11-18T09:30:00.000Z',
+  },
 };

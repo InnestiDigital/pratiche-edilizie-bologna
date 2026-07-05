@@ -545,11 +545,13 @@ function FilterPanel({
             accessibilityRole="button"
             accessibilityLabel={`Quartiere ${zone}`}
             accessibilityState={{ selected: activeZones.has(zone) }}
-            className={`mb-1.5 mr-1.5 rounded-full px-3 py-1.5 ${
-              activeZones.has(zone) ? 'bg-brick-600' : 'bg-parchment-100'
+            className={`mb-1.5 mr-1.5 rounded-full border px-3 py-1.5 ${
+              activeZones.has(zone)
+                ? 'border-brick-600 bg-brick-50'
+                : 'border-transparent bg-parchment-100'
             }`}>
             <Text
-              className={`text-xs font-semibold ${activeZones.has(zone) ? 'text-white' : 'text-stone-500'}`}>
+              className={`text-xs font-semibold ${activeZones.has(zone) ? 'text-brick-700' : 'text-stone-500'}`}>
               {zone}
             </Text>
           </Pressable>
@@ -569,14 +571,12 @@ function FilterPanel({
               accessibilityRole="button"
               accessibilityLabel={`Stato ${STATUS_LABELS[s]}`}
               accessibilityState={{ selected: active }}
-              className={`mb-1.5 mr-1.5 flex-row items-center rounded-full px-3 py-1.5 ${
-                active ? 'bg-brick-600' : 'bg-parchment-100'
+              className={`mb-1.5 mr-1.5 flex-row items-center rounded-full border px-3 py-1.5 ${
+                active ? 'border-brick-600 bg-brick-50' : 'border-transparent bg-parchment-100'
               }`}>
-              <View
-                className="mr-1.5 h-2 w-2 rounded-full"
-                style={{ backgroundColor: active ? 'white' : dot }}
-              />
-              <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-stone-500'}`}>
+              <View className="mr-1.5 h-2 w-2 rounded-full" style={{ backgroundColor: dot }} />
+              <Text
+                className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
                 {STATUS_LABELS[s]}
               </Text>
             </Pressable>
@@ -596,10 +596,11 @@ function FilterPanel({
               accessibilityRole="button"
               accessibilityLabel={`Etichetta ${TAG_LABELS[t]}`}
               accessibilityState={{ selected: active }}
-              className={`mb-1.5 mr-1.5 rounded-full px-3 py-1.5 ${
-                active ? 'bg-brick-600' : 'bg-parchment-100'
+              className={`mb-1.5 mr-1.5 rounded-full border px-3 py-1.5 ${
+                active ? 'border-brick-600 bg-brick-50' : 'border-transparent bg-parchment-100'
               }`}>
-              <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-stone-500'}`}>
+              <Text
+                className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
                 {TAG_LABELS[t]}
               </Text>
             </Pressable>

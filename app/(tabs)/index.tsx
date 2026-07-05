@@ -32,6 +32,7 @@ import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
 import { parseTagParam } from '../../lib/tag-param';
+import { parseNewParam } from '../../lib/new-param';
 import { debounce } from '../../lib/debounce';
 import { shouldShowScrollTop } from '../../lib/scroll-top';
 import { applySeenToList } from '../../lib/mark-seen';
@@ -680,8 +681,9 @@ export default function FeedScreen() {
     zone: zoneParam,
     q: searchParam,
     tag: tagParam,
+    new: newParam,
     t: linkNonce,
-  } = useLocalSearchParams<{ zone?: string; q?: string; tag?: string; t?: string }>();
+  } = useLocalSearchParams<{ zone?: string; q?: string; tag?: string; new?: string; t?: string }>();
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -855,6 +857,15 @@ export default function FeedScreen() {
     const tag = parseTagParam(tagParam);
     if (tag) setActiveTags(new Set([tag]));
   }, [tagParam, linkNonce]);
+
+  // Apply a `new` deep link from a "new permits" notification tap: pre-activate
+  // the "Solo nuovi" filter so the resident lands on exactly the fresh permits
+  // the notification announced. Guarded by parseNewParam so only the canonical
+  // `'1'` token narrows the feed; refires on the nonce so a second notification
+  // tap re-applies it. Mirrors the zone/tag deep links above.
+  useEffect(() => {
+    if (parseNewParam(newParam)) setOnlyNew(true);
+  }, [newParam, linkNonce]);
 
   // Apply a `q` deep link from a permit detail's "Altre pratiche in <via>"
   // action: prefill the search box with the street name so the feed narrows to

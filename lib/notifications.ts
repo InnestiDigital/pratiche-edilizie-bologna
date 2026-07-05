@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { buildNotificationMessage } from './notification-message';
+import { buildNotificationData } from './notification-link';
 
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
@@ -37,7 +38,10 @@ export async function sendNewPermitsNotification(
     content: {
       title: 'Pratiche Edilizie Bologna',
       body,
-      data: { screen: '/(tabs)' },
+      // `new: '1'` when the sync brought genuinely-new permits → tapping the
+      // notification deep-links the feed to its "Solo nuovi" filter (consumed by
+      // notification-routing → app/_layout). Update-only → plain feed.
+      data: buildNotificationData(newCount),
       ...(Platform.OS === 'android' && {
         categoryIdentifier: 'new-permits',
       }),

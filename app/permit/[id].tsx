@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Linking, Share, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  TextInput,
+  Linking,
+  Share,
+  Platform,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermitById, getRelatedPermits, parsePermitTags, type Permit } from '../../lib/queries';
 import { isFavorite, toggleFavorite } from '../../lib/favorites';
+import { getNote, setNote, deleteNote } from '../../lib/notes';
+import { normalizeNote, NOTE_MAX_LENGTH } from '../../lib/note-text';
 import { formatProtocol } from '../../lib/format-protocol';
 import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
@@ -182,6 +193,156 @@ function RelatedRow({
   );
 }
 
+/** The user's personal note on a permit — the one bit of content they author
+ *  themselves. Loads/persists its own state keyed by the permit's stable
+ *  `source_id` (survives re-syncs), so the parent detail screen doesn't have to
+ *  thread note state. Three modes: an empty "add a note" prompt, a read view with
+ *  a Modifica affordance, and an inline multiline editor. Saving an empty note
+ *  deletes it (via `normalizeNote` → null). */
+function NotesSection({ sourceId }: { sourceId: string }) {
+  const [noteText, setNoteText] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoaded(false);
+    setEditing(false);
+    getDb().then((db) =>
+      getNote(db, sourceId).then((n) => {
+        if (!active) return;
+        setNoteText(n);
+        setLoaded(true);
+      })
+    );
+    return () => {
+      active = false;
+    };
+  }, [sourceId]);
+
+  const startEdit = () => {
+    setDraft(noteText ?? '');
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setDraft('');
+  };
+
+  const save = async () => {
+    const clean = normalizeNote(draft);
+    const db = await getDb();
+    if (clean) {
+      await setNote(db, sourceId, clean, new Date().toISOString());
+      setNoteText(clean);
+    } else {
+      await deleteNote(db, sourceId);
+      setNoteText(null);
+    }
+    setEditing(false);
+    setDraft('');
+  };
+
+  // Hold render until the note has loaded so an existing note never flashes the
+  // empty "add a note" prompt for a frame.
+  if (!loaded) return null;
+
+  const cardStyle = {
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  } as const;
+
+  // Editor
+  if (editing) {
+    return (
+      <View className="mt-3 rounded-2xl bg-white p-5" style={cardStyle}>
+        <View className="mb-2 flex-row items-center">
+          <Ionicons name="create-outline" size={15} color="#9B2335" />
+          <Text className="ml-1.5 text-xs font-semibold text-stone-600">Le mie note</Text>
+        </View>
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          multiline
+          maxLength={NOTE_MAX_LENGTH}
+          autoFocus
+          placeholder="Scrivi una nota personale su questa pratica…"
+          placeholderTextColor="#a89888"
+          accessibilityLabel="Testo della nota"
+          className="rounded-xl border border-parchment-200 bg-parchment-50 p-3 text-[15px] leading-6 text-ink-800"
+          style={{ minHeight: 96, textAlignVertical: 'top' }}
+        />
+        <View className="mt-3 flex-row justify-end">
+          <Pressable
+            onPress={cancel}
+            accessibilityRole="button"
+            accessibilityLabel="Annulla modifica nota"
+            className="mr-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5">
+            <Text className="text-sm font-semibold text-ink-600">Annulla</Text>
+          </Pressable>
+          <Pressable
+            onPress={save}
+            accessibilityRole="button"
+            accessibilityLabel="Salva nota"
+            className="flex-row items-center rounded-xl bg-brick-600 px-4 py-2.5">
+            <Ionicons name="checkmark" size={16} color="white" />
+            <Text className="ml-1 text-sm font-bold text-white">Salva</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // Empty prompt — the whole card taps into the editor.
+  if (!noteText) {
+    return (
+      <Pressable
+        onPress={startEdit}
+        accessibilityRole="button"
+        accessibilityLabel="Aggiungi una nota personale"
+        accessibilityHint="Apre l'editor per scrivere una nota su questa pratica"
+        className="mt-3 flex-row items-center rounded-2xl bg-white p-4"
+        style={cardStyle}>
+        <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
+          <Ionicons name="add" size={20} color="#9B2335" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-xs font-semibold text-stone-600">Le mie note</Text>
+          <Text className="text-[15px] text-stone-500">Aggiungi una nota personale</Text>
+        </View>
+        <Ionicons name="create-outline" size={18} color="#a89888" />
+      </Pressable>
+    );
+  }
+
+  // Read view with a Modifica affordance.
+  return (
+    <View className="mt-3 rounded-2xl bg-white p-5" style={cardStyle}>
+      <View className="mb-2 flex-row items-center">
+        <Ionicons name="create-outline" size={15} color="#9B2335" />
+        <Text className="ml-1.5 text-xs font-semibold text-stone-600">Le mie note</Text>
+        <View className="flex-1" />
+        <Pressable
+          onPress={startEdit}
+          accessibilityRole="button"
+          accessibilityLabel="Modifica nota"
+          hitSlop={8}
+          className="flex-row items-center">
+          <Ionicons name="pencil" size={13} color="#9B2335" />
+          <Text className="ml-1 text-xs font-semibold text-brick-600">Modifica</Text>
+        </Pressable>
+      </View>
+      <Text className="text-[15px] leading-6 text-ink-800" selectable>
+        {noteText}
+      </Text>
+    </View>
+  );
+}
+
 export default function PermitDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -353,6 +514,11 @@ export default function PermitDetail() {
             <Text className="mt-2 text-[13px] leading-5 text-stone-600">{statusDescription}</Text>
           )}
         </View>
+
+        {/* Le mie note — the resident's own note on this permit (the one bit of
+            content they author), right under the header where their context is
+            most relevant. */}
+        <NotesSection sourceId={permit.source_id} />
 
         {/* Street shortcut — jump to the feed filtered to this street. Reuses the
             feed's address search (the `q` deep link) so it stays a single source

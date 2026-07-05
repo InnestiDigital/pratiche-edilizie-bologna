@@ -235,3 +235,14 @@ export const LAST_SYNC_FIXTURE = '2025-01-04T09:12:00.000Z';
  * `source_id` to mirror the real `favorites` table.
  */
 export const FAVORITE_SOURCE_IDS = new Set<string>(['PDC-2024-000481', 'PDC-2024-000390']);
+
+/**
+ * Personal notes shown in the screenshot build (see `notes.web.ts`), keyed by
+ * `source_id` to mirror the real `permit_notes` table. The detail screenshot
+ * route is `/permit/1` (`PDC-2024-000481`), so a note on that permit renders the
+ * populated "Le mie note" card.
+ */
+export const NOTE_FIXTURES: Record<string, string> = {
+  'PDC-2024-000481':
+    'Ho chiamato lo Sportello Edilizia: la pratica è in attesa del parere della Soprintendenza. Richiamare dopo il 15.',
+};

@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { createPermitIndexesSql } from './schema-indexes';
 import { createFavoritesTableSql } from './favorites';
+import { createNotesTableSql } from './notes';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
@@ -47,6 +48,8 @@ async function createTables(db: SQLite.SQLiteDatabase): Promise<void> {
     );
 
     ${createFavoritesTableSql()}
+
+    ${createNotesTableSql()}
 
     ${createPermitIndexesSql()}
   `);

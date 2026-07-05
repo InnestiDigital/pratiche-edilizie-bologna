@@ -231,7 +231,7 @@ function PermitCard({
           </View>
         )}
         <View className="flex-row items-center">
-          <Ionicons name="document-outline" size={12} color="#70593f" />
+          <Ionicons name="pricetag-outline" size={12} color="#70593f" />
           <Text className="ml-1 text-xs text-stone-600">{formatProtocol(permit.source_id)}</Text>
         </View>
       </View>

@@ -30,6 +30,7 @@ import {
 import { requestNotificationPermissions } from '../../lib/notifications';
 import { registerBackgroundSync, unregisterBackgroundSync } from '../../lib/background-sync';
 import { getDb } from '../../lib/db';
+import { CITY } from '../../lib/city';
 import { countPermits, getStats } from '../../lib/queries';
 import { buildMatchSummary } from '../../lib/settings-match-summary';
 
@@ -450,7 +451,7 @@ export default function SettingsScreen() {
           <View className="flex-1">
             <Text className="text-[15px] font-bold text-ink-800">Pratiche Edilizie Bologna</Text>
             <Text className="text-xs text-stone-500">
-              {appVersion ? `Versione ${appVersion}` : 'Dati aperti del Comune di Bologna'}
+              {appVersion ? `Versione ${appVersion}` : `Dati aperti del ${CITY.provider}`}
             </Text>
           </View>
         </View>

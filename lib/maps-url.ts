@@ -4,9 +4,9 @@
  *
  * The permits carry only a free-text `address` (+ optional `zone` quartiere) — no
  * coordinates — so we hand the map app a text query and let it geocode. The city is
- * always appended (`Bologna, Italia`) to anchor the search: every permit in this app
- * is in the Comune di Bologna, and a bare street name like `Via Marconi 24` is
- * ambiguous nationwide.
+ * always appended (`CITY.geocodeRegion`, e.g. `Bologna, Italia`) to anchor the search:
+ * every permit in this app is in one city, and a bare street name like `Via Marconi 24`
+ * is ambiguous nationwide.
  *
  * Platform-appropriate target:
  *  - iOS   -> Apple Maps (`http://maps.apple.com/?q=...`), the native handler.
@@ -17,10 +17,12 @@
  * caller can hide the action rather than open an empty map.
  */
 
+import { CITY } from './city';
+
 export type MapsPlatform = 'ios' | 'android' | 'web' | (string & {});
 
 /**
- * The geocoder query string for a permit: `<address>, Bologna, Italia`.
+ * The geocoder query string for a permit: `<address>, <CITY.geocodeRegion>`.
  * Returns `null` when the address is missing/blank (nothing to search).
  * `zone` is intentionally omitted — a quartiere name is not part of a postal
  * address and tends to confuse geocoders; the city anchor is what disambiguates.
@@ -28,7 +30,7 @@ export type MapsPlatform = 'ios' | 'android' | 'web' | (string & {});
 export function buildMapsQuery(address: string | null | undefined): string | null {
   const street = (address ?? '').trim();
   if (!street) return null;
-  return `${street}, Bologna, Italia`;
+  return `${street}, ${CITY.geocodeRegion}`;
 }
 
 /**

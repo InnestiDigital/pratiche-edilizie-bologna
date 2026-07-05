@@ -5,6 +5,7 @@ import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../li
 import { loadPreferences } from '../../lib/preferences';
 import { SOURCES, CATEGORY_COLORS, type SourceKey } from '../../lib/sources';
 import { getDb } from '../../lib/db';
+import { CITY } from '../../lib/city';
 import { getStats, getReleasedDatePairs } from '../../lib/queries';
 import { buildStatusBreakdown } from '../../lib/status-breakdown';
 import { buildMonthlyActivity, monthlyActivityRangeLabel } from '../../lib/monthly-activity';
@@ -119,7 +120,7 @@ export default function SyncScreen() {
             </View>
             <Text className="text-lg font-bold text-ink-800">Benvenuto!</Text>
             <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
-              Scarica i dati aperti del Comune di Bologna.{'\n'}
+              Scarica i dati aperti del {CITY.provider}.{'\n'}
               La prima sincronizzazione richiede circa 1 minuto.
             </Text>
           </View>

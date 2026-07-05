@@ -4,11 +4,17 @@ Guidance for Claude / contributors working in this repo. Read once before touchi
 
 ## What this app is
 
-Offline browser for **Comune di Bologna building-permit open data**. A user in Bologna picks the
-quartieri (districts), filing types, and topic tags they care about; the app syncs the matching permits
-from `opendata.comune.bologna.it` into a **local SQLite database** and shows them in a feed that works
-fully offline. A background task periodically re-syncs and fires a **local** push notification when new
-or updated permits land.
+Offline browser for **Comune di Bologna civic open data** across **5 categories** — edilizia
+(building permits PDC/SCIA/CILA), cantieri (roadworks), commercio (business filings), eventi
+(cultural events), segnalazioni (citizen reports) — 7 sources total. A user picks quartieri
+(districts) and interests; the app syncs matching records from `opendata.comune.bologna.it` into a
+**local SQLite database** and shows them in a feed that works fully offline. A background task
+periodically re-syncs and fires a **local** push notification when new or updated records land.
+
+**Plan of record: `docs/ROADMAP.md`** — phases P0–P2 (multi-category platform) are done; P3
+(rebrand to **"Civico"** — name is decided, §4 has the execution checklist), P4 (map + radius
+alerts, §4b has the research context), and P5 (multi-city, §4c has the data-driven audit protocol)
+are specified there for autonomous execution. Read it before starting any phase work.
 
 - **No backend, no accounts, no analytics.** Everything runs on-device. The only network calls are
   read-only GETs to the Bologna open-data API.

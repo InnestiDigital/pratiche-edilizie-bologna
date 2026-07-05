@@ -108,9 +108,9 @@ interessi utente. Note per sorgente:
 | ✅ **P0 — Registry** *(fatto, lug 2026)* | `sources.ts`, migrazione additiva su `permits` (niente rename), categoria in feed/query/prefs. Zero nuove sorgenti, comportamento identico | — | il grosso del lavoro concettuale; tutto testabile in vitest |
 | ✅ **P1 — Cantieri + Commercio** *(fatto, lug 2026)* | `lavori-pubblici` (banale) + `istanze-commercio` (stesso shape dell'edilizia). Feed multi-categoria, notifiche estese | P0 | 2 schemi + 2 normalizer + card |
 | ✅ **P2 — Eventi + Segnalazioni** *(fatto, lug 2026)* | `eventi-agenda-cultura` (sync futuro, ordinati per data di scoperta) + `segnalazioni-czrm`. Qui l'app diventa quotidianamente utile a chiunque | P0 | semantica sync nuova (futuro) |
-| **P3 — Rebrand release** | Nome, icona, splash, copy, onboarding interessi, listing ASC nuovo (screenshot rigenerati via `.loop/shoot.mjs`) | P1 (senza multi-categoria il rebrand è vuoto) | vedi §4 |
-| **P4 — Mappa + raggio** | Layer statici (farmacie, scuole, ZTL, mercati), vista mappa, geocoding on-device via gazzetteer civici Bologna → alert "entro 300 m da casa" | P1-P2 | il killer feature; geocoding senza backend |
-| **P5 — Multi-città** | Registry per città (altri comuni ODS). Normalizzazione per-città = lavoro vero | P3 | ultima: reach massimo, sforzo massimo |
+| **P3 — Rebrand "Civico"** *(nome deciso; delegato all'automazione)* | Nome, icona, splash, copy, config città, listing ASC nuovo | P1 (senza multi-categoria il rebrand è vuoto) | checklist in §4 |
+| **P4 — Mappa + raggio** *(delegato all'automazione)* | Vista mappa, geocoding on-device via gazzetteer civici Bologna → alert "entro 300 m da casa"; poi layer statici (farmacie, scuole, ZTL, mercati) | P1-P2 | contesto in §4b |
+| **P5 — Multi-città (data-driven)** | Audit portali città candidate → soglia di ammissione → integrazione solo delle città sopra soglia. Adapter CKAN quando serve la prima città non-ODS | P3 | protocollo in §4c |
 
 Regola invariata: **niente backend, niente account, niente analytics.** È il
 differenziatore (privacy, costi zero, offline). Tutte le fasi lo rispettano.
@@ -134,16 +134,32 @@ futura se serve: sync incrementale per data di ultimo sync invece della finestra
   `expo.name` in `app.json`.
 - `scheme` deep-link: aggiungerne uno nuovo, mantenere `pratiche-bologna` come alias.
 
-### Nome — candidati
+### Nome — DECISO: **Civico** (confermato dal proprietario, lug 2026)
 
-| Nome | Perché | Rischi |
-|---|---|---|
-| **Civico** ⭐ | Doppio senso perfetto: *civico* (cittadino) + *numero civico* (casa tua). Corto, italiano, si presta a multi-città ("Civico Bologna", "Civico Torino") | verificare collisioni marchio/App Store |
-| **Dintorni** | "Cosa succede nei dintorni" — è letteralmente la value prop | più generico |
-| **InZona** | colloquiale, giovane | meno istituzionale |
-| ~~SottoCasa~~ | perfetto semanticamente | **esiste già un'app SottoCasa** (marketplace) — conflitto probabile |
+Doppio senso: *civico* (cittadino) + *numero civico* (casa tua). Corto, italiano, regge il
+multi-città ("Civico Bologna", "Civico Torino"). Prima di pubblicare: verificare collisioni
+marchio/App Store per "Civico" in categoria News/Utility Italia.
 
 Tagline: *"Cosa cambia intorno a te"* / *"La tua città, sotto casa"*.
+
+### P3 — checklist di esecuzione (per l'automazione, in ordine)
+
+1. `app.json` → `expo.name: "Civico"`. Nome ASC: "Civico — Bologna" (ricercabilità). NON
+   toccare: `bundleIdentifier`, `slug`, `projectId`, `owner`. `scheme`: aggiungere `civico`,
+   tenere `pratiche-bologna` come alias.
+2. Config città (`lib/city.ts` o simile): `{ nome: 'Bologna', accento: '#9B2335', QUARTIERI,
+   portale ODS }` — estrarre da `constants.ts` ciò che è fatto-di-Bologna, il brand resta
+   neutro. Le 7 sorgenti restano in `sources.ts` (diventeranno per-città solo in P5).
+3. Copy sweep: grep "Pratiche Edilizie Bologna" / "pratiche edilizie" in `app/`, `assets/lang/`,
+   README; parametrizzare i riferimenti a Bologna dove appaiono come brand (non dove indicano
+   la città dei dati). Tono invariato (vedi `onboarding.tsx`).
+4. Icona/splash: nuovo segno neutro (pin + isolato stilizzato), colorway Bologna. 1024px
+   `assets/icon.png` + `adaptive-icon.png` + `splash.png`. Se la generazione dell'artwork non è
+   automatizzabile con qualità sufficiente, fermarsi e chiedere — NON pubblicare con l'icona
+   Due Torri sotto il nome Civico.
+5. Store: nuovi screenshot via il flusso documentato in CLAUDE.md (§ Deploy), "Novità" che
+   annuncia le 5 categorie, testo promozionale aggiornato, versione minor bump (1.2.0).
+6. Gate completo + revisione avversariale prima della release (come P1/P2).
 
 ### Cosa è Bologna-hardcoded oggi (sweep da fare in P3)
 
@@ -165,6 +181,75 @@ Tagline: *"Cosa cambia intorno a te"* / *"La tua città, sotto casa"*.
   isolato/quartiere stilizzato), con colorway per città.
 
 ---
+
+## 4b. P4 — Mappa + raggio: contesto per l'automazione
+
+La ricerca e l'implementazione sono delegate all'automazione. Contesto necessario:
+
+**Scelta libreria mappa (decidere per prima, condiziona tutto):**
+- Candidate: `react-native-maps` (Apple Maps su iOS — zero API key, ma config plugin +
+  rebuild EAS) vs `@maplibre/maplibre-react-native` (tile vettoriali open, stile
+  personalizzabile, più pesante). Entrambe = dipendenza NATIVA → serve un nuovo build EAS
+  (vedi CLAUDE.md § Deploy: il build parte dal commit git). Nessuna delle due funziona nel
+  build web degli screenshot → serve uno shim `*.web.ts` che renda un placeholder statico.
+- Criterio: privacy-first (niente chiavi/tracking di terzi), peso binario, resa offline.
+  Tile offline NON richiesti in prima battuta: la mappa può degradare con un messaggio
+  quando offline (i dati pin restano locali).
+
+**Dati geografici già in casa:** ogni riga ha `geopoint`/lat-lon dove la sorgente li
+fornisce (cantieri `pinpoint`, commercio `geopoint`, eventi `coordinate`, segnalazioni
+`geopoint`; edilizia NO — solo `codvia`+`zone`). La colonna `extra` NON contiene oggi le
+coordinate per tutte le sorgenti: verificare per-sorgente e, se mancano, aggiungerle a
+`extra` nei normalizer (migrazione non necessaria, `extra` è già JSON).
+
+**Geocoding on-device (alert raggio "entro 300 m"):** cercare nel catalogo ODS Bologna il
+gazzetteer vie/civici con coordinate (probe: `suggest("civici")` / `suggest("numeri
+civici")` / `suggest("vie")` su
+`https://opendata.comune.bologna.it/api/explore/v2.1/catalog/datasets`). L'indirizzo
+dell'utente si geocoda contro quel dataset scaricato in locale — NIENTE servizi di
+geocoding esterni (regola no-backend/no-tracking). Distanza: haversine pura in `lib/`,
+testabile in vitest.
+
+**Layer statici (fase 2 di P4):** `farmacie`, `elenco-delle-scuole`,
+`zona-a-traffico-limitato`, `mercati-e-fiere` — reference senza date, download una tantum,
+solo vista mappa, NON entrano nel feed né nelle notifiche.
+
+---
+
+## 4c. P5 — Multi-città: protocollo data-driven (riformulato, lug 2026)
+
+Decisione del proprietario: non vincolare l'app a una città — **se i dati di altre città
+lo permettono, supportarle**. Il vincolo reale non è il codice (P0-P2 ha reso il costo
+marginale minimo: 1 sorgente = 1 entry registry + 1 schema zod + 1 normalizer): è che i
+dati NON sono standardizzati. Tre problemi concreti:
+
+1. **Piattaforme diverse.** Bologna = Opendatasoft (ODS); la maggioranza delle città
+   italiane (Milano, Torino, Roma, Firenze…) = CKAN; API/paginazione/query diverse. Il
+   transport attuale (`fetch-page`/`ods-request`/`paginate`, cap `MAX_OFFSET` 9900) è
+   ODS-only → una seconda piattaforma richiede un adapter CKAN (prerequisito tecnico).
+2. **Schemi diversi ovunque.** Anche a parità di piattaforma ogni città inventa i propri
+   campi. Gli schemi di Bologna sono nati da probe LIVE dell'API (es. la scoperta di
+   `n_e_anno_prot_domanda` senza campo id). Ogni città × ogni categoria = un ciclo
+   probe→schema→normalizer→test. Non automatizzabile alla cieca: verificare sempre contro
+   l'API reale.
+3. **Disponibilità diseguale + fatti locali.** Bologna è tra le migliori d'Italia (701
+   dataset, aggiornamenti quotidiani); molte città non hanno un dataset pratiche, o solo
+   CSV annuali senza API. E ogni città porta i suoi fatti: lista quartieri, gazzetteer,
+   normalizzazione nomi zona.
+
+**Protocollo (l'automazione può eseguire i passi 1-2 da subito):**
+
+1. **Audit città candidata** (solo ricerca, zero codice): identificare il portale open data,
+   la piattaforma (ODS/CKAN/altro), e per ognuna delle 5 categorie: esiste un dataset? ha
+   API? campo data? campo quartiere/zona? geopoint? frequenza di aggiornamento? Output: una
+   scheda per città in `docs/cities/<città>.md` con punteggio.
+2. **Soglia di ammissione:** ≥2 categorie disponibili via API con aggiornamento almeno
+   mensile, di cui almeno una "quotidianamente utile" (cantieri o segnalazioni o eventi).
+   Sotto soglia → la città non si integra (si rivaluta periodicamente).
+3. **Integrazione** (solo per città sopra soglia): eventuale adapter piattaforma (una
+   volta per piattaforma), config città (`lib/city.ts` da P3), N sorgenti nel registry con
+   schema+normalizer probati live, gazzetteer quartieri, test per sorgente. Stessa
+   disciplina di P1/P2 (design → implementazione → revisione avversariale).
 
 ## 5. Cosa NON fare (deciso ora, per non ridiscuterlo)
 

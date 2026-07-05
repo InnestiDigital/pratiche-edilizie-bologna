@@ -36,13 +36,30 @@ describe('buildFeedQuery — WHERE construction', () => {
     expect(params).toEqual(['PDC', 'CILA', 50, 0]);
   });
 
-  it('builds a wrapped LIKE pair for searchQuery with an ESCAPE clause', () => {
+  it('builds an address/procedimento/note LIKE group for searchQuery with ESCAPE clauses', () => {
     const { sql, params } = buildFeedQuery({ ...EMPTY, searchQuery: 'Indipendenza' }, 50, 0);
     expect(squish(sql)).toContain(
-      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')"
+      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\'))"
     );
-    // same escaped %term% bound twice, then LIMIT/OFFSET
-    expect(params).toEqual(['%Indipendenza%', '%Indipendenza%', 50, 0]);
+    // same escaped %term% bound thrice (address, procedimento, note), then LIMIT/OFFSET
+    expect(params).toEqual(['%Indipendenza%', '%Indipendenza%', '%Indipendenza%', 50, 0]);
+  });
+
+  it('matches the resident personal note (permit_notes) as part of the search', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, searchQuery: 'Soprintendenza' }, 50, 0);
+    // Correlated EXISTS on permit_notes, ORed into the search group so a term the
+    // user jotted on a permit surfaces that permit.
+    expect(squish(sql)).toContain(
+      "OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\'))"
+    );
+    // the note branch binds the same %term% as address/procedimento
+    expect(params).toEqual(['%Soprintendenza%', '%Soprintendenza%', '%Soprintendenza%', 50, 0]);
+  });
+
+  it('escapes LIKE wildcards in the note-search branch too', () => {
+    const { params } = buildFeedQuery({ ...EMPTY, searchQuery: '50%' }, 50, 0);
+    // address, procedimento, note all get the same escaped pattern
+    expect(params.slice(0, 3)).toEqual(['%50\\%%', '%50\\%%', '%50\\%%']);
   });
 
   it('escapes LIKE wildcards in the search term so they match literally', () => {
@@ -135,10 +152,10 @@ describe('buildFeedQuery — WHERE construction', () => {
       20
     );
     expect(squish(sql)).toContain(
-      "WHERE zone IN (?) AND filing_type IN (?) AND (address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\') AND status IN (?) AND is_new = 1"
+      "WHERE zone IN (?) AND filing_type IN (?) AND (address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\')) AND status IN (?) AND is_new = 1"
     );
-    // zone, filing_type, search x2, status, then LIMIT/OFFSET (is_new binds nothing)
-    expect(params).toEqual(['Navile', 'PDC', '%via%', '%via%', 'rilasciata', 10, 20]);
+    // zone, filing_type, search x3 (address/procedimento/note), status, then LIMIT/OFFSET (is_new binds nothing)
+    expect(params).toEqual(['Navile', 'PDC', '%via%', '%via%', '%via%', 'rilasciata', 10, 20]);
   });
 });
 
@@ -178,10 +195,10 @@ describe('buildFeedQuery — protocol-aware search', () => {
   it('ORs a source_id LIKE branch onto the search for a bare number', () => {
     const { sql, params } = buildFeedQuery({ ...EMPTY, searchQuery: '481' }, 50, 0);
     expect(squish(sql)).toContain(
-      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR (source_id LIKE ? ESCAPE '\\'))"
+      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\') OR (source_id LIKE ? ESCAPE '\\'))"
     );
-    // address, procedimento, then the single protocol pattern, then LIMIT/OFFSET
-    expect(params).toEqual(['%481%', '%481%', '%481%', 50, 0]);
+    // address, procedimento, note, then the single protocol pattern, then LIMIT/OFFSET
+    expect(params).toEqual(['%481%', '%481%', '%481%', '%481%', 50, 0]);
   });
 
   it('ANDs each numeric group of a number/year protocol inside the source_id branch', () => {
@@ -189,16 +206,26 @@ describe('buildFeedQuery — protocol-aware search', () => {
     expect(squish(sql)).toContain(
       "OR (source_id LIKE ? ESCAPE '\\' AND source_id LIKE ? ESCAPE '\\')"
     );
-    expect(params).toEqual(['%000481/2024%', '%000481/2024%', '%000481%', '%2024%', 50, 0]);
+    // address, procedimento, note (all the raw term), then the two protocol groups
+    expect(params).toEqual([
+      '%000481/2024%',
+      '%000481/2024%',
+      '%000481/2024%',
+      '%000481%',
+      '%2024%',
+      50,
+      0,
+    ]);
   });
 
-  it('leaves a text search with no source_id branch (clause unchanged)', () => {
+  it('leaves a text search with no source_id LIKE (protocol) branch', () => {
     const { sql, params } = buildFeedQuery({ ...EMPTY, searchQuery: 'Marconi' }, 50, 0);
     expect(squish(sql)).toContain(
-      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')"
+      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\'))"
     );
-    expect(squish(sql)).not.toContain('source_id');
-    expect(params).toEqual(['%Marconi%', '%Marconi%', 50, 0]);
+    // the note EXISTS references source_id, but there is no protocol `source_id LIKE` branch
+    expect(squish(sql)).not.toContain('source_id LIKE');
+    expect(params).toEqual(['%Marconi%', '%Marconi%', '%Marconi%', 50, 0]);
   });
 
   it('keeps the count query consistent with the protocol-aware feed WHERE', () => {
@@ -318,7 +345,15 @@ describe('buildFeedCountQuery', () => {
     expect(countWhere.trim()).toBe(feedWhere.trim());
     // Count params == feed params minus the trailing LIMIT/OFFSET.
     expect(count.params).toEqual(feed.params.slice(0, -2));
-    expect(count.params).toEqual(['Navile', 'PDC', '%via%', '%via%', 'rilasciata', 'sanatoria']);
+    expect(count.params).toEqual([
+      'Navile',
+      'PDC',
+      '%via%',
+      '%via%',
+      '%via%',
+      'rilasciata',
+      'sanatoria',
+    ]);
   });
 
   it('ignores the sort option (no ORDER BY in a count)', () => {

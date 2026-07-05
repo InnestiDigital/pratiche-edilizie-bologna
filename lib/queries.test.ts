@@ -109,9 +109,9 @@ describe('getPermits — WHERE construction', () => {
     const { db, calls } = makeFakeDb();
     await getPermits(db, baseFilters({ searchQuery: 'Indipendenza' }));
     expect(squish(calls[0].sql)).toContain(
-      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\')"
+      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\'))"
     );
-    expect(calls[0].params).toEqual(['%Indipendenza%', '%Indipendenza%', 50, 0]);
+    expect(calls[0].params).toEqual(['%Indipendenza%', '%Indipendenza%', '%Indipendenza%', 50, 0]);
   });
 
   it('escapes LIKE wildcards in the search term so they match literally', async () => {
@@ -119,7 +119,13 @@ describe('getPermits — WHERE construction', () => {
     // A user typing "100%" or "via_" must match those literal strings, not use
     // % / _ as SQL wildcards. The escaped term is wrapped in the outer %…%.
     await getPermits(db, baseFilters({ searchQuery: '100%_ok\\' }));
-    expect(calls[0].params).toEqual(['%100\\%\\_ok\\\\%', '%100\\%\\_ok\\\\%', 50, 0]);
+    expect(calls[0].params).toEqual([
+      '%100\\%\\_ok\\\\%',
+      '%100\\%\\_ok\\\\%',
+      '%100\\%\\_ok\\\\%',
+      50,
+      0,
+    ]);
     // The ESCAPE clause is what makes the backslash prefixes literal.
     expect(squish(calls[0].sql)).toContain("ESCAPE '\\'");
   });
@@ -158,9 +164,18 @@ describe('getPermits — WHERE construction', () => {
     );
     const sql = squish(calls[0].sql);
     expect(sql).toContain(
-      "WHERE zone IN (?) AND filing_type IN (?) AND (address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\') AND status IN (?) AND is_new = 1"
+      "WHERE zone IN (?) AND filing_type IN (?) AND (address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\')) AND status IN (?) AND is_new = 1"
     );
-    expect(calls[0].params).toEqual(['Navile', 'SCIA', '%via%', '%via%', 'rilasciata', 50, 0]);
+    expect(calls[0].params).toEqual([
+      'Navile',
+      'SCIA',
+      '%via%',
+      '%via%',
+      '%via%',
+      'rilasciata',
+      50,
+      0,
+    ]);
   });
 });
 

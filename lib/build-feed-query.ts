@@ -152,6 +152,19 @@ export function buildFeedWhere(filters: FeedFilters): {
     const q = `%${escapeLike(filters.searchQuery)}%`;
     const clauses = ["address LIKE ? ESCAPE '\\'", "procedimento LIKE ? ESCAPE '\\'"];
     const searchParams: string[] = [q, q];
+    // The search also matches the resident's own personal note on a permit, so a
+    // term they jotted ("Soprintendenza", a phone number) finds the annotated
+    // permit — the note is now a first-class, searchable field alongside the feed
+    // preview and "Solo con note" filter. Matched via a correlated EXISTS on the
+    // permit_notes table (keyed by source_id, like onlyNoted) so LIMIT/OFFSET and
+    // pagination stay correct; ORed into the search group so it widens, never
+    // narrows, the match. An emptied note is deleted (see normalizeNote), so a
+    // present row always holds real text.
+    clauses.push(
+      'EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id ' +
+        "AND permit_notes.note LIKE ? ESCAPE '\\')"
+    );
+    searchParams.push(q);
     // A protocol/number query additionally matches the source_id. Each numeric
     // group is ANDed (order-independent) so the displayed `number/year` form finds
     // the `dataset-year-number` source_id; ORed with the text search above so a

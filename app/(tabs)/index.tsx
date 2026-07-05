@@ -968,12 +968,12 @@ export default function FeedScreen() {
       <View className="flex-row items-center bg-white px-4 pb-2 pt-2">
         <TextInput
           className="flex-1 rounded-lg bg-parchment-100 px-4 py-2.5 text-base text-ink-800"
-          placeholder="Cerca indirizzo o protocollo..."
+          placeholder="Cerca indirizzo, nota o protocollo..."
           placeholderTextColor="#a89888"
           value={searchInput}
           onChangeText={onChangeSearch}
           clearButtonMode="while-editing"
-          accessibilityLabel="Cerca indirizzo, procedimento o protocollo"
+          accessibilityLabel="Cerca indirizzo, procedimento, nota o protocollo"
         />
         <Pressable
           onPress={() => setFiltersOpen((v) => !v)}

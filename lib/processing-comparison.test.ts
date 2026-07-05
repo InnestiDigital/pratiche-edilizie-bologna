@@ -9,19 +9,19 @@ describe('buildProcessingComparison', () => {
   it('marks a span comfortably below the band as faster', () => {
     // 2024-11-02 → 2024-11-25 = 23 days, well under 56.
     const c = buildProcessingComparison('2024-11-02', '2024-11-25', STATS);
-    expect(c).toEqual({ tone: 'faster', label: 'Più veloce della media (mediana 2 mesi)' });
+    expect(c).toEqual({ tone: 'faster', label: 'Più veloce della norma (mediana 2 mesi)' });
   });
 
   it('marks a span comfortably above the band as slower', () => {
     // 2024-08-14 → 2024-11-20 = 98 days, over 84.
     const c = buildProcessingComparison('2024-08-14', '2024-11-20', STATS);
-    expect(c).toEqual({ tone: 'slower', label: 'Più lenta della media (mediana 2 mesi)' });
+    expect(c).toEqual({ tone: 'slower', label: 'Più lenta della norma (mediana 2 mesi)' });
   });
 
   it('marks a span inside the tolerance band as typical', () => {
     // 2024-08-14 → 2024-10-23 = 70 days, exactly the median.
     const c = buildProcessingComparison('2024-08-14', '2024-10-23', STATS);
-    expect(c).toEqual({ tone: 'typical', label: 'In linea con la media (mediana 2 mesi)' });
+    expect(c).toEqual({ tone: 'typical', label: 'In linea con la norma (mediana 2 mesi)' });
   });
 
   it('treats the band edges as still typical (inclusive)', () => {

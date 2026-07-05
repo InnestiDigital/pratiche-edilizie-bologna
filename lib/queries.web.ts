@@ -156,3 +156,11 @@ export async function countNewPermits(_db: SQLite.SQLiteDatabase): Promise<numbe
 export async function markAllSeen(_db: SQLite.SQLiteDatabase): Promise<void> {
   // no-op on web
 }
+
+export async function markPermitSeen(_db: SQLite.SQLiteDatabase, _id: number): Promise<void> {
+  // no-op in the screenshot build
+}
+
+export async function getNewSourceIds(_db: SQLite.SQLiteDatabase): Promise<Set<string>> {
+  return new Set(FIXTURES.filter((p) => p.is_new === 1).map((p) => p.source_id));
+}

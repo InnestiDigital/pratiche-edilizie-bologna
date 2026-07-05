@@ -195,3 +195,25 @@ export async function countNewPermits(db: SQLite.SQLiteDatabase): Promise<number
 export async function markAllSeen(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.runAsync('UPDATE permits SET is_new = 0 WHERE is_new = 1');
 }
+
+/**
+ * Mark a single permit seen (clear its NUOVO flag) — the per-permit counterpart
+ * to `markAllSeen`, fired when its detail is opened so that reading a permit
+ * counts as reading it (email-style), not only the bulk "Segna lette" action.
+ * Scoped to `is_new = 1` so an already-seen permit is a no-op write.
+ */
+export async function markPermitSeen(db: SQLite.SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync('UPDATE permits SET is_new = 0 WHERE id = ? AND is_new = 1', id);
+}
+
+/**
+ * The `source_id`s of every still-unseen permit. The feed reads this on focus to
+ * fold detail-driven mark-seen writes into its already-loaded cards in place (via
+ * the pure `applySeenToList`) without a full reload that would reset scroll.
+ */
+export async function getNewSourceIds(db: SQLite.SQLiteDatabase): Promise<Set<string>> {
+  const rows = await db.getAllAsync<{ source_id: string }>(
+    'SELECT source_id FROM permits WHERE is_new = 1'
+  );
+  return new Set(rows.map((r) => r.source_id));
+}

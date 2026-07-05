@@ -10,13 +10,14 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import {
   getPermits,
   countPermits,
   countNewPermits,
+  getNewSourceIds,
   markAllSeen,
   parsePermitTags,
   SORT_LABELS,
@@ -33,6 +34,7 @@ import { parseZoneParam } from '../../lib/zone-param';
 import { parseTagParam } from '../../lib/tag-param';
 import { debounce } from '../../lib/debounce';
 import { shouldShowScrollTop } from '../../lib/scroll-top';
+import { applySeenToList } from '../../lib/mark-seen';
 import { groupPermitsBySection } from '../../lib/feed-sections';
 import { sectionCountLabel } from '../../lib/section-count-label';
 import { buildResultCount } from '../../lib/result-count-label';
@@ -811,6 +813,30 @@ export default function FeedScreen() {
   useEffect(() => {
     loadPermits(true);
   }, [loadPermits]);
+
+  // When the feed regains focus (e.g. after opening a permit's detail, which
+  // marks that permit read), fold the DB's still-unseen set into the loaded cards
+  // IN PLACE — no reload, so scroll + pagination are preserved. applySeenToList
+  // returns the same array when nothing changed, so the common "read nothing"
+  // focus is a true no-op; only cards that lost their NUOVO flag re-render. This
+  // never resets the list, so the worst case if focus never fires is simply the
+  // pre-existing behavior (the badge clears on the next natural reload) — not a
+  // scroll jump.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const db = await getDb();
+        const stillNew = await getNewSourceIds(db);
+        if (!active) return;
+        setNewCount(stillNew.size);
+        setPermits((prev) => applySeenToList(prev, stillNew));
+      })();
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   // Apply a `zone` deep link from the Sync screen: narrow the feed to that single
   // quartiere. Guarded by parseZoneParam so a junk/legacy value is ignored rather

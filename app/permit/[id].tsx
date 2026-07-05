@@ -12,7 +12,13 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
-import { getPermitById, getRelatedPermits, parsePermitTags, type Permit } from '../../lib/queries';
+import {
+  getPermitById,
+  getRelatedPermits,
+  markPermitSeen,
+  parsePermitTags,
+  type Permit,
+} from '../../lib/queries';
 import { isFavorite, toggleFavorite } from '../../lib/favorites';
 import { getNoteRecord, setNote, deleteNote } from '../../lib/notes';
 import { normalizeNote, NOTE_MAX_LENGTH } from '../../lib/note-text';
@@ -372,6 +378,13 @@ export default function PermitDetail() {
         if (p) {
           isFavorite(db, p.source_id).then(setSaved);
           getRelatedPermits(db, p.zone, p.id).then(setRelated);
+          // Reading a permit marks it read (email-style): clear its NUOVO flag in
+          // the DB so it no longer counts as unseen. The feed folds this into its
+          // loaded cards on focus (see applySeenToList) without a reload. The
+          // detail keeps its own NUOVO badge for this view — it WAS new when
+          // opened — and the write is scoped to is_new=1, so an already-seen
+          // permit is a no-op.
+          if (p.is_new === 1) markPermitSeen(db, p.id);
         }
       })
     );

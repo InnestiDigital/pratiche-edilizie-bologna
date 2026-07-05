@@ -32,6 +32,7 @@ import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
 import { parseTagParam } from '../../lib/tag-param';
+import { parseStatusParam } from '../../lib/status-param';
 import { parseNewParam } from '../../lib/new-param';
 import { debounce } from '../../lib/debounce';
 import { shouldShowScrollTop } from '../../lib/scroll-top';
@@ -678,13 +679,23 @@ export default function FeedScreen() {
   // street name) + the shared `t` nonce; it prefills the search box below.
   // Deep link from a detail etichetta tap carries `tag` (a canonical tag key) +
   // the shared `t` nonce; it narrows the feed to that single tag.
+  // Deep link from the Sync "Per Stato" rows carries `status` (a canonical status
+  // key) + the shared `t` nonce; it narrows the feed to that single outcome.
   const {
     zone: zoneParam,
     q: searchParam,
     tag: tagParam,
+    status: statusParam,
     new: newParam,
     t: linkNonce,
-  } = useLocalSearchParams<{ zone?: string; q?: string; tag?: string; new?: string; t?: string }>();
+  } = useLocalSearchParams<{
+    zone?: string;
+    q?: string;
+    tag?: string;
+    status?: string;
+    new?: string;
+    t?: string;
+  }>();
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -858,6 +869,15 @@ export default function FeedScreen() {
     const tag = parseTagParam(tagParam);
     if (tag) setActiveTags(new Set([tag]));
   }, [tagParam, linkNonce]);
+
+  // Apply a `status` deep link from the Sync "Per Stato" rows: narrow the feed to
+  // that single outcome. Guarded by parseStatusParam so a junk/legacy value is
+  // ignored rather than filtering to an impossible status; refires on the nonce so
+  // re-tapping the same status re-applies it. Mirrors the zone/tag deep links.
+  useEffect(() => {
+    const status = parseStatusParam(statusParam);
+    if (status) setActiveStatuses(new Set([status]));
+  }, [statusParam, linkNonce]);
 
   // Apply a `new` deep link from a "new permits" notification tap: pre-activate
   // the "Solo nuovi" filter so the resident lands on exactly the fresh permits

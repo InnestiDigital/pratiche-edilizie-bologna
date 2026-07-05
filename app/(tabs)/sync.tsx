@@ -519,8 +519,20 @@ export default function SyncScreen() {
                       elevation: 1,
                     }}>
                     {breakdown.map((s, i) => (
-                      <View
+                      <Pressable
                         key={s.status}
+                        onPress={() =>
+                          router.navigate({
+                            pathname: '/(tabs)',
+                            // Nonce so tapping the same status twice re-applies the filter.
+                            params: { status: s.status, t: String(Date.now()) },
+                          })
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={`${s.label}, ${s.count} ${
+                          s.count === 1 ? 'pratica' : 'pratiche'
+                        }`}
+                        accessibilityHint="Mostra le pratiche con questo stato nel feed"
                         className={`px-4 py-3 ${
                           i < breakdown.length - 1 ? 'border-b border-parchment-200' : ''
                         }`}>
@@ -537,6 +549,12 @@ export default function SyncScreen() {
                           <Text className="ml-2 text-sm font-bold text-ink-800">
                             {s.count.toLocaleString('it-IT')}
                           </Text>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={15}
+                            color="#a89888"
+                            style={{ marginLeft: 8 }}
+                          />
                         </View>
                         <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-parchment-200">
                           <View
@@ -547,7 +565,7 @@ export default function SyncScreen() {
                             }}
                           />
                         </View>
-                      </View>
+                      </Pressable>
                     ))}
                   </View>
                 </View>

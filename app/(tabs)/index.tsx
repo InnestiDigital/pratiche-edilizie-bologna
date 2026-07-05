@@ -343,6 +343,8 @@ function FilterPanel({
   setPeriod,
   sort,
   setSort,
+  activeCount,
+  onReset,
 }: {
   activeZones: Set<Quartiere>;
   toggleZone: (z: Quartiere) => void;
@@ -358,9 +360,30 @@ function FilterPanel({
   setPeriod: (p: FeedPeriod) => void;
   sort: SortOption;
   setSort: (s: SortOption) => void;
+  activeCount: number;
+  onReset: () => void;
 }) {
   return (
     <View className="border-b border-stone-200 bg-white px-4 pb-3">
+      {/* Panel header: title + an in-panel "Azzera" reset. The collapsed
+          active-filter chip row (with its own "Cancella") is hidden while the
+          panel is open, so without this the only way to clear every filter from
+          inside the panel was to un-toggle each one — the reset lives here now. */}
+      <View className="mb-3 mt-1 flex-row items-center justify-between">
+        <Text className="text-sm font-bold text-ink-800">Filtri</Text>
+        {activeCount > 0 && (
+          <Pressable
+            onPress={onReset}
+            accessibilityRole="button"
+            accessibilityLabel={`Azzera ${activeCount} filtri attivi`}
+            hitSlop={8}
+            className="flex-row items-center rounded-full bg-brick-50 px-3 py-1">
+            <Ionicons name="refresh" size={13} color="#9B2335" />
+            <Text className="ml-1 text-xs font-semibold text-brick-600">Azzera</Text>
+          </Pressable>
+        )}
+      </View>
+
       {/* Quick toggles: only new / only saved */}
       <View className="mb-3 flex-row">
         <Pressable
@@ -936,6 +959,8 @@ export default function FeedScreen() {
           setPeriod={setPeriod}
           sort={sort}
           setSort={setSort}
+          activeCount={activeFilterCount}
+          onReset={resetFilters}
         />
       )}
 

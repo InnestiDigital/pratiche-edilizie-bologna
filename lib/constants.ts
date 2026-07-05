@@ -137,6 +137,10 @@ export const STATUS_LABELS: Record<string, string> = {
   rinunciata: 'Rinunciata',
   in_attesa: 'In attesa',
   concluso: 'Concluso',
+  // Cantieri (public-works) statuses: a roadwork site is either underway or closed.
+  in_corso: 'In corso',
+  // Eventi: a cultural event carries a constant, never-time-derived status.
+  in_programma: 'In programma',
   altro: 'Altro',
 };
 
@@ -159,4 +163,6 @@ export const STATUS_DESCRIPTIONS: Record<string, string> = {
   rinunciata: 'Il richiedente ha rinunciato alla pratica prima della sua conclusione.',
   in_attesa: 'La pratica è stata presentata ed è in corso di esame da parte degli uffici comunali.',
   concluso: 'L’iter della pratica si è concluso.',
+  in_corso: 'I lavori del cantiere sono attualmente in corso.',
+  in_programma: 'L’evento è in programma e deve ancora svolgersi.',
 };

@@ -28,22 +28,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#9B2335"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "it.innesti.praticheediliziebologna",
       "infoPlist": {
         "CFBundleDevelopmentRegion": "it",
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": [
-          "fetch",
-          "processing"
-        ],
-        "BGTaskSchedulerPermittedIdentifiers": [
-          "background-permit-sync"
-        ]
+        "UIBackgroundModes": ["fetch", "processing"],
+        "BGTaskSchedulerPermittedIdentifiers": ["background-permit-sync"]
       },
       "buildNumber": "7"
     },

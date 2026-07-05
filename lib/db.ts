@@ -1,5 +1,11 @@
 import * as SQLite from 'expo-sqlite';
 import { createPermitIndexesSql } from './schema-indexes';
+import {
+  PERMITS_CATEGORY_COLUMN_DDL,
+  PERMITS_TITLE_COLUMN_DDL,
+  PERMITS_EXTRA_COLUMN_DDL,
+  pendingPermitMigrations,
+} from './schema-migrations';
 import { createFavoritesTableSql } from './favorites';
 import { createNotesTableSql } from './notes';
 
@@ -14,12 +20,19 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
 }
 
 async function createTables(db: SQLite.SQLiteDatabase): Promise<void> {
+  // 1. Create tables (idempotent). Fresh installs get `category` here; existing
+  //    installs predate it and pick it up via the ALTER migration below. Indexes
+  //    are created LAST (step 3): `idx_permits_category` would fail if run before
+  //    the ALTER adds the column on an existing install.
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS permits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       dataset TEXT NOT NULL,
       source_id TEXT NOT NULL UNIQUE,
       filing_type TEXT NOT NULL,
+      ${PERMITS_CATEGORY_COLUMN_DDL},
+      ${PERMITS_TITLE_COLUMN_DDL},
+      ${PERMITS_EXTRA_COLUMN_DDL},
       source_updated_at TEXT,
       first_seen_at TEXT NOT NULL,
       address TEXT,
@@ -50,9 +63,19 @@ async function createTables(db: SQLite.SQLiteDatabase): Promise<void> {
     ${createFavoritesTableSql()}
 
     ${createNotesTableSql()}
-
-    ${createPermitIndexesSql()}
   `);
+
+  // 2. Additive column migrations: diff the live `permits` columns against the
+  //    pure migration list and run any pending ALTERs. A failed ALTER propagates
+  //    out of getDb() exactly as a failed CREATE TABLE would — no wrapping.
+  const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(permits)');
+  for (const sql of pendingPermitMigrations(cols.map((c) => c.name))) {
+    await db.execAsync(sql);
+  }
+
+  // 3. Secondary indexes (idempotent), after the migration guarantees every
+  //    indexed column exists.
+  await db.execAsync(createPermitIndexesSql());
 }
 
 export async function getPreference(

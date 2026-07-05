@@ -11,6 +11,7 @@ import {
   type Quartiere,
 } from '../lib/constants';
 import { completeOnboarding } from '../lib/preferences';
+import { CATEGORIES, CATEGORY_LABELS, CATEGORY_COLORS, type Category } from '../lib/sources';
 import { TowersMark } from '../components/TowersMark';
 
 /** One row in the first-run "come funziona" card: brand-tinted icon + a plain
@@ -108,9 +109,52 @@ function TypeRow({
   );
 }
 
+/** One selectable "interesse" (civic category) row in the first-run picker: a
+ *  category-colored swatch + the category label + a check circle. Mirrors the
+ *  TypeRow language so the two pickers read as one family. */
+function InterestRow({
+  category,
+  selected,
+  onPress,
+  isLast,
+}: {
+  category: Category;
+  selected: boolean;
+  onPress: () => void;
+  isLast?: boolean;
+}) {
+  const color = CATEGORY_COLORS[category];
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="checkbox"
+      accessibilityLabel={CATEGORY_LABELS[category]}
+      accessibilityState={{ checked: selected }}
+      className={`flex-row items-center px-4 py-3.5 ${
+        !isLast ? 'border-b border-parchment-200' : ''
+      }`}>
+      <View
+        className="mr-3.5 h-9 w-9 items-center justify-center rounded-lg"
+        style={{ backgroundColor: color.bg }}>
+        <View className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: color.text }} />
+      </View>
+      <Text className="flex-1 text-[15px] font-medium leading-5 text-ink-800">
+        {CATEGORY_LABELS[category]}
+      </Text>
+      <View
+        className={`ml-3 h-6 w-6 items-center justify-center rounded-full ${
+          selected ? 'bg-brick-600' : 'border-2 border-stone-300 bg-white'
+        }`}>
+        {selected && <Ionicons name="checkmark" size={15} color="white" />}
+      </View>
+    </Pressable>
+  );
+}
+
 export default function OnboardingScreen() {
   const router = useRouter();
   const [selectedZones, setSelectedZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
+  const [selectedInterests, setSelectedInterests] = useState<Set<Category>>(new Set(CATEGORIES));
   const [selectedTypes, setSelectedTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [syncing, setSyncing] = useState(false);
 
@@ -119,6 +163,20 @@ export default function OnboardingScreen() {
       const next = new Set(prev);
       if (next.has(zone)) next.delete(zone);
       else next.add(zone);
+      return next;
+    });
+  };
+
+  // At least one interest must stay selected (mirrors toggleType): a zero-category
+  // sync would download nothing.
+  const toggleInterest = (category: Category) => {
+    setSelectedInterests((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        if (next.size > 1) next.delete(category);
+      } else {
+        next.add(category);
+      }
       return next;
     });
   };
@@ -135,16 +193,24 @@ export default function OnboardingScreen() {
     });
   };
 
+  const ediliziaSelected = selectedInterests.has('edilizia');
+
   const handleStart = async () => {
     setSyncing(true);
     await completeOnboarding({
       zones: [...selectedZones],
+      interests: [...selectedInterests],
       filingTypes: [...selectedTypes],
     });
     router.replace('/(tabs)/sync');
   };
 
-  const canStart = selectedZones.size > 0 && selectedTypes.size > 0;
+  // Filing types only matter when edilizia is followed; otherwise their selection
+  // is irrelevant and never blocks starting.
+  const canStart =
+    selectedZones.size > 0 &&
+    selectedInterests.size > 0 &&
+    (!ediliziaSelected || selectedTypes.size > 0);
 
   return (
     <ScrollView className="flex-1 bg-parchment-100" contentContainerStyle={{ flexGrow: 1 }}>
@@ -201,22 +267,48 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        {/* Tipo pratica */}
-        <Text className="mb-2 text-base font-bold text-ink-800">Tipo di pratica</Text>
+        {/* Interessi — which civic categories to follow. Defaults to all; the
+            edilizia filing-type card below appears only when Edilizia is kept. */}
+        <View className="mb-2 flex-row items-center justify-between">
+          <Text className="text-base font-bold text-ink-800">Cosa vuoi seguire</Text>
+          <Text className="text-sm text-brick-600">
+            {selectedInterests.size}/{CATEGORIES.length}
+          </Text>
+        </View>
         <View
           className="mb-8 overflow-hidden rounded-2xl bg-white"
           style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
-          {FILING_TYPE_ORDER.map((type, i) => (
-            <TypeRow
-              key={type}
-              type={type}
-              fullName={FILING_TYPE_FULL_NAMES[type]}
-              selected={selectedTypes.has(type)}
-              onPress={() => toggleType(type)}
-              isLast={i === FILING_TYPE_ORDER.length - 1}
+          {CATEGORIES.map((category, i) => (
+            <InterestRow
+              key={category}
+              category={category}
+              selected={selectedInterests.has(category)}
+              onPress={() => toggleInterest(category)}
+              isLast={i === CATEGORIES.length - 1}
             />
           ))}
         </View>
+
+        {/* Tipo pratica edilizia — only relevant when Edilizia is followed. */}
+        {ediliziaSelected && (
+          <>
+            <Text className="mb-2 text-base font-bold text-ink-800">Tipo di pratica edilizia</Text>
+            <View
+              className="mb-8 overflow-hidden rounded-2xl bg-white"
+              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
+              {FILING_TYPE_ORDER.map((type, i) => (
+                <TypeRow
+                  key={type}
+                  type={type}
+                  fullName={FILING_TYPE_FULL_NAMES[type]}
+                  selected={selectedTypes.has(type)}
+                  onPress={() => toggleType(type)}
+                  isLast={i === FILING_TYPE_ORDER.length - 1}
+                />
+              ))}
+            </View>
+          </>
+        )}
 
         <View className="flex-1" />
 

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../lib/sync';
+import { loadPreferences } from '../../lib/preferences';
+import { SOURCES, CATEGORY_COLORS, type SourceKey } from '../../lib/sources';
 import { getDb } from '../../lib/db';
 import { getStats, getReleasedDatePairs } from '../../lib/queries';
 import { buildStatusBreakdown } from '../../lib/status-breakdown';
@@ -15,13 +17,24 @@ import { italianDaySpan } from '../../lib/duration-span';
 import { syncFreshness } from '../../lib/sync-freshness';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-/* Dataset accent colors — same palette used for the filing-type badges across
-   the feed and detail screens, so the composition bar reads as one language. */
-const DATASET_META: { key: string; label: string; color: string }[] = [
-  { key: 'pdc', label: 'PdC', color: '#8B5E1A' },
-  { key: 'scia', label: 'SCIA', color: '#3D5C38' },
-  { key: 'cila', label: 'CILA', color: '#3A4A82' },
-];
+/* Composition-bar segments, derived from the SOURCES registry so a new source
+   can never be forgotten (its rows would otherwise be invisible in stats.byDataset).
+   Edilizia keeps its three compact acronym labels + per-filing bar colors (the
+   visual language of the filing badges); every other source takes its registry
+   label + category accent. */
+const EDILIZIA_BAR: Partial<Record<SourceKey, { label: string; color: string }>> = {
+  pdc: { label: 'PdC', color: '#8B5E1A' },
+  scia: { label: 'SCIA', color: '#3D5C38' },
+  cila: { label: 'CILA', color: '#3A4A82' },
+};
+const DATASET_META: { key: SourceKey; label: string; color: string }[] = (
+  Object.keys(SOURCES) as SourceKey[]
+).map((key) => {
+  const ed = EDILIZIA_BAR[key];
+  return ed
+    ? { key, ...ed }
+    : { key, label: SOURCES[key].label, color: CATEGORY_COLORS[SOURCES[key].category].text };
+});
 
 export default function SyncScreen() {
   const router = useRouter();
@@ -59,10 +72,14 @@ export default function SyncScreen() {
     setProgress([]);
     setResults([]);
     setSyncDone(false);
+    // Restrict the download to the user's followed categories — a user who
+    // deselected commercio/segnalazioni must not pay for their ~235k opted-out
+    // rows. Mirrors background-sync.ts, which passes the same interests.
+    const { interests } = await loadPreferences();
     const fn = full ? syncFull : syncRecent;
     const syncResults = await fn((msg) => {
       setProgress((prev) => [...prev, msg]);
-    });
+    }, interests);
     setResults(syncResults);
     setSyncing(false);
     setSyncDone(true);
@@ -102,7 +119,7 @@ export default function SyncScreen() {
             </View>
             <Text className="text-lg font-bold text-ink-800">Benvenuto!</Text>
             <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
-              Scarica i dati delle pratiche edilizie di Bologna.{'\n'}
+              Scarica i dati aperti del Comune di Bologna.{'\n'}
               La prima sincronizzazione richiede circa 1 minuto.
             </Text>
           </View>
@@ -297,7 +314,7 @@ export default function SyncScreen() {
                     )}
                   </View>
 
-                  {/* Proportional composition bar (PdC / SCIA / CILA) */}
+                  {/* Proportional composition bar, one segment per source */}
                   <View className="mt-3 h-2.5 flex-row overflow-hidden rounded-full bg-parchment-200">
                     {segments.map((s) =>
                       s.value > 0 ? (

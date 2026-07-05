@@ -133,6 +133,12 @@ describe('normalizeRecord', () => {
     expect(JSON.parse(out.tags)).toEqual([]);
   });
 
+  it("stamps every dataset's records with the 'edilizia' category", () => {
+    expect(normalizeRecord('pdc', rawRecord()).category).toBe('edilizia');
+    expect(normalizeRecord('scia', rawRecord()).category).toBe('edilizia');
+    expect(normalizeRecord('cila', rawRecord()).category).toBe('edilizia');
+  });
+
   it('coerces null esito/procedimento to safe defaults', () => {
     const out = normalizeRecord('cila', rawRecord({ esito_pratica: null, procedimento: null }));
     expect(out.status).toBe('altro');

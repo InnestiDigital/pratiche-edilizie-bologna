@@ -36,9 +36,10 @@ export interface PermitIndexSpec {
  * high-selectivity filter column. Order is not significant.
  */
 export const PERMIT_INDEX_SPECS: readonly PermitIndexSpec[] = [
-  // Filter columns (WHERE `zone IN (...)` / `filing_type IN (...)`).
+  // Filter columns (WHERE `zone IN (...)` / `filing_type IN (...)` / `category IN (...)`).
   { name: 'idx_permits_zone', column: 'zone' },
   { name: 'idx_permits_filing_type', column: 'filing_type' },
+  { name: 'idx_permits_category', column: 'category' },
   // Sort columns — each backs one feed SortOption's ORDER BY (see build-feed-query
   // SORT_SQL): `newest`/`oldest` → first_seen_at, `request_*` → source_updated_at,
   // `closing_newest` → date_issued.

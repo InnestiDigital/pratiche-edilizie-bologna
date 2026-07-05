@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { buildNotificationMessage } from './notification-message';
 import { buildNotificationData } from './notification-link';
+import type { BackgroundSyncSummary } from './background-result';
 
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
@@ -27,11 +28,8 @@ export async function hasNotificationPermissions(): Promise<boolean> {
   return status === 'granted';
 }
 
-export async function sendNewPermitsNotification(
-  newCount: number,
-  updatedCount: number
-): Promise<void> {
-  const body = buildNotificationMessage(newCount, updatedCount);
+export async function sendNewPermitsNotification(summary: BackgroundSyncSummary): Promise<void> {
+  const body = buildNotificationMessage(summary);
   if (body === null) return;
 
   await Notifications.scheduleNotificationAsync({
@@ -41,7 +39,7 @@ export async function sendNewPermitsNotification(
       // `new: '1'` when the sync brought genuinely-new permits → tapping the
       // notification deep-links the feed to its "Solo nuovi" filter (consumed by
       // notification-routing → app/_layout). Update-only → plain feed.
-      data: buildNotificationData(newCount),
+      data: buildNotificationData(summary.totalNew),
       ...(Platform.OS === 'android' && {
         categoryIdentifier: 'new-permits',
       }),

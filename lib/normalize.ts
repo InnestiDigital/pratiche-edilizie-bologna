@@ -5,6 +5,7 @@ import {
   BOLOGNA_PORTAL_BASE,
   type DatasetKey,
 } from './constants';
+import { SOURCES, type Category } from './sources';
 import codviaMap from '../assets/data/codvia_to_zone.json';
 
 const zoneMap = codviaMap as Record<string, string>;
@@ -26,6 +27,7 @@ export interface NormalizedPermit {
   dataset: string;
   source_id: string;
   filing_type: string;
+  category: Category;
   source_updated_at: string | null;
   address: string | null;
   zone: string | null;
@@ -36,6 +38,16 @@ export interface NormalizedPermit {
   status_raw: string;
   tags: string;
   source_link: string;
+  /**
+   * Card headline for the non-edilizia sources (cantiere description, event
+   * title, …). NULL for edilizia rows, which head their card with the address.
+   */
+  title: string | null;
+  /**
+   * Category-specific fields as a JSON object string, read back on-device via
+   * the hardened `permit-extra.ts` decoder. `'{}'` for edilizia (no extra data).
+   */
+  extra: string;
 }
 
 export function makeSourceId(datasetKey: DatasetKey, record: RawRecord): string {
@@ -87,6 +99,7 @@ export function normalizeRecord(datasetKey: DatasetKey, raw: RawRecord): Normali
     dataset: datasetKey,
     source_id: makeSourceId(datasetKey, raw),
     filing_type: DATASETS[datasetKey].filingType,
+    category: SOURCES[datasetKey].category,
     source_updated_at: raw.richiesta_data,
     address: raw.localizzazioni_lista,
     zone: deriveZone(raw.codvia),
@@ -101,5 +114,9 @@ export function normalizeRecord(datasetKey: DatasetKey, raw: RawRecord): Normali
       String(raw.richiesta_anno_prot),
       raw.richiesta_ndeg_prot
     ),
+    // Edilizia rows carry no title (the card heads with the address) and no
+    // category-specific extra data — byte-identical to the pre-title/extra rows.
+    title: null,
+    extra: '{}',
   };
 }

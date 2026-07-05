@@ -13,6 +13,7 @@
  */
 import type * as SQLite from 'expo-sqlite';
 import { RELEASED_STATUSES, type FilingType } from './constants';
+import type { Category } from './sources';
 import type { FeedFilters } from './build-feed-query';
 import type { ProcessingDatePair } from './processing-stats';
 import {
@@ -40,6 +41,7 @@ export interface Permit {
   dataset: string;
   source_id: string;
   filing_type: FilingType;
+  category: Category;
   source_updated_at: string | null;
   first_seen_at: string;
   address: string | null;
@@ -52,6 +54,10 @@ export interface Permit {
   tags: string;
   source_link: string | null;
   is_new: number;
+  /** Card headline for non-edilizia sources; NULL for edilizia (heads with address). */
+  title: string | null;
+  /** Category-specific fields as a JSON object string; decoded via `permit-extra.ts`. */
+  extra: string;
 }
 
 export function parsePermitTags(raw: string): string[] {
@@ -77,17 +83,25 @@ function filterFixtures(filters: FeedFilters): Permit[] {
     rows = rows.filter((p) => p.zone !== null && filters.zones.includes(p.zone as never));
   if (filters.filingTypes?.length)
     rows = rows.filter((p) => filters.filingTypes.includes(p.filing_type));
+  if (filters.categories?.length)
+    rows = rows.filter((p) => filters.categories!.includes(p.category));
   if (filters.statuses?.length) rows = rows.filter((p) => filters.statuses!.includes(p.status));
   if (filters.onlyNew) rows = rows.filter((p) => p.is_new === 1);
   if (filters.onlyFavorites) rows = rows.filter((p) => FAVORITE_SOURCE_IDS.has(p.source_id));
   if (filters.onlyNoted) rows = rows.filter((p) => p.source_id in NOTE_FIXTURES);
   if (filters.requestedAfter)
-    rows = rows.filter(
-      (p) => p.source_updated_at !== null && p.source_updated_at >= filters.requestedAfter!
-    );
+    // Mirrors build-feed-query's REQUEST_DATE_SQL: eventi carry NULL
+    // source_updated_at and are compared by discovery date instead.
+    rows = rows.filter((p) => {
+      const requestDate = p.category === 'eventi' ? p.first_seen_at : p.source_updated_at;
+      return requestDate !== null && requestDate >= filters.requestedAfter!;
+    });
   if (filters.searchQuery?.trim()) {
     const q = filters.searchQuery.trim().toLowerCase();
-    rows = rows.filter((p) => (p.address ?? '').toLowerCase().includes(q));
+    rows = rows.filter(
+      (p) =>
+        (p.address ?? '').toLowerCase().includes(q) || (p.title ?? '').toLowerCase().includes(q)
+    );
   }
   return rows;
 }

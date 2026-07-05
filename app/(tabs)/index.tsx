@@ -42,6 +42,15 @@ import { sectionCountLabel } from '../../lib/section-count-label';
 import { buildResultCount } from '../../lib/result-count-label';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
+import { formatItDate } from '../../lib/format-date';
+import { assertNever } from '../../lib/assert-never';
+import {
+  getCantiereExtra,
+  getCommercioExtra,
+  getEventoExtra,
+  getSegnalazioneExtra,
+} from '../../lib/permit-extra';
+import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_HAS_STATUS_SIGNAL } from '../../lib/sources';
 import {
   buildActiveFilterChips,
   ZONES_CHIP_KEY,
@@ -83,6 +92,8 @@ const STATUS_DOT: Record<string, string> = {
   rinunciata: '#9ca3af',
   in_attesa: '#3b82f6',
   concluso: '#22c55e',
+  in_corso: '#3b82f6',
+  in_programma: '#8b5cf6',
 };
 
 const STATUS_KEYS = Object.keys(STATUS_LABELS);
@@ -96,6 +107,237 @@ function TagBadge({ tag }: { tag: string }) {
       <Text className="text-xs font-medium text-stone-600">{TAG_LABELS[tag] ?? tag}</Text>
     </View>
   );
+}
+
+/* ── Card meta rows ─────────────────────────────── */
+
+/** A muted label+date footer row ("Richiesta 15/11/2024") with a leading glyph. */
+function CardDateRow({
+  icon,
+  label,
+  date,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  date: string;
+}) {
+  return (
+    <View className="mt-2 flex-row items-center">
+      <Ionicons name={icon} size={12} color="#70593f" />
+      <Text className="ml-1 text-xs text-stone-600">
+        <Text className="font-semibold">{label}</Text> {date}
+      </Text>
+    </View>
+  );
+}
+
+/** The card headline text, shared by every non-edilizia body. */
+function CardHeadline({ text }: { text: string }) {
+  return (
+    <Text className="text-[15px] font-semibold leading-5 text-ink-800" numberOfLines={2}>
+      {text}
+    </Text>
+  );
+}
+
+/* ── Per-category card bodies ───────────────────── */
+
+/** Edilizia body — byte-identical to the original card: address headline,
+ *  zone, procedimento, sort-matched date + protocol footer, then topic tags. */
+function EdiliziaBody({ permit, sort }: { permit: Permit; sort: SortOption }) {
+  const tags = parsePermitTags(permit.tags);
+  // Date shown in the footer, chosen + labelled to match the active sort so the
+  // card never displays a date that disagrees with how the feed is ordered.
+  const cardDate = feedCardDate(permit, sort);
+  return (
+    <>
+      <CardHeadline text={permit.address ?? 'Indirizzo non disponibile'} />
+      {permit.zone && <Text className="mt-0.5 text-sm text-stone-500">{permit.zone}</Text>}
+      {permit.procedimento && (
+        <Text className="mt-1 text-sm leading-5 text-ink-500" numberOfLines={2}>
+          {permit.procedimento}
+        </Text>
+      )}
+      <View className="mt-2 flex-row items-center">
+        {cardDate && (
+          <View className="mr-3 flex-row items-center">
+            <Ionicons
+              name={cardDate.icon as keyof typeof Ionicons.glyphMap}
+              size={12}
+              color="#70593f"
+            />
+            <Text className="ml-1 text-xs text-stone-600">
+              <Text className="font-semibold">{cardDate.label}</Text> {cardDate.date}
+            </Text>
+          </View>
+        )}
+        <View className="flex-row items-center">
+          <Ionicons name="pricetag-outline" size={12} color="#70593f" />
+          <Text className="ml-1 text-xs text-stone-600">{formatProtocol(permit.source_id)}</Text>
+        </View>
+      </View>
+      {tags.length > 0 && (
+        <View className="mt-1.5 flex-row flex-wrap">
+          {tags.map((t) => (
+            <TagBadge key={t} tag={t} />
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
+/** Cantieri body — title headline, address + zone, works date range, and the
+ *  traffic-change measure (the field residents care about) as an amber callout. */
+function CantieriBody({ permit }: { permit: Permit }) {
+  const extra = getCantiereExtra(permit.extra);
+  const start = formatItDate(permit.source_updated_at);
+  const end = formatItDate(permit.date_issued);
+  const range =
+    start && end
+      ? `Dal ${start} al ${end}`
+      : start
+        ? `Dal ${start}`
+        : end
+          ? `Fino al ${end}`
+          : null;
+  return (
+    <>
+      <CardHeadline text={permit.title ?? 'Cantiere'} />
+      {permit.address && <Text className="mt-0.5 text-sm text-stone-500">{permit.address}</Text>}
+      {permit.zone && <Text className="mt-0.5 text-sm text-stone-500">{permit.zone}</Text>}
+      {range && (
+        <View className="mt-2 flex-row items-center">
+          <Ionicons name="calendar-outline" size={12} color="#70593f" />
+          <Text className="ml-1 text-xs text-stone-600">{range}</Text>
+        </View>
+      )}
+      {extra.trafficchangesmeasure && (
+        <View
+          className="mt-2 flex-row items-center rounded-lg px-2.5 py-1.5"
+          style={{ backgroundColor: CATEGORY_COLORS.cantieri.bg }}>
+          <Ionicons name="warning-outline" size={13} color={CATEGORY_COLORS.cantieri.text} />
+          <Text
+            className="ml-1.5 flex-1 text-xs leading-4"
+            style={{ color: CATEGORY_COLORS.cantieri.text }}
+            numberOfLines={2}>
+            {extra.trafficchangesmeasure}
+          </Text>
+        </View>
+      )}
+    </>
+  );
+}
+
+/** Commercio body — tipo_intervento headline, address + zone, the area as a
+ *  muted qualifier, and the request date. Familiar istanza→esito shape. */
+function CommercioBody({ permit }: { permit: Permit }) {
+  const extra = getCommercioExtra(permit.extra);
+  const date = formatItDate(permit.source_updated_at);
+  return (
+    <>
+      <CardHeadline text={permit.title ?? 'Attività commerciale'} />
+      {permit.address && <Text className="mt-0.5 text-sm text-stone-500">{permit.address}</Text>}
+      {permit.zone && <Text className="mt-0.5 text-sm text-stone-500">{permit.zone}</Text>}
+      {extra.area && <Text className="mt-1 text-sm text-ink-500">{extra.area}</Text>}
+      {date && <CardDateRow icon="document-text-outline" label="Richiesta" date={date} />}
+    </>
+  );
+}
+
+/** Eventi body — date(s) FIRST and prominent (what matters for an event), then
+ *  title, address + zone, an "Online" pill, and the category tag chips. */
+function EventiBody({ permit }: { permit: Permit }) {
+  const extra = getEventoExtra(permit.extra);
+  const tags = parsePermitTags(permit.tags);
+  // Event start lives in `extra` (source_updated_at is NULL for eventi — see
+  // source-eventi.ts / build-feed-query.ts); end is the closing date.
+  const start = formatItDate(extra.start ?? null);
+  const end = formatItDate(permit.date_issued);
+  const dateLabel =
+    start && end && end !== start
+      ? `Dal ${start} al ${end}`
+      : start
+        ? `Il ${start}`
+        : end
+          ? `Il ${end}`
+          : null;
+  return (
+    <>
+      {dateLabel && (
+        <View className="mb-1 flex-row items-center">
+          <Ionicons name="calendar-outline" size={13} color={CATEGORY_COLORS.eventi.text} />
+          <Text className="ml-1.5 text-xs font-semibold text-stone-600">{dateLabel}</Text>
+        </View>
+      )}
+      <CardHeadline text={permit.title ?? 'Evento'} />
+      {permit.address && <Text className="mt-0.5 text-sm text-stone-500">{permit.address}</Text>}
+      {permit.zone && <Text className="mt-0.5 text-sm text-stone-500">{permit.zone}</Text>}
+      {extra.online === 'SI' && (
+        <View
+          className="mt-2 flex-row items-center self-start rounded-full px-2.5 py-0.5"
+          style={{ backgroundColor: CATEGORY_COLORS.eventi.bg }}>
+          <Ionicons name="videocam-outline" size={12} color={CATEGORY_COLORS.eventi.text} />
+          <Text
+            className="ml-1 text-xs font-semibold"
+            style={{ color: CATEGORY_COLORS.eventi.text }}>
+            Online
+          </Text>
+        </View>
+      )}
+      {tags.length > 0 && (
+        <View className="mt-1.5 flex-row flex-wrap">
+          {tags.map((t) => (
+            <TagBadge key={t} tag={t} />
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
+/** Segnalazioni body — the sottocategoria-chain headline, the proximity zone as
+ *  the location line (this source has NO address), the quartiere, and the report
+ *  date. Never renders the edilizia "Indirizzo non disponibile" placeholder. */
+function SegnalazioniBody({ permit }: { permit: Permit }) {
+  const extra = getSegnalazioneExtra(permit.extra);
+  const date = formatItDate(permit.source_updated_at);
+  return (
+    <>
+      <CardHeadline text={permit.title ?? 'Segnalazione'} />
+      {extra.nome_zona_prossimita && (
+        <View className="mt-0.5 flex-row items-center">
+          <Ionicons name="location-outline" size={12} color="#8B7355" />
+          <Text className="ml-1 text-sm text-stone-500">{extra.nome_zona_prossimita}</Text>
+        </View>
+      )}
+      {permit.zone && <Text className="mt-0.5 text-sm text-stone-500">{permit.zone}</Text>}
+      {date && <CardDateRow icon="megaphone-outline" label="Segnalata" date={date} />}
+    </>
+  );
+}
+
+/**
+ * Dispatch the card body by civic category. A real exhaustive `switch` over the
+ * `Category` union (CLAUDE.md's compiler-enforced-exhaustiveness rule): the
+ * `default` calls `assertNever`, so adding a sixth category without a body here
+ * fails `npx tsc --noEmit` rather than silently rendering nothing.
+ */
+function CardBody({ permit, sort }: { permit: Permit; sort: SortOption }) {
+  switch (permit.category) {
+    case 'edilizia':
+      return <EdiliziaBody permit={permit} sort={sort} />;
+    case 'cantieri':
+      return <CantieriBody permit={permit} />;
+    case 'commercio':
+      return <CommercioBody permit={permit} />;
+    case 'eventi':
+      return <EventiBody permit={permit} />;
+    case 'segnalazioni':
+      return <SegnalazioniBody permit={permit} />;
+    default:
+      return assertNever(permit.category);
+  }
 }
 
 /* ── Permit Card ────────────────────────────────── */
@@ -117,21 +359,33 @@ function PermitCard({
   onToggleSave: () => void;
 }) {
   const hasNote = notePreview != null && notePreview !== '';
-  const tags = parsePermitTags(permit.tags);
+  // Categories whose stored `status` carries real signal (edilizia/cantieri/
+  // commercio); eventi/segnalazioni statuses are constants — no dot/label.
+  const showStatus = CATEGORY_HAS_STATUS_SIGNAL[permit.category];
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
   const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
-  const fc = FILING_COLORS[permit.filing_type as FilingType] ?? FILING_COLORS.PDC;
-  // Date shown in the footer, chosen + labelled to match the active sort so the
-  // card never displays a date that disagrees with how the feed is ordered.
-  const cardDate = feedCardDate(permit, sort);
+  // The top-left badge: the filing-type acronym for edilizia (its own color), the
+  // category label for every other source (its category color).
+  const isEdilizia = permit.category === 'edilizia';
+  const badge = isEdilizia
+    ? {
+        bg: FILING_COLORS[permit.filing_type].bg,
+        text: FILING_COLORS[permit.filing_type].text,
+        label: permit.filing_type,
+      }
+    : {
+        bg: CATEGORY_COLORS[permit.category].bg,
+        text: CATEGORY_COLORS[permit.category].text,
+        label: CATEGORY_LABELS[permit.category],
+      };
 
   const a11yLabel = [
-    permit.filing_type,
-    statusLabel,
+    badge.label,
+    showStatus ? statusLabel : null,
     permit.is_new === 1 ? 'nuovo' : null,
     isSaved ? 'salvata' : null,
     hasNote ? 'con nota' : null,
-    permit.address ?? 'Indirizzo non disponibile',
+    permit.title ?? permit.address ?? null,
     permit.zone,
   ]
     .filter(Boolean)
@@ -142,7 +396,7 @@ function PermitCard({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
-      accessibilityHint="Apri i dettagli della pratica"
+      accessibilityHint="Apri i dettagli"
       className="mx-4 mb-2.5 rounded-xl bg-white p-4"
       style={{
         shadowColor: '#000',
@@ -151,17 +405,19 @@ function PermitCard({
         shadowRadius: 4,
         elevation: 2,
       }}>
-      {/* Top row: badges */}
+      {/* Top row: category/filing badge + status + NUOVO/bookmark */}
       <View className="mb-2 flex-row items-center">
-        <View className="rounded-md px-2.5 py-1" style={{ backgroundColor: fc.bg }}>
-          <Text className="text-xs font-bold" style={{ color: fc.text }}>
-            {permit.filing_type}
+        <View className="rounded-md px-2.5 py-1" style={{ backgroundColor: badge.bg }}>
+          <Text className="text-xs font-bold" style={{ color: badge.text }}>
+            {badge.label}
           </Text>
         </View>
-        <View className="ml-2 flex-row items-center">
-          <View className="mr-1.5 h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
-          <Text className="text-xs font-medium text-stone-500">{statusLabel}</Text>
-        </View>
+        {showStatus && (
+          <View className="ml-2 flex-row items-center">
+            <View className="mr-1.5 h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
+            <Text className="text-xs font-medium text-stone-500">{statusLabel}</Text>
+          </View>
+        )}
         <View className="ml-auto flex-row items-center">
           {permit.is_new === 1 && (
             <View className="mr-2 rounded-full bg-brick-600 px-2.5 py-0.5">
@@ -175,7 +431,7 @@ function PermitCard({
             onPress={onToggleSave}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={isSaved ? 'Rimuovi dai salvati' : 'Salva pratica'}
+            accessibilityLabel={isSaved ? 'Rimuovi dai salvati' : 'Salva'}
             accessibilityState={{ selected: isSaved }}>
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
@@ -186,20 +442,8 @@ function PermitCard({
         </View>
       </View>
 
-      {/* Address */}
-      <Text className="text-[15px] font-semibold leading-5 text-ink-800" numberOfLines={2}>
-        {permit.address ?? 'Indirizzo non disponibile'}
-      </Text>
-
-      {/* Zone */}
-      {permit.zone && <Text className="mt-0.5 text-sm text-stone-500">{permit.zone}</Text>}
-
-      {/* Procedimento */}
-      {permit.procedimento && (
-        <Text className="mt-1 text-sm leading-5 text-ink-500" numberOfLines={2}>
-          {permit.procedimento}
-        </Text>
-      )}
+      {/* Category-specific body (exhaustive switch over Category) */}
+      <CardBody permit={permit} sort={sort} />
 
       {/* Personal note — the resident's own tracking note on this permit (see the
           detail "Le mie note"), surfaced right in the feed so they can read WHAT
@@ -214,35 +458,6 @@ function PermitCard({
             accessibilityLabel={`Nota personale: ${notePreview}`}>
             {notePreview}
           </Text>
-        </View>
-      )}
-
-      {/* Footer: date (labelled to match the active sort) + protocol */}
-      <View className="mt-2 flex-row items-center">
-        {cardDate && (
-          <View className="mr-3 flex-row items-center">
-            <Ionicons
-              name={cardDate.icon as keyof typeof Ionicons.glyphMap}
-              size={12}
-              color="#70593f"
-            />
-            <Text className="ml-1 text-xs text-stone-600">
-              <Text className="font-semibold">{cardDate.label}</Text> {cardDate.date}
-            </Text>
-          </View>
-        )}
-        <View className="flex-row items-center">
-          <Ionicons name="pricetag-outline" size={12} color="#70593f" />
-          <Text className="ml-1 text-xs text-stone-600">{formatProtocol(permit.source_id)}</Text>
-        </View>
-      </View>
-
-      {/* Tags */}
-      {tags.length > 0 && (
-        <View className="mt-1.5 flex-row flex-wrap">
-          {tags.map((t) => (
-            <TagBadge key={t} tag={t} />
-          ))}
         </View>
       )}
     </Pressable>
@@ -758,6 +973,10 @@ export default function FeedScreen() {
       const filters: FeedFilters = {
         zones: activeZones.size < QUARTIERI.length ? [...activeZones] : prefs.zones,
         filingTypes: [...activeTypes].filter((t) => prefs.filingTypes.includes(t)),
+        // Scope the feed to the categories the user follows (mirrors zones). The
+        // filing-type IN test above is edilizia-scoped in build-feed-query, so a
+        // cantiere/event/… row is kept as long as its category is followed.
+        categories: prefs.interests,
         // In-feed tag chips override the persistent settings tag filter for this
         // session; fall back to prefs.tags when no chip is active (mirrors zones).
         tags: activeTags.size > 0 ? [...activeTags] : prefs.tags,
@@ -777,6 +996,7 @@ export default function FeedScreen() {
         const allFilters: FeedFilters = {
           zones: prefs.zones,
           filingTypes: prefs.filingTypes,
+          categories: prefs.interests,
           tags: [],
         };
         const checkRows = await getPermits(db, allFilters, 1, 0);

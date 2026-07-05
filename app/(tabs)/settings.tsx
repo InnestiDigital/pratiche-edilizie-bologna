@@ -15,6 +15,13 @@ import {
   type Quartiere,
 } from '../../lib/constants';
 import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  CATEGORY_COLORS,
+  SOURCES,
+  type Category,
+} from '../../lib/sources';
+import {
   loadPreferences,
   savePreferences,
   isNotificationsEnabled,
@@ -126,6 +133,7 @@ function ToggleRow({
 
 export default function SettingsScreen() {
   const [zones, setZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
+  const [interests, setInterests] = useState<Set<Category>>(new Set(CATEGORIES));
   const [filingTypes, setFilingTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [tags, setTags] = useState<Set<string>>(new Set());
   const [notificationsOn, setNotificationsOn] = useState(false);
@@ -144,6 +152,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     Promise.all([loadPreferences(), isNotificationsEnabled()]).then(([prefs, notifEnabled]) => {
       setZones(new Set(prefs.zones));
+      setInterests(new Set(prefs.interests));
       setFilingTypes(new Set(prefs.filingTypes));
       setTags(new Set(prefs.tags));
       setNotificationsOn(notifEnabled);
@@ -221,6 +230,22 @@ export default function SettingsScreen() {
     });
   };
 
+  // At least one interest must stay on (mirrors toggleFilingType): a zero-category
+  // preference set would leave the feed permanently empty. Toggling an interest off
+  // does not delete stored rows — it just filters them out (cheap + reversible).
+  const toggleInterest = (category: Category) => {
+    setInterests((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        if (next.size > 1) next.delete(category);
+      } else {
+        next.add(category);
+      }
+      savePreferences({ interests: [...next] });
+      return next;
+    });
+  };
+
   const toggleFilingType = (type: FilingType) => {
     setFilingTypes((prev) => {
       const next = new Set(prev);
@@ -256,10 +281,12 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: () => {
             setZones(new Set(QUARTIERI));
+            setInterests(new Set(CATEGORIES));
             setFilingTypes(new Set(FILING_TYPE_ORDER));
             setTags(new Set());
             savePreferences({
               zones: [...QUARTIERI],
+              interests: [...CATEGORIES],
               filingTypes: [...FILING_TYPE_ORDER],
               tags: [],
             });
@@ -281,6 +308,14 @@ export default function SettingsScreen() {
   // Stats (per-zone / per-filing counts) share the getStats fetch that sets the
   // DB total, so totalCount landing means the breakdown maps are populated too.
   const statsLoaded = totalCount !== null;
+
+  // Per-category stored-permit counts, folded up from the per-dataset breakdown
+  // via the SOURCES registry (byDataset is keyed by the same source keys), so the
+  // interest toggles show how much data each category holds without extra queries.
+  const byCategory: Partial<Record<Category, number>> = {};
+  for (const [key, config] of Object.entries(SOURCES)) {
+    byCategory[config.category] = (byCategory[config.category] ?? 0) + (byDataset[key] ?? 0);
+  }
 
   return (
     <ScrollView className="flex-1 bg-parchment-100">
@@ -320,6 +355,26 @@ export default function SettingsScreen() {
         />
       </View>
 
+      <SectionHeader
+        title="Interessi"
+        hint={`${interests.size} di ${CATEGORIES.length} categorie seguite`}
+      />
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+        {CATEGORIES.map((category, i) => (
+          <ToggleRow
+            key={category}
+            label={CATEGORY_LABELS[category]}
+            value={interests.has(category)}
+            onToggle={() => toggleInterest(category)}
+            isLast={i === CATEGORIES.length - 1}
+            leadingColor={CATEGORY_COLORS[category].text}
+            count={statsLoaded ? (byCategory[category] ?? 0) : undefined}
+          />
+        ))}
+      </View>
+
       <SectionHeader title="Quartieri" hint={`${zones.size} di ${QUARTIERI.length} attivi`} />
       <View
         className="mx-4 overflow-hidden rounded-xl bg-white"
@@ -338,7 +393,7 @@ export default function SettingsScreen() {
 
       <SectionHeader
         title="Tipo di Pratica"
-        hint={`${filingTypes.size} di ${FILING_TYPE_ORDER.length} attivi`}
+        hint={`Solo per Edilizia · ${filingTypes.size} di ${FILING_TYPE_ORDER.length} attivi`}
       />
       <View
         className="mx-4 overflow-hidden rounded-xl bg-white"

@@ -1,5 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { walkPages, recentYears, fullScanYears, MAX_OFFSET, type Page } from './paginate';
+import {
+  walkPages,
+  recentYears,
+  fullScanYears,
+  bisectRange,
+  addYearsIso,
+  MAX_OFFSET,
+  type Page,
+} from './paginate';
 
 /**
  * A fake paginated source: `total` rows, served `limit` at a time. Records the
@@ -96,5 +104,60 @@ describe('fullScanYears', () => {
 
   it('returns an empty list when the start is after the current year', () => {
     expect(fullScanYears(2027, 2026)).toEqual([]);
+  });
+});
+
+describe('bisectRange', () => {
+  it('splits an even-day range at the exact midpoint day, preserving half-open bounds', () => {
+    // 2024-01-01 .. 2024-01-11 spans 10 days; midpoint is +5 days = 2024-01-06.
+    expect(bisectRange({ from: '2024-01-01', toExclusive: '2024-01-11' })).toEqual([
+      { from: '2024-01-01', toExclusive: '2024-01-06' },
+      { from: '2024-01-06', toExclusive: '2024-01-11' },
+    ]);
+  });
+
+  it('splits an odd-day range at floor(days / 2)', () => {
+    // 2024-01-01 .. 2024-01-10 spans 9 days; floor(9/2)=4 → 2024-01-05.
+    expect(bisectRange({ from: '2024-01-01', toExclusive: '2024-01-10' })).toEqual([
+      { from: '2024-01-01', toExclusive: '2024-01-05' },
+      { from: '2024-01-05', toExclusive: '2024-01-10' },
+    ]);
+  });
+
+  it('splits a full calendar year into two contiguous halves', () => {
+    // 2024 is a leap year (366 days); floor(366/2)=183 days from Jan 1 = Jul 2.
+    const halves = bisectRange({ from: '2024-01-01', toExclusive: '2025-01-01' });
+    expect(halves).toEqual([
+      { from: '2024-01-01', toExclusive: '2024-07-02' },
+      { from: '2024-07-02', toExclusive: '2025-01-01' },
+    ]);
+    // Contiguous: the first half ends exactly where the second begins.
+    expect(halves![0].toExclusive).toBe(halves![1].from);
+  });
+
+  it('returns null for a single-day (or shorter) range that cannot split further', () => {
+    expect(bisectRange({ from: '2024-02-28', toExclusive: '2024-02-29' })).toBeNull();
+    expect(bisectRange({ from: '2024-02-28', toExclusive: '2024-02-28' })).toBeNull();
+  });
+
+  it('handles a leap-day boundary window', () => {
+    // 2024-02-28 .. 2024-03-01 spans 2 days (Feb 29 exists); midpoint = Feb 29.
+    expect(bisectRange({ from: '2024-02-28', toExclusive: '2024-03-01' })).toEqual([
+      { from: '2024-02-28', toExclusive: '2024-02-29' },
+      { from: '2024-02-29', toExclusive: '2024-03-01' },
+    ]);
+  });
+});
+
+describe('addYearsIso', () => {
+  it('adds whole calendar years, keeping month and day', () => {
+    expect(addYearsIso('2026-06-28', 1)).toBe('2027-06-28');
+    expect(addYearsIso('2020-01-01', 5)).toBe('2025-01-01');
+  });
+
+  it('rolls a leap day (Feb 29) forward to Mar 1 of the target year', () => {
+    // Pinned to setUTCFullYear semantics: 2024-02-29 + 1y → 2025-02-29 overflows
+    // to 2025-03-01 (not clamped back to Feb 28).
+    expect(addYearsIso('2024-02-29', 1)).toBe('2025-03-01');
   });
 });

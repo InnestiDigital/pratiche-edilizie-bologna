@@ -1,4 +1,5 @@
-import type { FilingType, Quartiere } from './constants';
+import { QUARTIERI, type FilingType, type Quartiere } from './constants';
+import type { Category } from './sources';
 
 /**
  * Pure builder for the permit-feed SQL query.
@@ -49,20 +50,32 @@ export const SORT_LABELS: Record<SortOption, string> = {
 // but an ASC sort would float them to the TOP. That is wrong for `request_oldest`
 // ("Data richiesta (meno recenti)") — a resident asking for the oldest requests
 // should see the oldest DATED permits first, not the undated ones. The leading
-// `source_updated_at IS NULL` term (0 for a real date, 1 for NULL) pushes the
+// `<request date> IS NULL` term (0 for a real date, 1 for NULL) pushes the
 // undated rows last regardless of the ASC primary. `oldest` needs no such guard:
 // `first_seen_at` is stamped NOT NULL on every insert, so it is never NULL.
+
+// Single source of truth for "the feed's request date". Eventi carry no request
+// date: their `start` is a FUTURE date (stored in `extra`, see source-eventi.ts),
+// so the feed treats an event's request date as its discovery time — "new to the
+// feed when discovered" — via `first_seen_at`. Every other category keeps the
+// stored request date (`source_updated_at`), including the NULL-sinking above for
+// undated edilizia rows, so edilizia ordering is byte-identical to before.
+const REQUEST_DATE_SQL =
+  "CASE WHEN category = 'eventi' THEN first_seen_at ELSE source_updated_at END";
+
 const SORT_SQL: Record<SortOption, string> = {
   newest: 'first_seen_at DESC, id DESC',
   oldest: 'first_seen_at ASC, id ASC',
-  request_newest: 'source_updated_at DESC, id DESC',
-  request_oldest: 'source_updated_at IS NULL, source_updated_at ASC, id ASC',
+  request_newest: `${REQUEST_DATE_SQL} DESC, id DESC`,
+  request_oldest: `${REQUEST_DATE_SQL} IS NULL, ${REQUEST_DATE_SQL} ASC, id ASC`,
   closing_newest: 'date_issued DESC, id DESC',
 };
 
 export interface FeedFilters {
   zones: Quartiere[];
   filingTypes: FilingType[];
+  /** Civic categories to keep; omitted/empty = all categories (today: everything is 'edilizia'). */
+  categories?: Category[];
   tags: string[];
   searchQuery?: string;
   statuses?: string[];
@@ -71,11 +84,16 @@ export interface FeedFilters {
   /** Keep only permits the user has attached a personal note to (see `permit_notes`). */
   onlyNoted?: boolean;
   /**
-   * Inclusive lower bound on the request date (`source_updated_at`), as a plain
-   * `YYYY-MM-DD` string — the time-period filter. See `lib/feed-period.ts` for how
-   * a `FeedPeriod` becomes this bound. A permit with a NULL request date fails the
-   * `>=` comparison and is excluded, which is the intended behaviour for a
-   * "requested since …" filter.
+   * Inclusive lower bound on the feed's request date, as a plain `YYYY-MM-DD`
+   * string — the time-period filter. See `lib/feed-period.ts` for how a
+   * `FeedPeriod` becomes this bound. The request date is `source_updated_at` for
+   * every category EXCEPT eventi, which have no request date and are compared by
+   * their discovery date (`first_seen_at`) instead — the same expression the
+   * `request_*` sorts use (see `REQUEST_DATE_SQL`), so an event passes the period
+   * filter by when it entered the feed, consistent with how it sorts. A permit
+   * with a NULL request date fails the `>=` comparison and is excluded, which is
+   * the intended behaviour for a "requested since …" filter (eventi never hit
+   * this: `first_seen_at` is always set).
    */
   requestedAfter?: string;
   sort?: SortOption;
@@ -147,20 +165,51 @@ export function buildFeedWhere(filters: FeedFilters): {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
-  if (filters.zones.length > 0) {
+  // A zone set covering every quartiere means "no zone preference": emit no
+  // predicate, so rows whose quartiere normalized to NULL (city-wide events,
+  // unmapped ODS district names) appear — `NULL IN (...)` is never true in SQL, so
+  // the old unconditional `zone IN (...)` silently excluded them from EVERY feed. A
+  // genuinely narrowed selection keeps the strict IN: narrowing to specific
+  // quartieri means "only these districts", so NULL-zone rows are hidden then. Set-
+  // based so a duplicated stored zone can't fake a narrowed set; params still push
+  // filters.zones as-is for stable positional order.
+  const zoneSet = new Set(filters.zones);
+  if (zoneSet.size > 0 && zoneSet.size < QUARTIERI.length) {
     conditions.push(`zone IN (${filters.zones.map(() => '?').join(',')})`);
     params.push(...filters.zones);
   }
 
   if (filters.filingTypes.length > 0) {
-    conditions.push(`filing_type IN (${filters.filingTypes.map(() => '?').join(',')})`);
+    // The filing-type chips (PDC/SCIA/CILA) are edilizia-only sub-filters. Scoping
+    // the IN test to edilizia rows means it can never silently exclude a
+    // non-edilizia record (a cantiere, event, …) whose `filing_type` token is not
+    // one of the three edilizia acronyms. On an all-edilizia DB this is provably
+    // identical to a bare `filing_type IN (...)` (every row satisfies the OR's
+    // left disjunct only when non-edilizia, so edilizia rows still gate on the IN).
+    conditions.push(
+      `(category <> 'edilizia' OR filing_type IN (${filters.filingTypes.map(() => '?').join(',')}))`
+    );
     params.push(...filters.filingTypes);
+  }
+
+  if (filters.categories && filters.categories.length > 0) {
+    conditions.push(`category IN (${filters.categories.map(() => '?').join(',')})`);
+    params.push(...filters.categories);
   }
 
   if (filters.searchQuery) {
     const q = `%${escapeLike(filters.searchQuery)}%`;
-    const clauses = ["address LIKE ? ESCAPE '\\'", "procedimento LIKE ? ESCAPE '\\'"];
-    const searchParams: string[] = [q, q];
+    // `title` is the headline of the non-edilizia sources (event / cantiere /
+    // attività name); it is a promoted column (not a JSON field) precisely so it
+    // can be LIKE-matched here in the single feed predicate. Edilizia rows carry a
+    // NULL title, which fails the LIKE and simply contributes nothing — they still
+    // match on address/procedimento as before.
+    const clauses = [
+      "address LIKE ? ESCAPE '\\'",
+      "title LIKE ? ESCAPE '\\'",
+      "procedimento LIKE ? ESCAPE '\\'",
+    ];
+    const searchParams: string[] = [q, q, q];
     // The search also matches the resident's own personal note on a permit, so a
     // term they jotted ("Soprintendenza", a phone number) finds the annotated
     // permit — the note is now a first-class, searchable field alongside the feed
@@ -196,9 +245,13 @@ export function buildFeedWhere(filters: FeedFilters): {
   }
 
   if (filters.requestedAfter) {
-    // Time-period filter: keep permits requested on/after the bound. Compared
-    // lexicographically — both sides are `YYYY-MM-DD` strings, so no date parsing.
-    conditions.push('source_updated_at >= ?');
+    // Time-period filter: keep permits whose request date is on/after the bound.
+    // Uses REQUEST_DATE_SQL so eventi are compared by discovery date (else every
+    // event — NULL source_updated_at — would vanish under any time-period filter),
+    // consistent with the request_* sorts. Compared lexicographically: both sides
+    // are date strings (edilizia `YYYY-MM-DD`; eventi's first_seen_at is a full ISO
+    // datetime whose `YYYY-MM-DD…` prefix orders correctly against the bound).
+    conditions.push(`${REQUEST_DATE_SQL} >= ?`);
     params.push(filters.requestedAfter);
   }
 

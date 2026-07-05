@@ -6,9 +6,11 @@
  * report an already-synced state. Native + vitest use `sync.ts`.
  */
 import { LAST_SYNC_FIXTURE } from './screenshot-fixtures';
+import type { Category } from './sources';
 
 export interface SyncResult {
   dataset: string;
+  category: Category;
   fetched: number;
   inserted: number;
   updated: number;
@@ -16,16 +18,22 @@ export interface SyncResult {
 }
 
 const NOOP_RESULTS: SyncResult[] = [
-  { dataset: 'pdc', fetched: 0, inserted: 0, updated: 0 },
-  { dataset: 'scia', fetched: 0, inserted: 0, updated: 0 },
-  { dataset: 'cila', fetched: 0, inserted: 0, updated: 0 },
+  { dataset: 'pdc', category: 'edilizia', fetched: 0, inserted: 0, updated: 0 },
+  { dataset: 'scia', category: 'edilizia', fetched: 0, inserted: 0, updated: 0 },
+  { dataset: 'cila', category: 'edilizia', fetched: 0, inserted: 0, updated: 0 },
 ];
 
-export function syncRecent(_onProgress?: (msg: string) => void): Promise<SyncResult[]> {
+export function syncRecent(
+  _onProgress?: (msg: string) => void,
+  _categories?: Category[]
+): Promise<SyncResult[]> {
   return Promise.resolve(NOOP_RESULTS);
 }
 
-export function syncFull(_onProgress?: (msg: string) => void): Promise<SyncResult[]> {
+export function syncFull(
+  _onProgress?: (msg: string) => void,
+  _categories?: Category[]
+): Promise<SyncResult[]> {
   return Promise.resolve(NOOP_RESULTS);
 }
 

@@ -6,10 +6,12 @@
  * on web). Writes are no-ops. Native + vitest use `preferences.ts`.
  */
 import { QUARTIERI, FILING_TYPE_ORDER, type FilingType, type Quartiere } from './constants';
+import { CATEGORIES, type Category } from './sources';
 
 export interface UserPreferences {
   zones: Quartiere[];
   filingTypes: FilingType[];
+  interests: Category[];
   tags: string[];
   onboardingDone: boolean;
 }
@@ -17,6 +19,7 @@ export interface UserPreferences {
 const FIXTURE: UserPreferences = {
   zones: [...QUARTIERI],
   filingTypes: [...FILING_TYPE_ORDER],
+  interests: [...CATEGORIES],
   tags: [],
   onboardingDone: true,
 };
@@ -30,7 +33,7 @@ export async function isOnboardingDone(): Promise<boolean> {
 }
 
 export async function completeOnboarding(
-  _prefs: Pick<UserPreferences, 'zones' | 'filingTypes'>
+  _prefs: Pick<UserPreferences, 'zones' | 'filingTypes' | 'interests'>
 ): Promise<void> {
   // no-op on web
 }

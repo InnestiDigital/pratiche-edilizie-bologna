@@ -76,3 +76,53 @@ export function fullScanYears(fromYear: number, currentYear: number): number[] {
   }
   return years;
 }
+
+/** A half-open `[from, toExclusive)` calendar-date window, both `YYYY-MM-DD`. */
+export interface DateRange {
+  /** Inclusive lower bound, `YYYY-MM-DD`. */
+  from: string;
+  /** Exclusive upper bound, `YYYY-MM-DD`. */
+  toExclusive: string;
+}
+
+/** Milliseconds in one UTC day. */
+const DAY_MS = 86_400_000;
+
+/**
+ * Split a half-open `[from, toExclusive)` day-range in half at the midpoint day.
+ * Returns `null` when the range spans a single day (or less) and cannot be split
+ * further — the caller must then walk that day as-is (accepting the offset cap).
+ *
+ * Both bounds are `YYYY-MM-DD` and parsed as UTC midnight (date-only ISO strings
+ * are UTC per the spec), so the split is DST-agnostic. The midpoint is
+ * `from + floor(days / 2)` whole days, formatted back to `YYYY-MM-DD` — the exact
+ * form {@link import('./ods-request').buildDateRangeWhere} validates and embeds.
+ *
+ * Used by the `date-range` / `future-window` sweeps to recursively narrow any
+ * sub-window whose probed row count exceeds {@link MAX_OFFSET}, so no row beyond
+ * the ODS offset cap is silently lost — replacing the old fixed 12-month split,
+ * which itself lost rows for any month over the cap.
+ */
+export function bisectRange(range: DateRange): [DateRange, DateRange] | null {
+  const fromMs = Date.parse(range.from);
+  const toMs = Date.parse(range.toExclusive);
+  const days = (toMs - fromMs) / DAY_MS;
+  if (days <= 1) return null;
+  const mid = new Date(fromMs + Math.floor(days / 2) * DAY_MS).toISOString().slice(0, 10);
+  return [
+    { from: range.from, toExclusive: mid },
+    { from: mid, toExclusive: range.toExclusive },
+  ];
+}
+
+/**
+ * Add `years` calendar years to a `YYYY-MM-DD` date (UTC-safe). Feb 29 in a leap
+ * year rolls forward to Mar 1 of the target year (JS `setUTCFullYear` semantics),
+ * not back to Feb 28 — irrelevant to the sweep, which only peels whole years off
+ * an open-ended window boundary.
+ */
+export function addYearsIso(isoDate: string, years: number): string {
+  const d = new Date(isoDate);
+  d.setUTCFullYear(d.getUTCFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}

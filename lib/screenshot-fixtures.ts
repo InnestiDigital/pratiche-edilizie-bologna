@@ -16,12 +16,19 @@
  */
 
 import { tallyTags } from './tally-tags';
+import type { Category } from './sources';
 
 export interface ScreenshotPermit {
   id: number;
   dataset: string;
   source_id: string;
-  filing_type: 'PDC' | 'SCIA' | 'CILA';
+  /**
+   * `filing_type` is widened to `string` here (vs the edilizia-only `FilingType`
+   * on `Permit`) so the non-edilizia fixture rows can carry their category token
+   * ('CANTIERE', 'EVENTO', …). Only the edilizia card body reads this field.
+   */
+  filing_type: string;
+  category: Category;
   source_updated_at: string | null;
   first_seen_at: string;
   address: string | null;
@@ -34,15 +41,17 @@ export interface ScreenshotPermit {
   tags: string;
   source_link: string | null;
   is_new: number;
+  title: string | null;
+  extra: string;
 }
 
 const portal = (id: string) =>
   `https://opendata.comune.bologna.it/explore/dataset/pratiche/record/${id}`;
 
 /**
- * A spread across all three filing types, the six quartieri, several statuses,
- * new/seen state, and tag combinations — enough that the feed, filters, and
- * detail screens all render something realistic.
+ * A spread across all five categories, all three filing types, the six quartieri,
+ * several statuses, new/seen state, and tag combinations — enough that the feed,
+ * filters, and detail screens all render something realistic for every category.
  */
 export const PERMIT_FIXTURES: ScreenshotPermit[] = [
   {
@@ -50,6 +59,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     dataset: 'pdc',
     source_id: 'PDC-2024-000481',
     filing_type: 'PDC',
+    category: 'edilizia',
     source_updated_at: '2024-11-18',
     first_seen_at: '2025-01-04T09:12:00.000Z',
     address: 'Via Marconi 24',
@@ -62,12 +72,15 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify(['con_lavori']),
     source_link: portal('pdc-2024-000481'),
     is_new: 1,
+    title: null,
+    extra: '{}',
   },
   {
     id: 2,
     dataset: 'scia',
     source_id: 'SCIA-2024-002210',
     filing_type: 'SCIA',
+    category: 'edilizia',
     source_updated_at: '2024-11-08',
     first_seen_at: '2025-01-04T09:12:00.000Z',
     address: 'Via Zamboni 33',
@@ -80,12 +93,15 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify(['con_lavori', 'parziale']),
     source_link: portal('scia-2024-002210'),
     is_new: 1,
+    title: null,
+    extra: '{}',
   },
   {
     id: 3,
     dataset: 'cila',
     source_id: 'CILA-2024-005567',
     filing_type: 'CILA',
+    category: 'edilizia',
     source_updated_at: '2024-11-02',
     first_seen_at: '2024-12-20T09:12:00.000Z',
     address: 'Via Saragozza 118',
@@ -98,12 +114,15 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify([]),
     source_link: portal('cila-2024-005567'),
     is_new: 0,
+    title: null,
+    extra: '{}',
   },
   {
     id: 4,
     dataset: 'pdc',
     source_id: 'PDC-2024-000390',
     filing_type: 'PDC',
+    category: 'edilizia',
     source_updated_at: '2024-08-14',
     first_seen_at: '2024-12-20T09:12:00.000Z',
     address: 'Via Emilia Ponente 210',
@@ -116,12 +135,15 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify(['deroga']),
     source_link: portal('pdc-2024-000390'),
     is_new: 0,
+    title: null,
+    extra: '{}',
   },
   {
     id: 5,
     dataset: 'scia',
     source_id: 'SCIA-2024-001988',
     filing_type: 'SCIA',
+    category: 'edilizia',
     source_updated_at: '2024-07-02',
     first_seen_at: '2024-12-20T09:12:00.000Z',
     address: 'Via Toscana 55',
@@ -134,12 +156,15 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify(['sanatoria']),
     source_link: portal('scia-2024-001988'),
     is_new: 0,
+    title: null,
+    extra: '{}',
   },
   {
     id: 6,
     dataset: 'cila',
     source_id: 'CILA-2024-004120',
     filing_type: 'CILA',
+    category: 'edilizia',
     source_updated_at: '2024-06-19',
     first_seen_at: '2024-12-01T09:12:00.000Z',
     address: 'Via Irnerio 12',
@@ -152,12 +177,15 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify(['con_lavori']),
     source_link: portal('cila-2024-004120'),
     is_new: 0,
+    title: null,
+    extra: '{}',
   },
   {
     id: 7,
     dataset: 'pdc',
     source_id: 'PDC-2023-000902',
     filing_type: 'PDC',
+    category: 'edilizia',
     source_updated_at: '2023-12-11',
     first_seen_at: '2024-12-01T09:12:00.000Z',
     address: 'Via del Lavoro 8',
@@ -170,12 +198,15 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify(['non_residenziale']),
     source_link: portal('pdc-2023-000902'),
     is_new: 0,
+    title: null,
+    extra: '{}',
   },
   {
     id: 8,
     dataset: 'scia',
     source_id: 'SCIA-2023-003011',
     filing_type: 'SCIA',
+    category: 'edilizia',
     source_updated_at: '2023-10-05',
     first_seen_at: '2024-11-15T09:12:00.000Z',
     address: 'Via Andrea Costa 140',
@@ -188,27 +219,144 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     tags: JSON.stringify(['urbanistica']),
     source_link: portal('scia-2023-003011'),
     is_new: 0,
+    title: null,
+    extra: '{}',
+  },
+  // ── Non-edilizia categories ───────────────────────────────────────────────
+  {
+    id: 9,
+    dataset: 'lavori',
+    source_id: 'lavori-3739',
+    filing_type: 'CANTIERE',
+    category: 'cantieri',
+    source_updated_at: '2025-02-03',
+    first_seen_at: '2025-02-04T09:12:00.000Z',
+    address: 'Via Stalingrado 45',
+    zone: 'Navile',
+    codvia: null,
+    procedimento: null,
+    date_issued: '2025-08-30',
+    status: 'in_corso',
+    status_raw: 'In corso',
+    tags: '[]',
+    source_link: 'https://opendata.comune.bologna.it/explore/dataset/lavori-pubblici/table/?q=3739',
+    is_new: 1,
+    title: 'Lavori per la realizzazione del Tecnopolo',
+    extra: JSON.stringify({ trafficchangesmeasure: 'Divieto di transito veicolare' }),
+  },
+  {
+    id: 10,
+    dataset: 'commercio',
+    source_id: 'commercio-2024-416143',
+    filing_type: 'COMMERCIO',
+    category: 'commercio',
+    source_updated_at: '2024-10-12',
+    first_seen_at: '2025-01-04T09:12:00.000Z',
+    address: 'Viale della Fiera 20',
+    zone: 'San Donato-San Vitale',
+    codvia: null,
+    procedimento: null,
+    date_issued: '2024-12-01',
+    status: 'rilasciata',
+    status_raw: 'Efficace',
+    tags: '[]',
+    source_link:
+      'https://opendata.comune.bologna.it/explore/dataset/istanze-commercio/table/?q=416143',
+    is_new: 0,
+    title: 'Apertura somministrazione temporanea',
+    extra: JSON.stringify({
+      area: 'Somministrazione',
+      sottoarea: 'Bar/Ristorazione',
+      tipo_pratica: 'SCIA',
+    }),
+  },
+  {
+    id: 11,
+    dataset: 'eventi',
+    source_id: 'eventi-467834',
+    filing_type: 'EVENTO',
+    category: 'eventi',
+    // Events carry no request date: source_updated_at is NULL and the future start
+    // date lives in `extra.start` (see source-eventi.ts). Mirrors the real shape so
+    // the EventiBody card renders its start/end date row in the web screenshot.
+    source_updated_at: null,
+    first_seen_at: '2025-03-01T09:12:00.000Z',
+    address: 'Piazza Maggiore 6',
+    zone: 'Santo Stefano',
+    codvia: null,
+    procedimento: null,
+    date_issued: '2025-03-22',
+    status: 'in_programma',
+    status_raw: '',
+    tags: JSON.stringify(['incontri', 'mostre']),
+    source_link: 'https://culturabologna.it/eventi/467834',
+    is_new: 1,
+    title: 'Una biblioteca in ospedale 2024-2025',
+    extra: JSON.stringify({
+      description: 'Rassegna di incontri e letture negli spazi ospedalieri.',
+      url: 'https://culturabologna.it/eventi/467834',
+      online: 'SI',
+      start: '2025-03-15',
+    }),
+  },
+  {
+    id: 12,
+    dataset: 'segnalazioni',
+    source_id: 'segnalazioni-109780',
+    filing_type: 'SEGNALAZIONE',
+    category: 'segnalazioni',
+    source_updated_at: '2025-01-20',
+    first_seen_at: '2025-01-21T09:12:00.000Z',
+    address: null,
+    zone: 'Savena',
+    codvia: null,
+    procedimento: null,
+    date_issued: null,
+    status: 'altro',
+    status_raw: '',
+    tags: '[]',
+    source_link:
+      'https://opendata.comune.bologna.it/explore/dataset/segnalazioni-open-citizen-relationship-management-czrm/table/?q=109780',
+    is_new: 0,
+    title: 'Verde privato · Alberi/rami · Invadenti',
+    extra: JSON.stringify({
+      sottocategoria_01: 'Verde privato',
+      sottocategoria_02: 'Alberi/rami',
+      sottocategoria_03: 'Invadenti',
+      nome_zona_prossimita: 'Cirenaica',
+    }),
   },
 ];
 
 export const STATS_FIXTURE = {
   total: PERMIT_FIXTURES.length,
-  byDataset: { pdc: 3, scia: 3, cila: 2 } as Record<string, number>,
+  byDataset: {
+    pdc: 3,
+    scia: 3,
+    cila: 2,
+    lavori: 1,
+    commercio: 1,
+    eventi: 1,
+    segnalazioni: 1,
+  } as Record<string, number>,
   byZone: {
     'Porto-Saragozza': 3,
-    'San Donato-San Vitale': 1,
+    'San Donato-San Vitale': 2,
     'Borgo Panigale-Reno': 1,
-    Savena: 1,
-    'Santo Stefano': 1,
-    Navile: 1,
+    Savena: 2,
+    'Santo Stefano': 2,
+    Navile: 2,
   } as Record<string, number>,
   byStatus: {
     concluso: 3,
-    rilasciata: 1,
+    rilasciata: 2,
     rilasciata_con_prescrizioni: 1,
     archiviata: 1,
     diniegata: 1,
     in_attesa: 1,
+    in_corso: 1,
+    in_programma: 1,
+    altro: 1,
   } as Record<string, number>,
   // Permits bucketed by request month (`source_updated_at` → `YYYY-MM`),
   // derived from the fixtures so it never drifts from the rows above — mirrors

@@ -22,8 +22,13 @@ export class SyncIngressError extends Error {
   }
 }
 
-/** A field that may be absent or null in the payload; normalized to `null`. */
-const optNull = <T extends z.ZodTypeAny>(inner: T) => inner.nullish().transform((v) => v ?? null);
+/**
+ * A field that may be absent or null in the payload; normalized to `null`.
+ * Exported so the per-source row schemas (`source-*.ts`) share one nullable
+ * helper instead of re-deriving the `.nullish().transform()` shape.
+ */
+export const optNull = <T extends z.ZodTypeAny>(inner: T) =>
+  inner.nullish().transform((v) => v ?? null);
 
 /**
  * One open-data record. Only the fields the app consumes are validated; unknown
@@ -60,15 +65,26 @@ export const apiResponseSchema = z.object({
     .transform((v) => v ?? []),
 });
 
-export interface ParsedPage {
-  results: RawRecord[];
+/**
+ * A validated page of records of type `T`. Generic so each source's page parser
+ * (edilizia's {@link parseApiResponse}, the `source-*.ts` parsers) reports a
+ * concretely-typed `results` array; defaults to {@link RawRecord} for edilizia.
+ */
+export interface ParsedPage<T = RawRecord> {
+  results: T[];
   totalCount: number;
-  /** Count of rows dropped because they failed {@link rawRecordSchema}. */
+  /** Count of rows dropped because they failed the per-row schema. */
   skipped: number;
 }
 
 /**
- * Validate a raw open-data JSON payload at the sync ingress boundary.
+ * Build a page parser for a given per-row schema. Owns the envelope validation,
+ * per-row skip counting, and the "records present but none survived" shape-drift
+ * guard — the single source of truth for ingress-boundary parsing shared by every
+ * source (edilizia via {@link parseApiResponse}, and each `source-*.ts` parser via
+ * its own row schema).
+ *
+ * The returned parser:
  *
  * @throws {SyncIngressError} when the top-level envelope shape is wrong
  *   (not an object, `results` not an array, etc.) — i.e. the endpoint changed
@@ -78,41 +94,51 @@ export interface ParsedPage {
  *   otherwise-usable page are skipped (counted in {@link ParsedPage.skipped})
  *   rather than fatal, so a single bad record does not lose an entire page.
  */
-export function parseApiResponse(payload: unknown): ParsedPage {
-  const envelope = apiResponseSchema.safeParse(payload);
-  if (!envelope.success) {
-    const detail = envelope.error.issues
-      .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
-      .join('; ');
-    throw new SyncIngressError(`Risposta open-data non valida: ${detail}`, envelope.error.issues);
-  }
-
-  const results: RawRecord[] = [];
-  let skipped = 0;
-  for (const row of envelope.data.results) {
-    const record = rawRecordSchema.safeParse(row);
-    if (record.success) {
-      results.push(record.data);
-    } else {
-      skipped++;
+export function makePageParser<S extends z.ZodTypeAny>(
+  rowSchema: S
+): (payload: unknown) => ParsedPage<z.output<S>> {
+  return (payload: unknown): ParsedPage<z.output<S>> => {
+    const envelope = apiResponseSchema.safeParse(payload);
+    if (!envelope.success) {
+      const detail = envelope.error.issues
+        .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+        .join('; ');
+      throw new SyncIngressError(`Risposta open-data non valida: ${detail}`, envelope.error.issues);
     }
-  }
 
-  // A page the API returned WITH records but from which NONE survived per-row
-  // validation is a partial shape drift (e.g. a renamed required field makes
-  // every row fail), not a genuinely-empty page. If we returned `{results: []}`
-  // here it would be indistinguishable from end-of-data: the pagination walk
-  // (`walkPages` stops on an empty page) would halt and the sync would falsely
-  // report success with 0 fetched — a silently dead feed. Fail loud instead so
-  // retry.ts (which treats SyncIngressError as permanent) surfaces it on the
-  // dataset's SyncResult. A truly-empty page (`results.length === 0`) is the
-  // normal end-of-data signal and is left untouched.
-  if (envelope.data.results.length > 0 && results.length === 0) {
-    throw new SyncIngressError(
-      `Risposta open-data non valida: ${skipped} record presenti ma nessuno con la forma attesa ` +
-        `(possibile cambio di schema dell'endpoint)`
-    );
-  }
+    const results: z.output<S>[] = [];
+    let skipped = 0;
+    for (const row of envelope.data.results) {
+      const record = rowSchema.safeParse(row);
+      if (record.success) {
+        results.push(record.data);
+      } else {
+        skipped++;
+      }
+    }
 
-  return { results, totalCount: envelope.data.total_count, skipped };
+    // A page the API returned WITH records but from which NONE survived per-row
+    // validation is a partial shape drift (e.g. a renamed required field makes
+    // every row fail), not a genuinely-empty page. If we returned `{results: []}`
+    // here it would be indistinguishable from end-of-data: the pagination walk
+    // (`walkPages` stops on an empty page) would halt and the sync would falsely
+    // report success with 0 fetched — a silently dead feed. Fail loud instead so
+    // retry.ts (which treats SyncIngressError as permanent) surfaces it on the
+    // dataset's SyncResult. A truly-empty page (`results.length === 0`) is the
+    // normal end-of-data signal and is left untouched.
+    if (envelope.data.results.length > 0 && results.length === 0) {
+      throw new SyncIngressError(
+        `Risposta open-data non valida: ${skipped} record presenti ma nessuno con la forma attesa ` +
+          `(possibile cambio di schema dell'endpoint)`
+      );
+    }
+
+    return { results, totalCount: envelope.data.total_count, skipped };
+  };
 }
+
+/**
+ * The edilizia page parser: {@link makePageParser} bound to {@link rawRecordSchema}.
+ * Kept as a named export for back-compat with fetch-page.ts and existing tests.
+ */
+export const parseApiResponse: (payload: unknown) => ParsedPage = makePageParser(rawRecordSchema);

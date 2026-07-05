@@ -4,6 +4,7 @@ import { syncRecent } from './sync';
 import { sendNewPermitsNotification, hasNotificationPermissions } from './notifications';
 import { getDb, getPreference } from './db';
 import { summarizeSyncResults } from './background-result';
+import { loadPreferences } from './preferences';
 
 const TASK_NAME = 'background-permit-sync';
 
@@ -23,13 +24,15 @@ TaskManager.defineTask(TASK_NAME, async () => {
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
 
-    // Run sync
-    const results = await syncRecent();
+    // Run sync, scoped to the categories the user opted into — a user who turned
+    // a category off must not pay for its (potentially 100k-row) download.
+    const { interests } = await loadPreferences();
+    const results = await syncRecent(undefined, interests);
 
-    const { totalNew, totalUpdated, hasChanges } = summarizeSyncResults(results);
+    const summary = summarizeSyncResults(results);
 
-    if (hasChanges) {
-      await sendNewPermitsNotification(totalNew, totalUpdated);
+    if (summary.hasChanges) {
+      await sendNewPermitsNotification(summary);
       return BackgroundFetch.BackgroundFetchResult.NewData;
     }
 

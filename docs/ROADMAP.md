@@ -105,15 +105,20 @@ interessi utente. Note per sorgente:
 
 | Fase | Contenuto | Dipende da | Stima |
 |---|---|---|---|
-| **P0 — Registry** | `sources.ts`, migrazione `civic_items`, categoria in feed/query/prefs. Zero nuove sorgenti, comportamento identico | — | il grosso del lavoro concettuale; tutto testabile in vitest |
-| **P1 — Cantieri + Commercio** | `lavori-pubblici` (banale) + `istanze-commercio` (stesso shape dell'edilizia). Feed multi-categoria, notifiche estese | P0 | 2 schemi + 2 normalizer + card |
-| **P2 — Eventi + Segnalazioni** | `eventi-agenda-cultura` (sync futuro) + `segnalazioni-czrm`. Qui l'app diventa quotidianamente utile a chiunque | P0 | semantica sync nuova (futuro) |
+| ✅ **P0 — Registry** *(fatto, lug 2026)* | `sources.ts`, migrazione additiva su `permits` (niente rename), categoria in feed/query/prefs. Zero nuove sorgenti, comportamento identico | — | il grosso del lavoro concettuale; tutto testabile in vitest |
+| ✅ **P1 — Cantieri + Commercio** *(fatto, lug 2026)* | `lavori-pubblici` (banale) + `istanze-commercio` (stesso shape dell'edilizia). Feed multi-categoria, notifiche estese | P0 | 2 schemi + 2 normalizer + card |
+| ✅ **P2 — Eventi + Segnalazioni** *(fatto, lug 2026)* | `eventi-agenda-cultura` (sync futuro, ordinati per data di scoperta) + `segnalazioni-czrm`. Qui l'app diventa quotidianamente utile a chiunque | P0 | semantica sync nuova (futuro) |
 | **P3 — Rebrand release** | Nome, icona, splash, copy, onboarding interessi, listing ASC nuovo (screenshot rigenerati via `.loop/shoot.mjs`) | P1 (senza multi-categoria il rebrand è vuoto) | vedi §4 |
 | **P4 — Mappa + raggio** | Layer statici (farmacie, scuole, ZTL, mercati), vista mappa, geocoding on-device via gazzetteer civici Bologna → alert "entro 300 m da casa" | P1-P2 | il killer feature; geocoding senza backend |
 | **P5 — Multi-città** | Registry per città (altri comuni ODS). Normalizzazione per-città = lavoro vero | P3 | ultima: reach massimo, sforzo massimo |
 
 Regola invariata: **niente backend, niente account, niente analytics.** È il
 differenziatore (privacy, costi zero, offline). Tutte le fasi lo rispettano.
+
+**Residuo noto post-P2:** con tutti e 5 gli interessi attivi, il sync in background di
+commercio+segnalazioni (~400 richieste sequenziali sulla finestra recente) può eccedere il
+budget iOS (~30s) — il primo popolamento va fatto dal tab Aggiorna (foreground). Mitigazione
+futura se serve: sync incrementale per data di ultimo sync invece della finestra fissa 2 anni.
 
 ---
 

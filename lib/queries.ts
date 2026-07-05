@@ -1,5 +1,6 @@
 import type * as SQLite from 'expo-sqlite';
 import { RELEASED_STATUSES, type FilingType } from './constants';
+import type { Category } from './sources';
 import { buildFeedQuery, buildFeedCountQuery, type FeedFilters } from './build-feed-query';
 import { buildRelatedPermitsQuery, RELATED_PERMITS_LIMIT } from './related-query';
 import type { ProcessingDatePair } from './processing-stats';
@@ -23,6 +24,7 @@ export interface Permit {
   dataset: string;
   source_id: string;
   filing_type: FilingType;
+  category: Category;
   source_updated_at: string | null;
   first_seen_at: string;
   address: string | null;
@@ -35,6 +37,10 @@ export interface Permit {
   tags: string;
   source_link: string | null;
   is_new: number;
+  /** Card headline for non-edilizia sources; NULL for edilizia (heads with address). */
+  title: string | null;
+  /** Category-specific fields as a JSON object string; decoded via `permit-extra.ts`. */
+  extra: string;
 }
 
 /**

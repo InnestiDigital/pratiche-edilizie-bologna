@@ -136,29 +136,46 @@ assets/                  icons, splash, fonts, lang/it.json (iOS InfoPlist strin
 ## Data layer (`lib/`) — the important part
 
 The sync pipeline is intentionally split into **small pure modules** so the brittle bits are unit-tested
-without a device. Layering, ingress → storage:
+without a device. Since P1/P2 the app syncs **7 sources across 5 categories** (edilizia PDC/SCIA/CILA +
+cantieri, commercio, eventi, segnalazioni) through ONE shared pipeline. Layering, ingress → storage:
 
-- `constants.ts` — the three datasets (PDC / SCIA / CILA), their ODS slugs, API base URL + `API_LIMIT`,
-  quartieri list, status/tag label maps.
+- `sources.ts` — **the source registry** (data-only leaf module): `CATEGORIES`/`Category` union, the
+  exhaustive `CATEGORY_*` maps (labels / colors / notification nouns / status-signal), `SweepStrategy`
+  (full | year-refine | date-range | future-window) and one `SourceConfig` per source. Adding a category
+  fails the build until every exhaustive map + switch is updated — that is deliberate.
+- `constants.ts` — the three edilizia datasets, API base URL + `API_LIMIT`, quartieri list, status/tag maps.
 - `fetch-page.ts` — HTTP transport for one page. Validates **beyond `.ok`** (content-type + JSON body),
   `AbortController` timeout + caller-signal cancellation. Throws typed `SyncFetchError` / `SyncTimeoutError`.
-- `schemas.ts` — **zod** schema for the ODS response. `parsePage` validates the wire payload at ingress and
-  throws typed `SyncIngressError` on shape mismatch — do not trust field shapes off the network.
+- `schemas.ts` + per-source `source-*.ts` — **zod** schemas validate each wire payload at ingress (typed
+  `SyncIngressError` on mismatch); each `source-{cantieri,commercio,eventi,segnalazioni}.ts` owns its
+  schema + normalizer. `source-runtime.ts` pairs registry keys to parser+normalizer (avoids an import
+  cycle: `sources.ts` stays data-only). `source-shared.ts` — shared write-side helpers (`compactExtra`,
+  portal-link builder reading `SOURCES[key].slug`, `toIsoDate`).
 - `retry.ts` — `withRetry` + `isRetryableSyncError` + full-jitter backoff. Retries transient failures
   (timeout / network / 429 / 5xx); **fails fast** on permanent ones (404/410/4xx, `SyncIngressError`, abort).
-- `paginate.ts` — pure offset-pagination walk (`walkPages`) with the ODS `MAX_OFFSET` (9900) hard cap, plus
-  `recentYears` / `fullScanYears` window helpers. The ODS API refuses `offset > 9900`, so large datasets are
-  swept per-year via the `richiesta_anno_prot` refine.
-- `normalize.ts` — one raw ODS record → `NormalizedPermit` (stable `source_id`, status/tag derivation,
-  zone from `codvia`, portal source link).
-- `upsert-classify.ts` — pure `classifyUpsert`: single source of truth for insert / update / unchanged. Reads
-  the `INSERT OR IGNORE` `changes` count so a raced duplicate `source_id` does **not** inflate the new count.
-- `sync.ts` — orchestrates `syncRecent` (last 2 years) and `syncFull`, calling the above. DB-coupled glue.
+- `paginate.ts` — pure offset-pagination walk (`walkPages`) with the ODS `MAX_OFFSET` (9900) hard cap,
+  `recentYears` / `fullScanYears` window helpers, and `bisectRange` (an over-cap date range is recursively
+  halved until each piece fits — no silent truncation at the cap).
+- `normalize.ts` — one raw edilizia record → `NormalizedPermit`; stamps `category`/`filing_type` from the
+  registry. `quartiere-normalize.ts` reconciles ODS district spellings with `QUARTIERI` (NULL when unmapped;
+  the feed omits the zone filter when all quartieri are selected, so NULL-zone rows still surface).
+- `permit-extra.ts` — hardened decoder for the `extra` JSON column (category-specific fields the cards read
+  by key). On-device storage boundary → defensive guards, **not** zod (zod is for the network boundary).
+- `upsert-classify.ts` — pure `classifyUpsert` + `PERMIT_CONTENT_FIELDS`: the single field list that drives
+  change detection AND generates sync.ts's SELECT/UPDATE, so the three cannot drift. Content-based: any
+  content correction (not just status) marks a row updated.
+- `schema-migrations.ts` — pure additive-migration seam (`pendingPermitMigrations` diffs `PRAGMA
+  table_info` against declared columns). **Additive columns only, never rename `permits`** — raw SQL naming
+  it lives in 14+ files. `db.ts` runs: CREATE TABLE → pending ALTERs → indexes LAST (ordering is load-bearing).
+- `sync.ts` — orchestrates `syncRecent`/`syncFull` generically over the registry, dispatching each source's
+  sweep strategy; respects `preferences.interests` (skips unfollowed categories). DB-coupled glue.
 - `db.ts` — SQLite singleton + schema (`permits`, `preferences`, `sync_log`) + generic pref get/set.
-- `queries.ts` — feed query builder (dynamic WHERE/IN, sort map, pagination), stats, `getPermitById`,
-  `markAllSeen`. Note: tag filtering is post-filtered in JS after the SQL `LIMIT/OFFSET` (SQLite JSON).
-- `preferences.ts` / `preferences-decode.ts` — typed user prefs over the `preferences` table; decode side is
-  hardened (safe `JSON.parse` + domain-enum validation) so corrupt/legacy stored prefs can't crash load.
+- `queries.ts` / `build-feed-query.ts` — feed query builder (dynamic WHERE/IN, sort map, pagination), stats,
+  `getPermitById`, `markAllSeen`. Eventi sort by discovery date (`REQUEST_DATE_SQL` CASE — their
+  `source_updated_at` is NULL because start dates are in the future and would bury edilizia rows).
+- `preferences.ts` / `preferences-decode.ts` — typed user prefs (incl. `interests: Category[]`) over the
+  `preferences` table; decode side hardened (safe `JSON.parse` + domain-enum validation) so corrupt/legacy
+  stored prefs can't crash load.
 - `background-sync.ts` — the `TaskManager` background task: sync → summarize → notify. Gated on the
   notifications pref + OS permission.
 - `background-result.ts` — pure `summarizeSyncResults` (totalNew / totalUpdated / hasChanges); sanitizes

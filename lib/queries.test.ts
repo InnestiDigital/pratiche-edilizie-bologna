@@ -64,6 +64,7 @@ function permitRow(overrides: Partial<Permit> = {}): Permit {
     dataset: 'pdc',
     source_id: 'abc',
     filing_type: 'PDC',
+    category: 'edilizia',
     source_updated_at: '2025-03-01',
     first_seen_at: '2025-03-02',
     address: 'Via Indipendenza 10',
@@ -76,6 +77,8 @@ function permitRow(overrides: Partial<Permit> = {}): Permit {
     tags: '[]',
     source_link: null,
     is_new: 0,
+    title: null,
+    extra: '{}',
     ...overrides,
   };
 }
@@ -105,13 +108,20 @@ describe('getPermits — WHERE construction', () => {
     expect(calls[0].params).toEqual(['PDC', 'CILA', 50, 0]);
   });
 
-  it('builds a wrapped LIKE pair for searchQuery against address and procedimento', async () => {
+  it('builds a wrapped LIKE group for searchQuery against address/title/procedimento', async () => {
     const { db, calls } = makeFakeDb();
     await getPermits(db, baseFilters({ searchQuery: 'Indipendenza' }));
     expect(squish(calls[0].sql)).toContain(
-      "(address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\'))"
+      "(address LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\'))"
     );
-    expect(calls[0].params).toEqual(['%Indipendenza%', '%Indipendenza%', '%Indipendenza%', 50, 0]);
+    expect(calls[0].params).toEqual([
+      '%Indipendenza%',
+      '%Indipendenza%',
+      '%Indipendenza%',
+      '%Indipendenza%',
+      50,
+      0,
+    ]);
   });
 
   it('escapes LIKE wildcards in the search term so they match literally', async () => {
@@ -120,6 +130,7 @@ describe('getPermits — WHERE construction', () => {
     // % / _ as SQL wildcards. The escaped term is wrapped in the outer %…%.
     await getPermits(db, baseFilters({ searchQuery: '100%_ok\\' }));
     expect(calls[0].params).toEqual([
+      '%100\\%\\_ok\\\\%',
       '%100\\%\\_ok\\\\%',
       '%100\\%\\_ok\\\\%',
       '%100\\%\\_ok\\\\%',
@@ -164,11 +175,12 @@ describe('getPermits — WHERE construction', () => {
     );
     const sql = squish(calls[0].sql);
     expect(sql).toContain(
-      "WHERE zone IN (?) AND filing_type IN (?) AND (address LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\')) AND status IN (?) AND is_new = 1"
+      "WHERE zone IN (?) AND (category <> 'edilizia' OR filing_type IN (?)) AND (address LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\' OR procedimento LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id AND permit_notes.note LIKE ? ESCAPE '\\')) AND status IN (?) AND is_new = 1"
     );
     expect(calls[0].params).toEqual([
       'Navile',
       'SCIA',
+      '%via%',
       '%via%',
       '%via%',
       '%via%',
@@ -183,8 +195,16 @@ describe('getPermits — sorting', () => {
   const cases: [FeedFilters['sort'], string][] = [
     ['newest', 'ORDER BY first_seen_at DESC'],
     ['oldest', 'ORDER BY first_seen_at ASC'],
-    ['request_newest', 'ORDER BY source_updated_at DESC'],
-    ['request_oldest', 'ORDER BY source_updated_at IS NULL, source_updated_at ASC'],
+    // request_* sorts rank eventi by discovery date (first_seen_at) via a CASE, so
+    // an event's future start date can't outrank freshly issued edilizia permits.
+    [
+      'request_newest',
+      "ORDER BY CASE WHEN category = 'eventi' THEN first_seen_at ELSE source_updated_at END DESC",
+    ],
+    [
+      'request_oldest',
+      "ORDER BY CASE WHEN category = 'eventi' THEN first_seen_at ELSE source_updated_at END IS NULL, CASE WHEN category = 'eventi' THEN first_seen_at ELSE source_updated_at END ASC",
+    ],
     ['closing_newest', 'ORDER BY date_issued DESC'],
   ];
 

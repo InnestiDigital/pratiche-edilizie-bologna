@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { decodeStringArray, decodeEnumArray } from './preferences-decode';
 import { QUARTIERI, FILING_TYPE_ORDER } from './constants';
+import { CATEGORIES } from './sources';
 
 const ZONE_FALLBACK = [...QUARTIERI];
 const TYPE_FALLBACK = [...FILING_TYPE_ORDER];
+const CATEGORY_FALLBACK = [...CATEGORIES];
 
 describe('decodeStringArray', () => {
   it('parses a well-formed JSON string array', () => {
@@ -67,5 +69,33 @@ describe('decodeEnumArray', () => {
   it('works for filing types', () => {
     const raw = JSON.stringify(['SCIA', 'BOGUS', 'PDC']);
     expect(decodeEnumArray(raw, FILING_TYPE_ORDER, TYPE_FALLBACK)).toEqual(['SCIA', 'PDC']);
+  });
+
+  it('keeps every known category in stored order, dropping a stored dead/unknown one', () => {
+    // 'ambiente' is not a member of CATEGORIES (a hypothetical future/removed
+    // category); it degrades away while the real categories are preserved.
+    const raw = JSON.stringify(['edilizia', 'ambiente', 'cantieri']);
+    expect(decodeEnumArray(raw, CATEGORIES, CATEGORY_FALLBACK)).toEqual(['edilizia', 'cantieri']);
+  });
+
+  // decodeEnumArray returns whatever fallback the caller passes; this fixture
+  // uses all CATEGORIES as the fallback. (The app's real corrupt-pref fallback
+  // is edilizia-only — see DEFAULTS.interests — but that is a caller decision,
+  // not this pure decoder's.)
+  it('falls back to the caller-provided fallback when the stored value is missing/corrupt', () => {
+    expect(decodeEnumArray('garbage', CATEGORIES, CATEGORY_FALLBACK)).toEqual(CATEGORY_FALLBACK);
+    expect(decodeEnumArray('null', CATEGORIES, CATEGORY_FALLBACK)).toEqual(CATEGORY_FALLBACK);
+    expect(decodeEnumArray('', CATEGORIES, CATEGORY_FALLBACK)).toEqual(CATEGORY_FALLBACK);
+  });
+
+  it('drops corrupt/unknown category values from stored interests instead of throwing', () => {
+    const raw = JSON.stringify(['edilizia', 'Quartiere Fantasma', 1, null, {}]);
+    expect(() => decodeEnumArray(raw, CATEGORIES, CATEGORY_FALLBACK)).not.toThrow();
+    expect(decodeEnumArray(raw, CATEGORIES, CATEGORY_FALLBACK)).toEqual(['edilizia']);
+  });
+
+  it('yields an empty array when every stored interest value is unknown', () => {
+    const raw = JSON.stringify(['ambiente', 'mobilita']);
+    expect(decodeEnumArray(raw, CATEGORIES, CATEGORY_FALLBACK)).toEqual([]);
   });
 });

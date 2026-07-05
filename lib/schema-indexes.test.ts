@@ -21,6 +21,7 @@ const PERMIT_COLUMNS = new Set([
   'tags',
   'source_link',
   'is_new',
+  'category',
 ]);
 
 describe('PERMIT_INDEX_SPECS', () => {

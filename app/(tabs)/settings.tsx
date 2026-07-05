@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, Switch, Alert, Linking } from 'react
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { TowersMark } from '../../components/TowersMark';
+import { SettingsSkeleton } from '../../components/SettingsSkeleton';
 import {
   QUARTIERI,
   FILING_TYPE_ORDER,
@@ -269,11 +270,7 @@ export default function SettingsScreen() {
   };
 
   if (!loaded) {
-    return (
-      <View className="flex-1 items-center justify-center bg-parchment-100">
-        <Text className="text-stone-600">Caricamento...</Text>
-      </View>
-    );
+    return <SettingsSkeleton />;
   }
 
   const tagEntries = Object.entries(TAG_LABELS);

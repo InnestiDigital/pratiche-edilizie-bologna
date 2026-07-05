@@ -7,6 +7,8 @@ import {
   RefreshControl,
   TextInput,
   ScrollView,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -28,6 +30,7 @@ import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
 import { debounce } from '../../lib/debounce';
+import { shouldShowScrollTop } from '../../lib/scroll-top';
 import { groupPermitsBySection } from '../../lib/feed-sections';
 import { sectionCountLabel } from '../../lib/section-count-label';
 import { buildResultCount } from '../../lib/result-count-label';
@@ -611,6 +614,17 @@ export default function FeedScreen() {
   const offsetRef = useRef(0);
   const [hasMore, setHasMore] = useState(true);
 
+  // "Back to top" floating button: shown once the feed is scrolled ~a screen down,
+  // so a long infinite-scroll session has a one-tap way back to the newest permits.
+  const listRef = useRef<SectionList<Permit>>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const onFeedScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setShowScrollTop(shouldShowScrollTop(e.nativeEvent.contentOffset.y));
+  }, []);
+  const scrollToTop = useCallback(() => {
+    listRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true });
+  }, []);
+
   const activeFilterCount =
     (activeZones.size < QUARTIERI.length ? 1 : 0) +
     (period !== 'all' ? 1 : 0) +
@@ -960,8 +974,11 @@ export default function FeedScreen() {
       )}
 
       <SectionList
+        ref={listRef}
         sections={sections}
         keyExtractor={(item) => item.source_id}
+        onScroll={onFeedScroll}
+        scrollEventThrottle={16}
         renderItem={({ item }) => (
           <PermitCard
             permit={item}
@@ -1000,6 +1017,27 @@ export default function FeedScreen() {
           )
         }
       />
+
+      {/* Back-to-top FAB — only while the feed is scrolled down and populated.
+          Brick circle anchored bottom-right just above the tab bar; taps scroll
+          the SectionList back to the newest permits. */}
+      {showScrollTop && hasData && (
+        <Pressable
+          onPress={scrollToTop}
+          accessibilityRole="button"
+          accessibilityLabel="Torna all'inizio dell'elenco"
+          hitSlop={8}
+          className="absolute bottom-5 right-4 h-12 w-12 items-center justify-center rounded-full bg-brick-600 shadow-lg"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+          }}>
+          <Ionicons name="chevron-up" size={26} color="#ffffff" />
+        </Pressable>
+      )}
     </View>
   );
 }

@@ -11,6 +11,7 @@
 import type * as SQLite from 'expo-sqlite';
 import { NOTE_FIXTURES } from './screenshot-fixtures';
 import type { NoteRecord } from './notes';
+import { notePreview } from './note-preview';
 
 export function createNotesTableSql(): string {
   return '';
@@ -36,6 +37,6 @@ export async function deleteNote(_db: SQLite.SQLiteDatabase, _sourceId: string):
   // no-op in the screenshot build
 }
 
-export async function listNotedIds(_db: SQLite.SQLiteDatabase): Promise<Set<string>> {
-  return new Set(Object.keys(NOTE_FIXTURES));
+export async function listNotePreviews(_db: SQLite.SQLiteDatabase): Promise<Map<string, string>> {
+  return new Map(Object.entries(NOTE_FIXTURES).map(([id, rec]) => [id, notePreview(rec.note)]));
 }

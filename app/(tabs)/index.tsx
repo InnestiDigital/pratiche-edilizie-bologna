@@ -26,7 +26,7 @@ import {
 } from '../../lib/queries';
 import { loadPreferences } from '../../lib/preferences';
 import { listFavoriteIds, toggleFavorite } from '../../lib/favorites';
-import { listNotedIds } from '../../lib/notes';
+import { listNotePreviews } from '../../lib/notes';
 import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
@@ -98,18 +98,20 @@ function TagBadge({ tag }: { tag: string }) {
 function PermitCard({
   permit,
   isSaved,
-  hasNote,
+  notePreview,
   sort,
   onPress,
   onToggleSave,
 }: {
   permit: Permit;
   isSaved: boolean;
-  hasNote: boolean;
+  /** One-line preview of this permit's personal note, or null when it has none. */
+  notePreview: string | null;
   sort: SortOption;
   onPress: () => void;
   onToggleSave: () => void;
 }) {
+  const hasNote = notePreview != null && notePreview !== '';
   const tags = parsePermitTags(permit.tags);
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
   const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
@@ -156,18 +158,6 @@ function PermitCard({
           <Text className="text-xs font-medium text-stone-500">{statusLabel}</Text>
         </View>
         <View className="ml-auto flex-row items-center">
-          {/* Note indicator: this permit carries a personal note (see the detail
-              "Le mie note"). A quiet brick pencil so a resident can spot which
-              permits they're actively tracking without opening each one. */}
-          {hasNote && (
-            <Ionicons
-              name="create"
-              size={15}
-              color="#9B2335"
-              style={{ marginRight: 8 }}
-              accessibilityLabel="Ha una nota personale"
-            />
-          )}
           {permit.is_new === 1 && (
             <View className="mr-2 rounded-full bg-brick-600 px-2.5 py-0.5">
               <Text className="text-[10px] font-bold text-white">NUOVO</Text>
@@ -204,6 +194,22 @@ function PermitCard({
         <Text className="mt-1 text-sm leading-5 text-ink-500" numberOfLines={2}>
           {permit.procedimento}
         </Text>
+      )}
+
+      {/* Personal note — the resident's own tracking note on this permit (see the
+          detail "Le mie note"), surfaced right in the feed so they can read WHAT
+          they wrote, not just that a note exists. Brick-tinted strip in the user's
+          own voice, distinct from the open-data facts above. */}
+      {hasNote && (
+        <View className="mt-2 flex-row items-center rounded-lg bg-brick-50 px-2.5 py-1.5">
+          <Ionicons name="create" size={13} color="#9B2335" />
+          <Text
+            className="ml-1.5 flex-1 text-xs leading-4 text-brick-700"
+            numberOfLines={1}
+            accessibilityLabel={`Nota personale: ${notePreview}`}>
+            {notePreview}
+          </Text>
+        </View>
       )}
 
       {/* Footer: date (labelled to match the active sort) + protocol */}
@@ -680,7 +686,7 @@ export default function FeedScreen() {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [newCount, setNewCount] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [notedIds, setNotedIds] = useState<Set<string>>(new Set());
+  const [notePreviews, setNotePreviews] = useState<Map<string, string>>(new Map());
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
@@ -767,9 +773,10 @@ export default function FeedScreen() {
         // Saved-permit ids, so each card can render its bookmark from one query
         // instead of an isFavorite call per visible row.
         setFavoriteIds(await listFavoriteIds(db));
-        // Annotated-permit ids, so each card can show a note indicator from one
-        // query — same one-query-per-reload pattern as the bookmarks above.
-        setNotedIds(await listNotedIds(db));
+        // Annotated permits → a one-line preview of each note, so a card can both
+        // mark itself annotated and show WHAT the resident wrote, from one query —
+        // same one-query-per-reload pattern as the bookmarks above.
+        setNotePreviews(await listNotePreviews(db));
       }
 
       const rows = await getPermits(db, filters, 50, newOffset);
@@ -1084,7 +1091,7 @@ export default function FeedScreen() {
           <PermitCard
             permit={item}
             isSaved={favoriteIds.has(item.source_id)}
-            hasNote={notedIds.has(item.source_id)}
+            notePreview={notePreviews.get(item.source_id) ?? null}
             sort={sort}
             onPress={() => router.push(`/permit/${item.id}`)}
             onToggleSave={() => handleToggleSave(item.source_id)}
@@ -1109,7 +1116,7 @@ export default function FeedScreen() {
             // empty-state ("modifica i filtri") misleads — there is nothing to
             // adjust. Teach the bookmark gesture + offer a one-tap way out.
             <EmptySavedState onShowAll={() => setOnlyFavorites(false)} />
-          ) : onlyNoted && notedIds.size === 0 ? (
+          ) : onlyNoted && notePreviews.size === 0 ? (
             // "Solo con note" is on but no permit is annotated yet: same reasoning
             // as saved — teach the note gesture + a one-tap way out.
             <EmptyNotedState onShowAll={() => setOnlyNoted(false)} />

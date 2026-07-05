@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type * as SQLite from 'expo-sqlite';
-import { createNotesTableSql, getNoteRecord, setNote, deleteNote, listNotedIds } from './notes';
+import { createNotesTableSql, getNoteRecord, setNote, deleteNote, listNotePreviews } from './notes';
 
 interface RecordedCall {
   sql: string;
@@ -85,18 +85,29 @@ describe('deleteNote', () => {
   });
 });
 
-describe('listNotedIds', () => {
-  it('returns the set of every source_id with a note', async () => {
+describe('listNotePreviews', () => {
+  it('maps every annotated source_id to a one-line preview of its note', async () => {
     const { db, calls } = makeFakeDb({
-      getAll: [{ source_id: 'PDC-2024-000481' }, { source_id: 'SCIA-2024-002210' }],
+      getAll: [
+        { source_id: 'PDC-2024-000481', note: 'Richiamare\ndopo il 15' },
+        { source_id: 'SCIA-2024-002210', note: 'In attesa risposta' },
+      ],
     });
-    const ids = await listNotedIds(db);
-    expect(squish(calls[0].sql)).toBe('SELECT source_id FROM permit_notes');
-    expect(ids).toEqual(new Set(['PDC-2024-000481', 'SCIA-2024-002210']));
+    const previews = await listNotePreviews(db);
+    expect(squish(calls[0].sql)).toBe('SELECT source_id, note FROM permit_notes');
+    expect(previews).toEqual(
+      new Map([
+        ['PDC-2024-000481', 'Richiamare dopo il 15'],
+        ['SCIA-2024-002210', 'In attesa risposta'],
+      ])
+    );
+    // still usable as the annotated-set membership/size the feed relies on
+    expect(previews.has('PDC-2024-000481')).toBe(true);
+    expect(previews.size).toBe(2);
   });
 
-  it('returns an empty set when no permit is annotated', async () => {
+  it('returns an empty map when no permit is annotated', async () => {
     const { db } = makeFakeDb({ getAll: [] });
-    expect(await listNotedIds(db)).toEqual(new Set());
+    expect(await listNotePreviews(db)).toEqual(new Map());
   });
 });

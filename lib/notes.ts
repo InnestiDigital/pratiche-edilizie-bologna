@@ -1,4 +1,5 @@
 import type * as SQLite from 'expo-sqlite';
+import { notePreview } from './note-preview';
 
 /**
  * Personal notes on permits.
@@ -87,13 +88,16 @@ export async function deleteNote(db: SQLite.SQLiteDatabase, sourceId: string): P
 }
 
 /**
- * The set of every `source_id` that currently has a note. The feed loads this
- * once per (re)load so each card can render a note indicator from one query
- * instead of a getNote call per visible row — mirrors `listFavoriteIds`. An
- * emptied note is deleted (see `normalizeNote`), so a present row always means a
- * real, non-empty note.
+ * A map of every annotated permit's `source_id` → a one-line `notePreview` of its
+ * note. The feed loads this once per (re)load so each card can both mark itself as
+ * annotated (`map.has(id)` / `map.size`, mirroring the old `listNotedIds`) and
+ * show a preview of the resident's own note — from a single query, not a getNote
+ * per visible row. An emptied note is deleted (see `normalizeNote`), so a present
+ * row always means a real, non-empty note.
  */
-export async function listNotedIds(db: SQLite.SQLiteDatabase): Promise<Set<string>> {
-  const rows = await db.getAllAsync<{ source_id: string }>('SELECT source_id FROM permit_notes');
-  return new Set(rows.map((r) => r.source_id));
+export async function listNotePreviews(db: SQLite.SQLiteDatabase): Promise<Map<string, string>> {
+  const rows = await db.getAllAsync<{ source_id: string; note: string }>(
+    'SELECT source_id, note FROM permit_notes'
+  );
+  return new Map(rows.map((r) => [r.source_id, notePreview(r.note)]));
 }

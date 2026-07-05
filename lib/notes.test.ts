@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type * as SQLite from 'expo-sqlite';
-import { createNotesTableSql, getNote, setNote, deleteNote } from './notes';
+import { createNotesTableSql, getNote, setNote, deleteNote, listNotedIds } from './notes';
 
 interface RecordedCall {
   sql: string;
@@ -8,12 +8,16 @@ interface RecordedCall {
 }
 
 /** Fake of the expo-sqlite slice notes.ts uses; records every call. */
-function makeFakeDb(results: { getFirst?: unknown } = {}) {
+function makeFakeDb(results: { getFirst?: unknown; getAll?: unknown[] } = {}) {
   const calls: RecordedCall[] = [];
   const db = {
     getFirstAsync: async (sql: string, ...params: unknown[]) => {
       calls.push({ sql, params });
       return (results.getFirst ?? null) as never;
+    },
+    getAllAsync: async (sql: string, ...params: unknown[]) => {
+      calls.push({ sql, params });
+      return (results.getAll ?? []) as never;
     },
     runAsync: async (sql: string, ...params: unknown[]) => {
       calls.push({ sql, params });
@@ -71,5 +75,21 @@ describe('deleteNote', () => {
     await deleteNote(db, 'CILA-2024-005567');
     expect(squish(calls[0].sql)).toBe('DELETE FROM permit_notes WHERE source_id = ?');
     expect(calls[0].params).toEqual(['CILA-2024-005567']);
+  });
+});
+
+describe('listNotedIds', () => {
+  it('returns the set of every source_id with a note', async () => {
+    const { db, calls } = makeFakeDb({
+      getAll: [{ source_id: 'PDC-2024-000481' }, { source_id: 'SCIA-2024-002210' }],
+    });
+    const ids = await listNotedIds(db);
+    expect(squish(calls[0].sql)).toBe('SELECT source_id FROM permit_notes');
+    expect(ids).toEqual(new Set(['PDC-2024-000481', 'SCIA-2024-002210']));
+  });
+
+  it('returns an empty set when no permit is annotated', async () => {
+    const { db } = makeFakeDb({ getAll: [] });
+    expect(await listNotedIds(db)).toEqual(new Set());
   });
 });

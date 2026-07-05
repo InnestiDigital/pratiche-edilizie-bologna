@@ -26,6 +26,7 @@ import {
 } from '../../lib/queries';
 import { loadPreferences } from '../../lib/preferences';
 import { listFavoriteIds, toggleFavorite } from '../../lib/favorites';
+import { listNotedIds } from '../../lib/notes';
 import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
@@ -42,6 +43,7 @@ import {
   PERIOD_CHIP_KEY,
   ONLY_NEW_CHIP_KEY,
   ONLY_FAVORITES_CHIP_KEY,
+  ONLY_NOTED_CHIP_KEY,
   SORT_CHIP_KEY,
   STATUS_CHIP_PREFIX,
   TAG_CHIP_PREFIX,
@@ -96,12 +98,14 @@ function TagBadge({ tag }: { tag: string }) {
 function PermitCard({
   permit,
   isSaved,
+  hasNote,
   sort,
   onPress,
   onToggleSave,
 }: {
   permit: Permit;
   isSaved: boolean;
+  hasNote: boolean;
   sort: SortOption;
   onPress: () => void;
   onToggleSave: () => void;
@@ -119,6 +123,7 @@ function PermitCard({
     statusLabel,
     permit.is_new === 1 ? 'nuovo' : null,
     isSaved ? 'salvata' : null,
+    hasNote ? 'con nota' : null,
     permit.address ?? 'Indirizzo non disponibile',
     permit.zone,
   ]
@@ -151,6 +156,18 @@ function PermitCard({
           <Text className="text-xs font-medium text-stone-500">{statusLabel}</Text>
         </View>
         <View className="ml-auto flex-row items-center">
+          {/* Note indicator: this permit carries a personal note (see the detail
+              "Le mie note"). A quiet brick pencil so a resident can spot which
+              permits they're actively tracking without opening each one. */}
+          {hasNote && (
+            <Ionicons
+              name="create"
+              size={15}
+              color="#9B2335"
+              style={{ marginRight: 8 }}
+              accessibilityLabel="Ha una nota personale"
+            />
+          )}
           {permit.is_new === 1 && (
             <View className="mr-2 rounded-full bg-brick-600 px-2.5 py-0.5">
               <Text className="text-[10px] font-bold text-white">NUOVO</Text>
@@ -272,6 +289,29 @@ function EmptySavedState({ onShowAll }: { onShowAll: () => void }) {
   );
 }
 
+function EmptyNotedState({ onShowAll }: { onShowAll: () => void }) {
+  return (
+    <View
+      className="mx-6 mt-16 items-center rounded-2xl bg-white p-8"
+      style={{ shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
+      <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-brick-50">
+        <Ionicons name="create-outline" size={28} color="#9B2335" />
+      </View>
+      <Text className="text-lg font-bold text-ink-800">Nessuna pratica con note</Text>
+      <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
+        Apri una pratica e tocca «Le mie note» per annotarla; comparirà qui.
+      </Text>
+      <Pressable
+        onPress={onShowAll}
+        accessibilityRole="button"
+        accessibilityLabel="Mostra tutte le pratiche"
+        className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
+        <Text className="font-semibold text-stone-600">Mostra tutte le pratiche</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function EmptySearchState({ term, onClearSearch }: { term: string; onClearSearch: () => void }) {
   return (
     <View
@@ -339,6 +379,8 @@ function FilterPanel({
   toggleOnlyNew,
   onlyFavorites,
   toggleOnlyFavorites,
+  onlyNoted,
+  toggleOnlyNoted,
   period,
   setPeriod,
   sort,
@@ -356,6 +398,8 @@ function FilterPanel({
   toggleOnlyNew: () => void;
   onlyFavorites: boolean;
   toggleOnlyFavorites: () => void;
+  onlyNoted: boolean;
+  toggleOnlyNoted: () => void;
   period: FeedPeriod;
   setPeriod: (p: FeedPeriod) => void;
   sort: SortOption;
@@ -384,14 +428,15 @@ function FilterPanel({
         )}
       </View>
 
-      {/* Quick toggles: only new / only saved */}
-      <View className="mb-3 flex-row">
+      {/* Quick toggles: only new / only saved / only noted. Wraps so the third
+          pill drops to a second line on narrow screens instead of clipping. */}
+      <View className="mb-2 flex-row flex-wrap">
         <Pressable
           onPress={toggleOnlyNew}
           accessibilityRole="button"
           accessibilityLabel="Solo nuovi"
           accessibilityState={{ selected: onlyNew }}
-          className={`mr-2 flex-row items-center self-start rounded-full px-3.5 py-2 ${
+          className={`mb-1.5 mr-2 flex-row items-center self-start rounded-full px-3.5 py-2 ${
             onlyNew ? 'bg-brick-600' : 'bg-parchment-100'
           }`}>
           <Ionicons name="sparkles" size={14} color={onlyNew ? 'white' : '#8B7355'} />
@@ -405,7 +450,7 @@ function FilterPanel({
           accessibilityRole="button"
           accessibilityLabel="Solo salvate"
           accessibilityState={{ selected: onlyFavorites }}
-          className={`flex-row items-center self-start rounded-full px-3.5 py-2 ${
+          className={`mb-1.5 mr-2 flex-row items-center self-start rounded-full px-3.5 py-2 ${
             onlyFavorites ? 'bg-brick-600' : 'bg-parchment-100'
           }`}>
           <Ionicons
@@ -416,6 +461,24 @@ function FilterPanel({
           <Text
             className={`ml-1.5 text-xs font-semibold ${onlyFavorites ? 'text-white' : 'text-stone-500'}`}>
             Solo salvate
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={toggleOnlyNoted}
+          accessibilityRole="button"
+          accessibilityLabel="Solo con note"
+          accessibilityState={{ selected: onlyNoted }}
+          className={`mb-1.5 flex-row items-center self-start rounded-full px-3.5 py-2 ${
+            onlyNoted ? 'bg-brick-600' : 'bg-parchment-100'
+          }`}>
+          <Ionicons
+            name={onlyNoted ? 'create' : 'create-outline'}
+            size={14}
+            color={onlyNoted ? 'white' : '#8B7355'}
+          />
+          <Text
+            className={`ml-1.5 text-xs font-semibold ${onlyNoted ? 'text-white' : 'text-stone-500'}`}>
+            Solo con note
           </Text>
         </Pressable>
       </View>
@@ -617,6 +680,7 @@ export default function FeedScreen() {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [newCount, setNewCount] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [notedIds, setNotedIds] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
@@ -625,6 +689,7 @@ export default function FeedScreen() {
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [onlyNew, setOnlyNew] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [onlyNoted, setOnlyNoted] = useState(false);
   const [period, setPeriod] = useState<FeedPeriod>('all');
   const [sort, setSort] = useState<SortOption>('request_newest');
   // `searchInput` drives the text box (updates on every keystroke so typing
@@ -655,6 +720,7 @@ export default function FeedScreen() {
     (activeTags.size > 0 ? 1 : 0) +
     (onlyNew ? 1 : 0) +
     (onlyFavorites ? 1 : 0) +
+    (onlyNoted ? 1 : 0) +
     (sort !== 'request_newest' ? 1 : 0);
 
   const loadPermits = useCallback(
@@ -673,6 +739,7 @@ export default function FeedScreen() {
         statuses: activeStatuses.size > 0 ? [...activeStatuses] : undefined,
         onlyNew: onlyNew || undefined,
         onlyFavorites: onlyFavorites || undefined,
+        onlyNoted: onlyNoted || undefined,
         // Time-period filter → a request-date lower bound; `new Date()` is the
         // real current time (the clock read lives here, not in the pure helper),
         // and 'all' yields null → undefined (no bound).
@@ -700,6 +767,9 @@ export default function FeedScreen() {
         // Saved-permit ids, so each card can render its bookmark from one query
         // instead of an isFavorite call per visible row.
         setFavoriteIds(await listFavoriteIds(db));
+        // Annotated-permit ids, so each card can show a note indicator from one
+        // query — same one-query-per-reload pattern as the bookmarks above.
+        setNotedIds(await listNotedIds(db));
       }
 
       const rows = await getPermits(db, filters, 50, newOffset);
@@ -720,6 +790,7 @@ export default function FeedScreen() {
       activeTags,
       onlyNew,
       onlyFavorites,
+      onlyNoted,
       period,
       sort,
       search,
@@ -841,6 +912,7 @@ export default function FeedScreen() {
     setActiveTags(new Set());
     setOnlyNew(false);
     setOnlyFavorites(false);
+    setOnlyNoted(false);
     setPeriod('all');
     setSort('request_newest');
     clearSearch();
@@ -857,6 +929,7 @@ export default function FeedScreen() {
     tags: [...activeTags],
     onlyNew,
     onlyFavorites,
+    onlyNoted,
     sort,
     defaultSort: 'request_newest',
   });
@@ -876,6 +949,7 @@ export default function FeedScreen() {
     else if (key === PERIOD_CHIP_KEY) setPeriod('all');
     else if (key === ONLY_NEW_CHIP_KEY) setOnlyNew(false);
     else if (key === ONLY_FAVORITES_CHIP_KEY) setOnlyFavorites(false);
+    else if (key === ONLY_NOTED_CHIP_KEY) setOnlyNoted(false);
     else if (key === SORT_CHIP_KEY) setSort('request_newest');
     else if (key.startsWith(STATUS_CHIP_PREFIX)) toggleStatus(key.slice(STATUS_CHIP_PREFIX.length));
     else if (key.startsWith(TAG_CHIP_PREFIX)) toggleTag(key.slice(TAG_CHIP_PREFIX.length));
@@ -955,6 +1029,8 @@ export default function FeedScreen() {
           toggleOnlyNew={() => setOnlyNew((v) => !v)}
           onlyFavorites={onlyFavorites}
           toggleOnlyFavorites={() => setOnlyFavorites((v) => !v)}
+          onlyNoted={onlyNoted}
+          toggleOnlyNoted={() => setOnlyNoted((v) => !v)}
           period={period}
           setPeriod={setPeriod}
           sort={sort}
@@ -1008,6 +1084,7 @@ export default function FeedScreen() {
           <PermitCard
             permit={item}
             isSaved={favoriteIds.has(item.source_id)}
+            hasNote={notedIds.has(item.source_id)}
             sort={sort}
             onPress={() => router.push(`/permit/${item.id}`)}
             onToggleSave={() => handleToggleSave(item.source_id)}
@@ -1032,6 +1109,10 @@ export default function FeedScreen() {
             // empty-state ("modifica i filtri") misleads — there is nothing to
             // adjust. Teach the bookmark gesture + offer a one-tap way out.
             <EmptySavedState onShowAll={() => setOnlyFavorites(false)} />
+          ) : onlyNoted && notedIds.size === 0 ? (
+            // "Solo con note" is on but no permit is annotated yet: same reasoning
+            // as saved — teach the note gesture + a one-tap way out.
+            <EmptyNotedState onShowAll={() => setOnlyNoted(false)} />
           ) : searchTermForEmpty ? (
             // A search is active and matched nothing: point at the likely culprit
             // (the query) and offer to clear ONLY the search, so the user's

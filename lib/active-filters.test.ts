@@ -5,6 +5,7 @@ import {
   PERIOD_CHIP_KEY,
   ONLY_NEW_CHIP_KEY,
   ONLY_FAVORITES_CHIP_KEY,
+  ONLY_NOTED_CHIP_KEY,
   SORT_CHIP_KEY,
   STATUS_CHIP_PREFIX,
   TAG_CHIP_PREFIX,
@@ -83,6 +84,15 @@ describe('buildActiveFilterChips', () => {
     expect(chips).toContainEqual({ key: ONLY_FAVORITES_CHIP_KEY, label: 'Solo salvate' });
   });
 
+  it('adds an only-noted chip when onlyNoted is set, and none when absent', () => {
+    expect(buildActiveFilterChips({ ...base, onlyNoted: true })).toContainEqual({
+      key: ONLY_NOTED_CHIP_KEY,
+      label: 'Solo con note',
+    });
+    // Optional field absent → no chip (default off).
+    expect(buildActiveFilterChips(base).find((c) => c.key === ONLY_NOTED_CHIP_KEY)).toBeUndefined();
+  });
+
   it('adds a sort chip only when sort differs from the default', () => {
     expect(
       buildActiveFilterChips({ ...base, sort: 'request_newest' }).find(
@@ -93,7 +103,7 @@ describe('buildActiveFilterChips', () => {
     expect(chips).toContainEqual({ key: SORT_CHIP_KEY, label: SORT_LABELS.closing_newest });
   });
 
-  it('orders chips zones → period → statuses → tags → onlyNew → onlyFavorites → sort', () => {
+  it('orders chips zones → period → statuses → tags → onlyNew → onlyFavorites → onlyNoted → sort', () => {
     const s = Object.keys(STATUS_LABELS)[0];
     const t = Object.keys(TAG_LABELS)[0];
     const chips = buildActiveFilterChips({
@@ -105,6 +115,7 @@ describe('buildActiveFilterChips', () => {
       tags: [t],
       onlyNew: true,
       onlyFavorites: true,
+      onlyNoted: true,
       sort: 'closing_newest',
       defaultSort: 'request_newest',
     });
@@ -115,6 +126,7 @@ describe('buildActiveFilterChips', () => {
       `${TAG_CHIP_PREFIX}${t}`,
       ONLY_NEW_CHIP_KEY,
       ONLY_FAVORITES_CHIP_KEY,
+      ONLY_NOTED_CHIP_KEY,
       SORT_CHIP_KEY,
     ]);
   });

@@ -71,3 +71,15 @@ export async function setNote(
 export async function deleteNote(db: SQLite.SQLiteDatabase, sourceId: string): Promise<void> {
   await db.runAsync('DELETE FROM permit_notes WHERE source_id = ?', sourceId);
 }
+
+/**
+ * The set of every `source_id` that currently has a note. The feed loads this
+ * once per (re)load so each card can render a note indicator from one query
+ * instead of a getNote call per visible row — mirrors `listFavoriteIds`. An
+ * emptied note is deleted (see `normalizeNote`), so a present row always means a
+ * real, non-empty note.
+ */
+export async function listNotedIds(db: SQLite.SQLiteDatabase): Promise<Set<string>> {
+  const rows = await db.getAllAsync<{ source_id: string }>('SELECT source_id FROM permit_notes');
+  return new Set(rows.map((r) => r.source_id));
+}

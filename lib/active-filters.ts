@@ -25,6 +25,8 @@ export interface ActiveFilterState {
   tags: string[];
   onlyNew: boolean;
   onlyFavorites: boolean;
+  /** "Solo con note": only permits the user has annotated. Optional — absent = off. */
+  onlyNoted?: boolean;
   sort: SortOption;
   /** The default sort; a different sort surfaces a removable chip. */
   defaultSort: SortOption;
@@ -34,6 +36,7 @@ export const ZONES_CHIP_KEY = 'zones';
 export const PERIOD_CHIP_KEY = 'period';
 export const ONLY_NEW_CHIP_KEY = 'onlyNew';
 export const ONLY_FAVORITES_CHIP_KEY = 'onlyFavorites';
+export const ONLY_NOTED_CHIP_KEY = 'onlyNoted';
 export const SORT_CHIP_KEY = 'sort';
 export const STATUS_CHIP_PREFIX = 'status:';
 export const TAG_CHIP_PREFIX = 'tag:';
@@ -42,7 +45,7 @@ export const TAG_CHIP_PREFIX = 'tag:';
  * Build the ordered list of active-filter chips from the feed's filter state.
  *
  * Pure and total: no chips means no active filters. Order is fixed (zones →
- * period → statuses → tags → only-new → only-saved → sort) so the row is stable
+ * period → statuses → tags → only-new → only-saved → only-noted → sort) so stable
  * across re-renders. The feed screen maps each `key` back to a removal action.
  */
 export function buildActiveFilterChips(state: ActiveFilterState): ActiveFilterChip[] {
@@ -71,6 +74,10 @@ export function buildActiveFilterChips(state: ActiveFilterState): ActiveFilterCh
 
   if (state.onlyFavorites) {
     chips.push({ key: ONLY_FAVORITES_CHIP_KEY, label: 'Solo salvate' });
+  }
+
+  if (state.onlyNoted) {
+    chips.push({ key: ONLY_NOTED_CHIP_KEY, label: 'Solo con note' });
   }
 
   if (state.sort !== state.defaultSort) {

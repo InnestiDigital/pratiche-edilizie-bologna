@@ -15,7 +15,12 @@ import type * as SQLite from 'expo-sqlite';
 import { RELEASED_STATUSES, type FilingType } from './constants';
 import type { FeedFilters } from './build-feed-query';
 import type { ProcessingDatePair } from './processing-stats';
-import { PERMIT_FIXTURES, STATS_FIXTURE, FAVORITE_SOURCE_IDS } from './screenshot-fixtures';
+import {
+  PERMIT_FIXTURES,
+  STATS_FIXTURE,
+  FAVORITE_SOURCE_IDS,
+  NOTE_FIXTURES,
+} from './screenshot-fixtures';
 
 // Re-export the pure, db-free query primitives from their real home (safe: the
 // `build-feed-query` module imports nothing native).
@@ -75,6 +80,7 @@ function filterFixtures(filters: FeedFilters): Permit[] {
   if (filters.statuses?.length) rows = rows.filter((p) => filters.statuses!.includes(p.status));
   if (filters.onlyNew) rows = rows.filter((p) => p.is_new === 1);
   if (filters.onlyFavorites) rows = rows.filter((p) => FAVORITE_SOURCE_IDS.has(p.source_id));
+  if (filters.onlyNoted) rows = rows.filter((p) => p.source_id in NOTE_FIXTURES);
   if (filters.requestedAfter)
     rows = rows.filter(
       (p) => p.source_updated_at !== null && p.source_updated_at >= filters.requestedAfter!

@@ -59,6 +59,8 @@ export interface FeedFilters {
   statuses?: string[];
   onlyNew?: boolean;
   onlyFavorites?: boolean;
+  /** Keep only permits the user has attached a personal note to (see `permit_notes`). */
+  onlyNoted?: boolean;
   /**
    * Inclusive lower bound on the request date (`source_updated_at`), as a plain
    * `YYYY-MM-DD` string — the time-period filter. See `lib/feed-period.ts` for how
@@ -189,6 +191,16 @@ export function buildFeedWhere(filters: FeedFilters): {
     // params: the predicate is fully static.
     conditions.push(
       'EXISTS (SELECT 1 FROM favorites WHERE favorites.source_id = permits.source_id)'
+    );
+  }
+
+  if (filters.onlyNoted) {
+    // Correlated EXISTS against the permit_notes table (keyed by source_id), so
+    // the annotated-only filter runs in SQL like onlyFavorites — LIMIT/OFFSET and
+    // pagination stay correct. An emptied note deletes its row (see normalizeNote),
+    // so any permit_notes row means a real, non-empty note. No bind params.
+    conditions.push(
+      'EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id)'
     );
   }
 

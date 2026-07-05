@@ -99,6 +99,28 @@ describe('buildFeedQuery — WHERE construction', () => {
     expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).not.toContain('favorites');
   });
 
+  it('adds a parameterless permit_notes EXISTS predicate for onlyNoted', () => {
+    const { sql, params } = buildFeedQuery({ ...EMPTY, onlyNoted: true }, 50, 0);
+    expect(squish(sql)).toContain(
+      'EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id)'
+    );
+    // no param for the notes join — only LIMIT/OFFSET
+    expect(params).toEqual([50, 0]);
+  });
+
+  it('omits the permit_notes join when onlyNoted is false/undefined', () => {
+    expect(squish(buildFeedQuery({ ...EMPTY, onlyNoted: false }, 50, 0).sql)).not.toContain(
+      'permit_notes'
+    );
+    expect(squish(buildFeedQuery(EMPTY, 50, 0).sql)).not.toContain('permit_notes');
+  });
+
+  it('applies the same onlyNoted predicate to the count query', () => {
+    expect(squish(buildFeedCountQuery({ ...EMPTY, onlyNoted: true }).sql)).toContain(
+      'EXISTS (SELECT 1 FROM permit_notes WHERE permit_notes.source_id = permits.source_id)'
+    );
+  });
+
   it('ANDs every active filter in a fixed order with correctly ordered params', () => {
     const { sql, params } = buildFeedQuery(
       {

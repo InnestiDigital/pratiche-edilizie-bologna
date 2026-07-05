@@ -34,3 +34,7 @@ export async function setNote(
 export async function deleteNote(_db: SQLite.SQLiteDatabase, _sourceId: string): Promise<void> {
   // no-op in the screenshot build
 }
+
+export async function listNotedIds(_db: SQLite.SQLiteDatabase): Promise<Set<string>> {
+  return new Set(Object.keys(NOTE_FIXTURES));
+}

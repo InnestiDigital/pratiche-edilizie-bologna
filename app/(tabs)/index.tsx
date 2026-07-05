@@ -30,6 +30,7 @@ import { listNotePreviews } from '../../lib/notes';
 import { applyFavoriteToggle } from '../../lib/favorite-set';
 import { feedCardDate } from '../../lib/feed-card-date';
 import { parseZoneParam } from '../../lib/zone-param';
+import { parseTagParam } from '../../lib/tag-param';
 import { debounce } from '../../lib/debounce';
 import { shouldShowScrollTop } from '../../lib/scroll-top';
 import { groupPermitsBySection } from '../../lib/feed-sections';
@@ -671,11 +672,14 @@ export default function FeedScreen() {
   // value changes, so the effect below refires even when `zone` is unchanged).
   // Deep link from the detail "Altre pratiche in <via>" action carries `q` (a
   // street name) + the shared `t` nonce; it prefills the search box below.
+  // Deep link from a detail etichetta tap carries `tag` (a canonical tag key) +
+  // the shared `t` nonce; it narrows the feed to that single tag.
   const {
     zone: zoneParam,
     q: searchParam,
+    tag: tagParam,
     t: linkNonce,
-  } = useLocalSearchParams<{ zone?: string; q?: string; t?: string }>();
+  } = useLocalSearchParams<{ zone?: string; q?: string; tag?: string; t?: string }>();
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -816,6 +820,15 @@ export default function FeedScreen() {
     if (zone) setActiveZones(new Set([zone]));
     // linkNonce is listed only to retrigger this effect on a same-zone re-tap.
   }, [zoneParam, linkNonce]);
+
+  // Apply a `tag` deep link from a permit detail's etichetta tap: narrow the feed
+  // to that single topic tag. Guarded by parseTagParam so a junk/legacy key is
+  // ignored rather than filtering to an impossible tag; refires on the nonce so
+  // re-tapping the same tag re-applies it. Mirrors the zone deep link above.
+  useEffect(() => {
+    const tag = parseTagParam(tagParam);
+    if (tag) setActiveTags(new Set([tag]));
+  }, [tagParam, linkNonce]);
 
   // Apply a `q` deep link from a permit detail's "Altre pratiche in <via>"
   // action: prefill the search box with the street name so the feed narrows to

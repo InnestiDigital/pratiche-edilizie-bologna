@@ -627,18 +627,49 @@ export default function PermitDetail() {
           />
         </View>
 
-        {/* Tags */}
+        {/* Tags — each is a shortcut into the feed filtered to that topic tag
+            (the etichetta analog of the street/zone cross-nav above). Reuses the
+            feed's `tag` deep link so "what does this tag mean as a filter" stays a
+            single source of truth. Only canonical tag keys navigate; an unknown
+            key (no label) renders as a plain, non-tappable badge. */}
         {tags.length > 0 && (
           <View
             className="mt-3 rounded-2xl bg-white p-5"
             style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
             <Text className="mb-2 text-xs font-semibold text-stone-600">Etichette</Text>
             <View className="flex-row flex-wrap">
-              {tags.map((t) => (
-                <View key={t} className="mb-2 mr-2 rounded-full bg-parchment-200 px-3.5 py-1.5">
-                  <Text className="text-sm font-medium text-stone-600">{TAG_LABELS[t] ?? t}</Text>
-                </View>
-              ))}
+              {tags.map((t) => {
+                const label = TAG_LABELS[t];
+                if (!label) {
+                  return (
+                    <View key={t} className="mb-2 mr-2 rounded-full bg-parchment-200 px-3.5 py-1.5">
+                      <Text className="text-sm font-medium text-stone-600">{t}</Text>
+                    </View>
+                  );
+                }
+                return (
+                  <Pressable
+                    key={t}
+                    onPress={() =>
+                      router.navigate({
+                        pathname: '/(tabs)',
+                        params: { tag: t, t: String(Date.now()) },
+                      })
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filtra le pratiche per ${label}`}
+                    accessibilityHint="Apre il feed con questa etichetta come filtro"
+                    className="mb-2 mr-2 flex-row items-center rounded-full bg-parchment-200 py-1.5 pl-3.5 pr-2.5">
+                    <Text className="text-sm font-medium text-stone-600">{label}</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={13}
+                      color="#8B7355"
+                      style={{ marginLeft: 3 }}
+                    />
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         )}

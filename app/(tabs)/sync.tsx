@@ -352,14 +352,8 @@ export default function SyncScreen() {
                     }}>
                     <View className="flex-row items-end">
                       {activity.map((m) => {
-                        const barHeight =
-                          m.count === 0 ? 3 : Math.max(8, Math.round((m.pct / 100) * BAR_MAX));
-                        const barColor =
-                          m.count === 0
-                            ? 'bg-parchment-300'
-                            : m.isPeak
-                              ? 'bg-brick-600'
-                              : 'bg-brick-300';
+                        const barHeight = Math.max(8, Math.round((m.pct / 100) * BAR_MAX));
+                        const barColor = m.isPeak ? 'bg-brick-600' : 'bg-brick-300';
                         return (
                           <View
                             key={m.monthKey}
@@ -384,10 +378,19 @@ export default function SyncScreen() {
                                 }`}>
                                 {m.count}
                               </Text>
-                              <View
-                                className={`w-4 rounded-t-md ${barColor}`}
-                                style={{ height: barHeight }}
-                              />
+                              {/* A zero month renders a flat full-width baseline tick,
+                                  not a mini rounded bar — the previous 3px parchment nub
+                                  shared the bars' shape and could read as a hair of
+                                  activity. The wide, flat, un-rounded rule reads as an
+                                  axis floor ("nothing rose here") instead. */}
+                              {m.count === 0 ? (
+                                <View className="h-[2px] w-full rounded-full bg-parchment-300" />
+                              ) : (
+                                <View
+                                  className={`w-4 rounded-t-md ${barColor}`}
+                                  style={{ height: barHeight }}
+                                />
+                              )}
                             </View>
                             <Text className="mt-1.5 text-[11px] text-stone-500">{m.label}</Text>
                           </View>

@@ -70,7 +70,7 @@ Manual EAS from a dev machine today (owner `mottaviani.dev`); no CI yet. `.githu
 
 ```bash
 eas build  --platform ios --profile production --non-interactive --wait   # cloud build → .ipa
-eas submit --platform ios --profile production --latest                   # → App Store Connect (interactive: Apple 2FA)
+eas submit --platform ios --profile production --latest --non-interactive # → App Store Connect (headless: ASC API key on EAS)
 ```
 
 Gotchas — each one cost a rebuild this session, read before shipping:
@@ -84,12 +84,35 @@ Gotchas — each one cost a rebuild this session, read before shipping:
   bump `version` (e.g. `1.0.0` → `1.0.1`).
 - `autoIncrement: true` with `appVersionSource: "local"` bumps `buildNumber` and writes it back to
   `app.json` (dirty tree) — commit the writeback.
-- **Submit auth:** interactive uses Apple 2FA; headless/CI needs an **App Store Connect API key** stored on
-  EAS (`eas credentials`), not the `appleId` path (which requires 2FA).
-- App Store listing (screenshots, description, "Novità"/release-notes, privacy) is edited in App Store
-  Connect — EAS only uploads the binary; you still create the version + Submit for Review by hand.
+- **Submit is headless.** An **App Store Connect API key** is stored on EAS (key `68DPUND79M`, "[Expo] EAS
+  Submit"), so `eas submit --non-interactive` uploads with no Apple 2FA. It was auto-provisioned on the first
+  interactive submit; re-set via `eas credentials` if revoked.
+- **Run the gate before building** — `npm run test && npx tsc --noEmit && npm run lint`. A build costs cloud
+  credits; catch failures here. (A committed import of an uninstalled `expo-linear-gradient` once passed tests
+  but failed tsc/lint/build — the gate would have caught it pre-build.)
+- App Store listing (screenshots, description, "Testo promozionale" ≤170 chars, "Novità"/release-notes,
+  privacy) is edited in App Store Connect — EAS only uploads the binary; you still create the version +
+  Submit for Review by hand. After submit, the build must finish Apple **processing** (~5–30 min, shows in
+  TestFlight) before it's selectable — this is unavoidable, not a TestFlight step to skip.
 
-To enable CI (`eas.yml`): (1) add `EXPO_TOKEN` GitHub secret; (2) store the ASC API key on EAS; (3) flip
+### Screenshots (regenerate when the UI changes)
+
+Export the web build and drive the system Chrome — no simulator:
+
+```bash
+npx expo export --platform web
+npx serve dist -s -l 8080        # separate background shell
+node .loop/shoot.mjs             # → screenshots/v<ver>/
+```
+
+- **Sizes App Store Connect accepts:** iPhone 6.7" = **1284×2778** (428×926 @3×), iPad 13" = **2048×2732**
+  (1024×1366 @2×). The 6.9"/1320×2868 set is **rejected** — `shoot.mjs` targets `iphone67`, not 6.9".
+- Screens render from `screenshot-fixtures.ts` via the `*.web.ts` shims. `/onboarding` redirects to the feed
+  (already-onboarded gate) → drop those dupes. `shoot.mjs` uses `playwright` installed `--no-save`
+  (`channel: 'chrome'`, no chromium download); any `npm install` prunes it, so reinstall with
+  `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i --no-save playwright`.
+
+To enable CI (`eas.yml`): (1) add `EXPO_TOKEN` GitHub secret; (2) ASC API key is already on EAS ✔; (3) flip
 `eas.json` → `appVersionSource: "remote"` + run `eas build:version:set` to init the counter — local
 `autoIncrement` does **not** persist across runners, so CI would collide. Then Actions → Run workflow does
 build + `--auto-submit` server-side.

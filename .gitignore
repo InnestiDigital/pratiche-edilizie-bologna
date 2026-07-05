@@ -26,3 +26,6 @@ credentials.json
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
 .judge/
+
+# Local-only screenshot runner (playwright driver + generated web export)
+.loop/

@@ -269,10 +269,28 @@ describe('buildFeedQuery — sort mapping', () => {
     ['newest', 'ORDER BY first_seen_at DESC, id DESC'],
     ['oldest', 'ORDER BY first_seen_at ASC, id ASC'],
     ['request_newest', 'ORDER BY source_updated_at DESC, id DESC'],
-    ['request_oldest', 'ORDER BY source_updated_at ASC, id ASC'],
+    ['request_oldest', 'ORDER BY source_updated_at IS NULL, source_updated_at ASC, id ASC'],
     ['closing_newest', 'ORDER BY date_issued DESC, id DESC'],
   ] as const)('maps sort=%s to %s', (sort, expected) => {
     expect(squish(buildFeedQuery({ ...EMPTY, sort }, 50, 0).sql)).toContain(expected);
+  });
+
+  it('sinks NULL request dates to the bottom of the oldest-request-first sort', () => {
+    // SQLite ranks NULL below every value, so a bare `source_updated_at ASC` would
+    // float the undated permits to the TOP of "Data richiesta (meno recenti)" — the
+    // opposite of what the resident asked for. The leading `source_updated_at IS NULL`
+    // guard (0 for a real date, 1 for NULL) keeps the undated rows last.
+    const orderBy = squish(buildFeedQuery({ ...EMPTY, sort: 'request_oldest' }, 50, 0).sql)
+      .split('ORDER BY')[1]
+      .split('LIMIT')[0]
+      .trim();
+    expect(orderBy).toBe('source_updated_at IS NULL, source_updated_at ASC, id ASC');
+    // The DESC counterpart needs no guard: NULL already sorts last under DESC.
+    const orderByDesc = squish(buildFeedQuery({ ...EMPTY, sort: 'request_newest' }, 50, 0).sql)
+      .split('ORDER BY')[1]
+      .split('LIMIT')[0]
+      .trim();
+    expect(orderByDesc).toBe('source_updated_at DESC, id DESC');
   });
 
   it('defaults to newest when no sort is given', () => {

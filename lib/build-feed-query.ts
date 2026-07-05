@@ -43,11 +43,20 @@ export const SORT_LABELS: Record<SortOption, string> = {
 // scroll issues per page — so tied rows could be duplicated on one page and skipped on
 // the next. The `id` suffix (UNIQUE, NOT NULL, monotonic with insertion) removes the
 // ties, matching the primary column's direction for an intuitive within-tie order.
+//
+// NULL handling: SQLite ranks NULL below every value, so a DESC sort already sinks
+// date-less rows to the bottom (`request_newest`, `closing_newest` need no guard),
+// but an ASC sort would float them to the TOP. That is wrong for `request_oldest`
+// ("Data richiesta (meno recenti)") — a resident asking for the oldest requests
+// should see the oldest DATED permits first, not the undated ones. The leading
+// `source_updated_at IS NULL` term (0 for a real date, 1 for NULL) pushes the
+// undated rows last regardless of the ASC primary. `oldest` needs no such guard:
+// `first_seen_at` is stamped NOT NULL on every insert, so it is never NULL.
 const SORT_SQL: Record<SortOption, string> = {
   newest: 'first_seen_at DESC, id DESC',
   oldest: 'first_seen_at ASC, id ASC',
   request_newest: 'source_updated_at DESC, id DESC',
-  request_oldest: 'source_updated_at ASC, id ASC',
+  request_oldest: 'source_updated_at IS NULL, source_updated_at ASC, id ASC',
   closing_newest: 'date_issued DESC, id DESC',
 };
 

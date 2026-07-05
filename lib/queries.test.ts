@@ -184,7 +184,7 @@ describe('getPermits — sorting', () => {
     ['newest', 'ORDER BY first_seen_at DESC'],
     ['oldest', 'ORDER BY first_seen_at ASC'],
     ['request_newest', 'ORDER BY source_updated_at DESC'],
-    ['request_oldest', 'ORDER BY source_updated_at ASC'],
+    ['request_oldest', 'ORDER BY source_updated_at IS NULL, source_updated_at ASC'],
     ['closing_newest', 'ORDER BY date_issued DESC'],
   ];
 

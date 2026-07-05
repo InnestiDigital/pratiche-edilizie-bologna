@@ -205,7 +205,7 @@ function PermitCard({
           they wrote, not just that a note exists. Brick-tinted strip in the user's
           own voice, distinct from the open-data facts above. */}
       {hasNote && (
-        <View className="mt-2 flex-row items-center rounded-lg bg-brick-50 px-2.5 py-1.5">
+        <View className="mt-2 flex-row items-center rounded-lg border-l-[3px] border-brick-600 bg-brick-50 px-2.5 py-1.5">
           <Ionicons name="create" size={13} color="#9B2335" />
           <Text
             className="ml-1.5 flex-1 text-xs leading-4 text-brick-700"

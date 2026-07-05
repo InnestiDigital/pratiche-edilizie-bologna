@@ -287,7 +287,9 @@ function NotesSection({ sourceId }: { sourceId: string }) {
   // Editor
   if (editing) {
     return (
-      <View className="mt-3 rounded-2xl bg-white p-5" style={cardStyle}>
+      <View
+        className="mt-3 rounded-2xl border-l-[3px] border-brick-600 bg-white p-5"
+        style={cardStyle}>
         <View className="mb-2 flex-row items-center">
           <Ionicons name="create-outline" size={15} color="#9B2335" />
           <Text className="ml-1.5 text-xs font-semibold text-stone-600">Le mie note</Text>
@@ -333,7 +335,7 @@ function NotesSection({ sourceId }: { sourceId: string }) {
         accessibilityRole="button"
         accessibilityLabel="Aggiungi una nota personale"
         accessibilityHint="Apre l'editor per scrivere una nota su questa pratica"
-        className="mt-3 flex-row items-center rounded-2xl bg-white p-4"
+        className="mt-3 flex-row items-center rounded-2xl border-l-[3px] border-brick-600 bg-white p-4"
         style={cardStyle}>
         <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
           <Ionicons name="add" size={20} color="#9B2335" />
@@ -349,7 +351,9 @@ function NotesSection({ sourceId }: { sourceId: string }) {
 
   // Read view with a Modifica affordance.
   return (
-    <View className="mt-3 rounded-2xl bg-white p-5" style={cardStyle}>
+    <View
+      className="mt-3 rounded-2xl border-l-[3px] border-brick-600 bg-white p-5"
+      style={cardStyle}>
       <View className="mb-2 flex-row items-center">
         <Ionicons name="create-outline" size={15} color="#9B2335" />
         <Text className="ml-1.5 text-xs font-semibold text-stone-600">Le mie note</Text>

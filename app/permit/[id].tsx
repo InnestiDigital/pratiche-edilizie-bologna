@@ -15,6 +15,7 @@ import { getDb } from '../../lib/db';
 import {
   getPermitById,
   getRelatedPermits,
+  getReleasedDatePairs,
   markPermitSeen,
   parsePermitTags,
   type Permit,
@@ -28,6 +29,8 @@ import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
 import { pendingDurationLabel } from '../../lib/pending-duration';
 import { processingDurationLabel } from '../../lib/processing-duration';
+import { buildProcessingStats, type ProcessingStats } from '../../lib/processing-stats';
+import { buildProcessingComparison } from '../../lib/processing-comparison';
 import { buildShareMessage } from '../../lib/share-message';
 import { extractStreetName } from '../../lib/street-name';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
@@ -41,6 +44,19 @@ import {
   TAG_LABELS,
   type FilingType,
 } from '../../lib/constants';
+
+// Visual treatment for the "vs. local median" caption: a muted, secondary line
+// under the green "Conclusa in …" duration. Green when faster, neutral stone when
+// typical, amber (informative, not alarming) when slower — an over-median wait is
+// context, not an error.
+const PROCESSING_COMPARISON_STYLE: Record<
+  'faster' | 'typical' | 'slower',
+  { icon: 'trending-down-outline' | 'remove-outline' | 'trending-up-outline'; color: string }
+> = {
+  faster: { icon: 'trending-down-outline', color: '#16a34a' },
+  typical: { icon: 'remove-outline', color: '#78716c' },
+  slower: { icon: 'trending-up-outline', color: '#d97706' },
+};
 
 const STATUS_DOT: Record<string, string> = {
   rilasciata: '#22c55e',
@@ -365,6 +381,7 @@ export default function PermitDetail() {
   const router = useRouter();
   const [permit, setPermit] = useState<Permit | null>(null);
   const [related, setRelated] = useState<Permit[]>([]);
+  const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -372,12 +389,17 @@ export default function PermitDetail() {
     // A new [id] mount reuses this component, so clear the previous permit's
     // related list until the new one resolves (avoids a flash of stale rows).
     setRelated([]);
+    setProcessingStats(null);
     getDb().then((db) =>
       getPermitById(db, Number(id)).then((p) => {
         setPermit(p);
         if (p) {
           isFavorite(db, p.source_id).then(setSaved);
           getRelatedPermits(db, p.zone, p.id).then(setRelated);
+          // Local release-time median, so a concluded permit's "Conclusa in …"
+          // caption can say whether it was fast or slow for Bologna. Cheap read
+          // over the same released pairs the sync screen already aggregates.
+          getReleasedDatePairs(db).then((pairs) => setProcessingStats(buildProcessingStats(pairs)));
           // Reading a permit marks it read (email-style): clear its NUOVO flag in
           // the DB so it no longer counts as unseen. The feed folds this into its
           // loaded cards on focus (see applySeenToList) without a reload. The
@@ -439,6 +461,17 @@ export default function PermitDetail() {
     permit.status === 'in_attesa'
       ? null
       : processingDurationLabel(permit.source_updated_at, permit.date_issued);
+
+  // Reference frame for that raw duration: was this permit fast or slow versus the
+  // median release time across the local database? Only meaningful once we have a
+  // "Conclusa in …" span to compare and a handful of local peers (the pure builder
+  // returns null otherwise), so it never shows for a pending or lonely record.
+  const processingComparison = processingLabel
+    ? buildProcessingComparison(permit.source_updated_at, permit.date_issued, processingStats)
+    : null;
+  const comparisonStyle = processingComparison
+    ? PROCESSING_COMPARISON_STYLE[processingComparison.tone]
+    : null;
 
   // Plain-Italian explainer for the filing procedure. Only render it for a known
   // type — an unrecognized filing_type gets no card rather than a wrong caption.
@@ -528,6 +561,20 @@ export default function PermitDetail() {
               <Ionicons name="checkmark-circle-outline" size={14} color="#22c55e" />
               <Text className="ml-1.5 text-[13px] font-semibold" style={{ color: '#22c55e' }}>
                 {processingLabel}
+              </Text>
+            </View>
+          )}
+
+          {/* How this permit's release time sits against the local median — the
+              reference frame that turns the raw "Conclusa in …" span into a
+              judgement (faster / typical / slower for Bologna). */}
+          {processingComparison && comparisonStyle && (
+            <View className="mt-1 flex-row items-center">
+              <Ionicons name={comparisonStyle.icon} size={13} color={comparisonStyle.color} />
+              <Text
+                className="ml-1.5 text-[12px] font-medium"
+                style={{ color: comparisonStyle.color }}>
+                {processingComparison.label}
               </Text>
             </View>
           )}

@@ -15,11 +15,13 @@ import { getDb } from '../../lib/db';
 import {
   getPermitById,
   getRelatedPermits,
+  getNearbyPermits,
   getReleasedDatePairs,
   markPermitSeen,
   parsePermitTags,
   type Permit,
 } from '../../lib/queries';
+import { formatNearbyDistance, type NearbyResult } from '../../lib/nearby-permits';
 import { isFavorite, toggleFavorite } from '../../lib/favorites';
 import { getNoteRecord, setNote, deleteNote } from '../../lib/notes';
 import { normalizeNote, NOTE_MAX_LENGTH } from '../../lib/note-text';
@@ -216,6 +218,56 @@ function RelatedRow({
   );
 }
 
+/** One tappable row in the "Nei dintorni" card — filing badge, headline (title or
+ *  address), and a rounded distance pill. Mirrors RelatedRow but swaps the status
+ *  line for the "~120 m" proximity label, since these rows are drawn from any
+ *  category and distance is the thing that makes them relevant here. */
+function NearbyRow({
+  permit,
+  meters,
+  isLast,
+  onPress,
+}: {
+  permit: Permit;
+  meters: number;
+  isLast: boolean;
+  onPress: () => void;
+}) {
+  const filingType = permit.filing_type as FilingType;
+  const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
+  const headline = permit.title ?? permit.address ?? 'Indirizzo non disponibile';
+  const distance = formatNearbyDistance(meters);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${permit.filing_type}, ${headline}, a ${distance}`}
+      accessibilityHint="Apri i dettagli di questa pratica"
+      className={`flex-row items-center py-3 ${!isLast ? 'border-b border-parchment-200' : ''}`}>
+      <View className="mr-3 rounded-md px-2 py-1" style={{ backgroundColor: fc.bg }}>
+        <Text className="text-[11px] font-bold" style={{ color: fc.text }}>
+          {permit.filing_type}
+        </Text>
+      </View>
+      <View className="flex-1">
+        <Text className="text-[15px] font-semibold text-ink-800" numberOfLines={1}>
+          {headline}
+        </Text>
+        {permit.address && permit.title && (
+          <Text className="mt-0.5 text-xs text-stone-500" numberOfLines={1}>
+            {permit.address}
+          </Text>
+        )}
+      </View>
+      <View className="ml-2 flex-row items-center rounded-full bg-parchment-100 px-2.5 py-1">
+        <Ionicons name="walk-outline" size={13} color="#8B7355" />
+        <Text className="ml-1 text-xs font-semibold text-stone-600">{distance}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 /** The user's personal note on a permit — the one bit of content they author
  *  themselves. Loads/persists its own state keyed by the permit's stable
  *  `source_id` (survives re-syncs), so the parent detail screen doesn't have to
@@ -385,6 +437,7 @@ export default function PermitDetail() {
   const router = useRouter();
   const [permit, setPermit] = useState<Permit | null>(null);
   const [related, setRelated] = useState<Permit[]>([]);
+  const [nearby, setNearby] = useState<NearbyResult<Permit>[]>([]);
   const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -393,6 +446,7 @@ export default function PermitDetail() {
     // A new [id] mount reuses this component, so clear the previous permit's
     // related list until the new one resolves (avoids a flash of stale rows).
     setRelated([]);
+    setNearby([]);
     setProcessingStats(null);
     getDb().then((db) =>
       getPermitById(db, Number(id)).then((p) => {
@@ -400,6 +454,10 @@ export default function PermitDetail() {
         if (p) {
           isFavorite(db, p.source_id).then(setSaved);
           getRelatedPermits(db, p.zone, p.id).then(setRelated);
+          // Other permits within ~500 m of this one (any category), nearest first —
+          // resolves to [] for coordinate-less rows (all edilizia), so the card
+          // only renders on the geo-dotted categories. See getNearbyPermits.
+          getNearbyPermits(db, p).then(setNearby);
           // Local release-time median, so a concluded permit's "Conclusa in …"
           // caption can say whether it was fast or slow for Bologna. Cheap read
           // over the same released pairs the sync screen already aggregates.
@@ -735,6 +793,32 @@ export default function PermitDetail() {
                 );
               })}
             </View>
+          </View>
+        )}
+
+        {/* Nei dintorni — other permits within ~500 m, nearest first. Catches the
+            cross-street neighbour that the quartiere-wide "Nella stessa zona" and
+            the exact-street "Altre pratiche in <via>" cards both miss. Renders only
+            for geo-dotted rows (cantieri/commercio/eventi/segnalazioni) — edilizia
+            has no coordinate yet, so its detail simply omits this card. */}
+        {nearby.length > 0 && (
+          <View
+            className="mt-3 rounded-2xl bg-white px-5 py-4"
+            style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+            <View className="mb-1 flex-row items-center">
+              <Ionicons name="navigate-circle-outline" size={15} color="#8B7355" />
+              <Text className="ml-1.5 text-xs font-semibold text-stone-600">Nei dintorni</Text>
+              <Text className="ml-1 text-xs text-stone-500">· entro 500 m</Text>
+            </View>
+            {nearby.map((n, i) => (
+              <NearbyRow
+                key={n.item.id}
+                permit={n.item}
+                meters={n.meters}
+                isLast={i === nearby.length - 1}
+                onPress={() => router.push(`/permit/${n.item.id}`)}
+              />
+            ))}
           </View>
         )}
 

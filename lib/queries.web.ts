@@ -16,6 +16,13 @@ import { RELEASED_STATUSES, type FilingType } from './constants';
 import type { Category } from './sources';
 import type { FeedFilters } from './build-feed-query';
 import type { ProcessingDatePair } from './processing-stats';
+import { getCoords } from './permit-extra';
+import {
+  rankNearby,
+  NEARBY_DEFAULT_RADIUS_M,
+  NEARBY_LIMIT,
+  type NearbyResult,
+} from './nearby-permits';
 import {
   PERMIT_FIXTURES,
   STATS_FIXTURE,
@@ -140,6 +147,25 @@ export async function getRelatedPermits(
   return FIXTURES.filter((p) => p.zone === zone && p.id !== excludeId)
     .sort((a, b) => (recency(a) < recency(b) ? 1 : recency(a) > recency(b) ? -1 : 0))
     .slice(0, limit);
+}
+
+export async function getNearbyPermits(
+  _db: SQLite.SQLiteDatabase,
+  permit: Permit,
+  radiusMeters: number = NEARBY_DEFAULT_RADIUS_M,
+  limit: number = NEARBY_LIMIT
+): Promise<NearbyResult<Permit>[]> {
+  const origin = getCoords(permit.extra);
+  if (!origin) return [];
+  return rankNearby(
+    origin,
+    permit.id,
+    FIXTURES,
+    (p) => p.id,
+    (p) => getCoords(p.extra),
+    radiusMeters,
+    limit
+  );
 }
 
 export async function getStats(_db: SQLite.SQLiteDatabase): Promise<{

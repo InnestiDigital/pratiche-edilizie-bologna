@@ -3,6 +3,13 @@ import { RELEASED_STATUSES, type FilingType } from './constants';
 import type { Category } from './sources';
 import { buildFeedQuery, buildFeedCountQuery, type FeedFilters } from './build-feed-query';
 import { buildRelatedPermitsQuery, RELATED_PERMITS_LIMIT } from './related-query';
+import { getCoords } from './permit-extra';
+import {
+  rankNearby,
+  NEARBY_DEFAULT_RADIUS_M,
+  NEARBY_LIMIT,
+  type NearbyResult,
+} from './nearby-permits';
 import type { ProcessingDatePair } from './processing-stats';
 
 // The feed-query primitives live in the pure, db-free `build-feed-query` module
@@ -112,6 +119,42 @@ export async function getRelatedPermits(
   if (!zone) return [];
   const { sql, params } = buildRelatedPermitsQuery(zone, excludeId, limit);
   return db.getAllAsync<Permit>(sql, ...params);
+}
+
+/**
+ * Other permits within `radiusMeters` of the one being viewed, nearest first —
+ * powers the detail "Nei dintorni" proximity card, the first user-visible payoff
+ * of the P4 geo work. Ranking + self/null-coord exclusion live in the pure,
+ * tested `nearby-permits` module; this reader supplies the candidate set.
+ *
+ * Returns `[]` when the viewed permit has no coordinate. NOTE (honest coverage
+ * limit, docs/P4-map-radius.md §0.2): edilizia rows carry NO coords yet, so this
+ * card renders only on the four geo-dotted categories (cantieri/commercio/eventi/
+ * segnalazioni) and finds only geo-dotted neighbours; it widens automatically
+ * once edilizia is geocoded. The `extra LIKE '%"lat"%'` prefilter keeps the
+ * coordinate-less majority out of JS; the exact haversine test runs in `rankNearby`.
+ */
+export async function getNearbyPermits(
+  db: SQLite.SQLiteDatabase,
+  permit: Permit,
+  radiusMeters: number = NEARBY_DEFAULT_RADIUS_M,
+  limit: number = NEARBY_LIMIT
+): Promise<NearbyResult<Permit>[]> {
+  const origin = getCoords(permit.extra);
+  if (!origin) return [];
+  const candidates = await db.getAllAsync<Permit>(
+    'SELECT * FROM permits WHERE id != ? AND extra LIKE \'%"lat"%\' LIMIT 400',
+    permit.id
+  );
+  return rankNearby(
+    origin,
+    permit.id,
+    candidates,
+    (p) => p.id,
+    (p) => getCoords(p.extra),
+    radiusMeters,
+    limit
+  );
 }
 
 export async function getStats(db: SQLite.SQLiteDatabase): Promise<{

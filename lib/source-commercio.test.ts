@@ -155,6 +155,15 @@ describe('normalizeCommercio', () => {
     ).toEqual({});
   });
 
+  it('extracts the geopoint into extra.lat/lon as strings, omitted when absent', () => {
+    const withGeo = JSON.parse(
+      normalizeCommercio(parse({ geopoint: { lon: 11.3709, lat: 44.5219 } })).extra
+    );
+    expect(withGeo.lat).toBe('44.5219');
+    expect(withGeo.lon).toBe('11.3709');
+    expect(JSON.parse(normalizeCommercio(parse()).extra).lat).toBeUndefined();
+  });
+
   it('leaves dates null when absent and maps an unknown quartiere to null', () => {
     const n = normalizeCommercio(
       parse({ data_richiesta: null, data_fine_procedimento: null, quartiere: 'Nowhere' })

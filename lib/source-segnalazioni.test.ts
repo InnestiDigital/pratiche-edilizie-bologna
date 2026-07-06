@@ -162,6 +162,15 @@ describe('normalizeSegnalazione', () => {
     ).toEqual({ sottocategoria_01: 'Viabilità e traffico' });
   });
 
+  it('extracts the geopoint into extra.lat/lon as strings, omitted when absent', () => {
+    const withGeo = JSON.parse(
+      normalizeSegnalazione(parse({ geopoint: { lon: 11.3941, lat: 44.494 } })).extra
+    );
+    expect(withGeo.lat).toBe('44.494');
+    expect(withGeo.lon).toBe('11.3941');
+    expect(JSON.parse(normalizeSegnalazione(parse()).extra).lat).toBeUndefined();
+  });
+
   it('tags are always empty (report type lives in the title, not duplicated)', () => {
     expect(normalizeSegnalazione(parse()).tags).toBe('[]');
   });

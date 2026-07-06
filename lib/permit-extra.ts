@@ -105,3 +105,32 @@ export function getSegnalazioneExtra(raw: string): SegnalazioneExtra {
     'nome_zona_prossimita',
   ]);
 }
+
+/** A permit's geographic coordinate (WGS84 degrees), decoded from `extra`. */
+export interface Coords {
+  lat: number;
+  lon: number;
+}
+
+/**
+ * Read the `lat`/`lon` pair the four geo-capable normalizers store in `extra`
+ * (see `source-shared.ts::coordsToExtra`) back into numbers, or `null` when the
+ * row carries no usable coordinate — the read side of the P4 map pipeline
+ * (docs/P4-map-radius.md §2), category-agnostic since any source may lack one.
+ *
+ * Storage boundary → defensive: the fields are stored as strings, so an empty /
+ * corrupt / legacy / partial value must collapse to `null`, never throw or yield
+ * a bogus pin. `Number('')` is `0` (a valid-looking coordinate), so the blank
+ * guard is load-bearing; the finite + WGS84-range checks reject the rest.
+ * Edilizia rows never carry coordinates here — they are geocoded from the
+ * `codvia`+`civico` gazetteer instead (docs/P4-map-radius.md §3).
+ */
+export function getCoords(raw: string): Coords | null {
+  const { lat, lon } = pickExtra(raw, ['lat', 'lon']);
+  if (lat == null || lon == null || lat.trim() === '' || lon.trim() === '') return null;
+  const latN = Number(lat);
+  const lonN = Number(lon);
+  if (!Number.isFinite(latN) || !Number.isFinite(lonN)) return null;
+  if (Math.abs(latN) > 90 || Math.abs(lonN) > 180) return null;
+  return { lat: latN, lon: lonN };
+}

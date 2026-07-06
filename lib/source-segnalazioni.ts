@@ -2,7 +2,13 @@ import { z } from 'zod';
 import { makePageParser, optNull, type ParsedPage } from './schemas';
 import { normalizeQuartiere } from './quartiere-normalize';
 import { SOURCES } from './sources';
-import { compactExtra, portalTableSearchLink, toIsoDate } from './source-shared';
+import {
+  compactExtra,
+  coordsToExtra,
+  geoPointSchema,
+  portalTableSearchLink,
+  toIsoDate,
+} from './source-shared';
 import type { NormalizedPermit } from './normalize';
 
 /**
@@ -52,6 +58,10 @@ export const segnalazioneRowSchema = z
     sottocategoria_03: optNull(z.string()),
     nome_zona_prossimita: optNull(z.string()),
     categoria_segnalazione: optNull(z.string()),
+    // Report geo-point `{ lon, lat }` (this source's only address surrogate) —
+    // extracted into `extra` for the P4 map; absent/malformed points normalize
+    // to null (see coordsToExtra).
+    geopoint: optNull(geoPointSchema),
   })
   .passthrough();
 
@@ -77,6 +87,7 @@ function buildTitle(raw: SegnalazioneRow): string {
 }
 
 export function normalizeSegnalazione(raw: SegnalazioneRow): NormalizedPermit {
+  const coords = coordsToExtra(raw.geopoint);
   return {
     dataset: 'segnalazioni',
     source_id: `segnalazioni-${raw.ticketid}`,
@@ -111,6 +122,8 @@ export function normalizeSegnalazione(raw: SegnalazioneRow): NormalizedPermit {
       sottocategoria_02: raw.sottocategoria_02,
       sottocategoria_03: raw.sottocategoria_03,
       nome_zona_prossimita: raw.nome_zona_prossimita,
+      lat: coords.lat,
+      lon: coords.lon,
     }),
   };
 }

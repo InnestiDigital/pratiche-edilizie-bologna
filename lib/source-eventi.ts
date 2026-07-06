@@ -2,7 +2,14 @@ import { z } from 'zod';
 import { makePageParser, optNull, type ParsedPage } from './schemas';
 import { normalizeQuartiere } from './quartiere-normalize';
 import { SOURCES } from './sources';
-import { compactExtra, nullIfEmpty, portalTableSearchLink, toIsoDate } from './source-shared';
+import {
+  compactExtra,
+  coordsToExtra,
+  geoPointSchema,
+  nullIfEmpty,
+  portalTableSearchLink,
+  toIsoDate,
+} from './source-shared';
 import type { NormalizedPermit } from './normalize';
 
 /**
@@ -47,6 +54,9 @@ export const eventoRowSchema = z
     categories_2: optNull(z.string()),
     categories_3: optNull(z.string()),
     zona_di_prossimita: optNull(z.string()),
+    // Event venue geo-point `{ lon, lat }` — extracted into `extra` for the P4
+    // map; absent/malformed points normalize to null (see coordsToExtra).
+    coordinate: optNull(geoPointSchema),
   })
   .passthrough();
 
@@ -64,6 +74,7 @@ export function normalizeEvento(raw: EventoRow): NormalizedPermit {
   const tags = [raw.categories_1, raw.categories_2, raw.categories_3]
     .filter((t): t is string => t != null)
     .map((t) => t.trim().toLowerCase());
+  const coords = coordsToExtra(raw.coordinate);
 
   return {
     dataset: 'eventi',
@@ -105,6 +116,8 @@ export function normalizeEvento(raw: EventoRow): NormalizedPermit {
       date_multiple: raw.date_multiple,
       online: raw.online,
       start: toIsoDate(raw.start),
+      lat: coords.lat,
+      lon: coords.lon,
     }),
   };
 }

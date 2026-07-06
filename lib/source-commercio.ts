@@ -3,7 +3,12 @@ import { makePageParser, optNull, type ParsedPage } from './schemas';
 import { normalizeQuartiere } from './quartiere-normalize';
 import { normalizeStatus, type NormalizedPermit } from './normalize';
 import { SOURCES } from './sources';
-import { compactExtra, portalTableSearchLink } from './source-shared';
+import {
+  compactExtra,
+  coordsToExtra,
+  geoPointSchema,
+  portalTableSearchLink,
+} from './source-shared';
 
 /**
  * `istanze-commercio` — Comune di Bologna commercial-activity filings (aperture /
@@ -45,6 +50,9 @@ export const commercioRowSchema = z
     esercizio_civico: optNull(z.number()),
     esponente1: optNull(z.string()),
     quartiere: optNull(z.string()),
+    // Exercise geo-point `{ lon, lat }` — extracted into `extra` for the P4 map;
+    // absent/malformed points normalize to null (see coordsToExtra).
+    geopoint: optNull(geoPointSchema),
   })
   .passthrough();
 
@@ -87,6 +95,7 @@ export function normalizeCommercio(raw: CommercioRow): NormalizedPermit {
     .filter((v): v is string | number => v != null)
     .map(String);
   const address = addressParts.length > 0 ? addressParts.join(' ') : null;
+  const coords = coordsToExtra(raw.geopoint);
 
   return {
     dataset: 'commercio',
@@ -114,6 +123,8 @@ export function normalizeCommercio(raw: CommercioRow): NormalizedPermit {
       area: raw.area,
       sottoarea: raw.sottoarea,
       tipo_pratica: raw.tipo_pratica,
+      lat: coords.lat,
+      lon: coords.lon,
     }),
   };
 }

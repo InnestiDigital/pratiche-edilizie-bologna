@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { compactExtra, nullIfEmpty, portalTableSearchLink, toIsoDate } from './source-shared';
+import {
+  compactExtra,
+  coordsToExtra,
+  geoPointSchema,
+  nullIfEmpty,
+  portalTableSearchLink,
+  toIsoDate,
+} from './source-shared';
 import { SOURCES } from './sources';
 
 describe('nullIfEmpty', () => {
@@ -66,5 +73,56 @@ describe('toIsoDate', () => {
     expect(toIsoDate(null)).toBeNull();
     expect(toIsoDate(undefined)).toBeNull();
     expect(toIsoDate('')).toBeNull();
+  });
+});
+
+describe('geoPointSchema', () => {
+  it('accepts a { lon, lat } number pair and strips unknown keys', () => {
+    expect(geoPointSchema.parse({ lon: 11.34, lat: 44.49, source: 'ods' })).toEqual({
+      lon: 11.34,
+      lat: 44.49,
+    });
+  });
+
+  it('rejects a missing or non-numeric coordinate', () => {
+    expect(geoPointSchema.safeParse({ lat: 44.49 }).success).toBe(false);
+    expect(geoPointSchema.safeParse({ lat: '44.49', lon: '11.34' }).success).toBe(false);
+    expect(geoPointSchema.safeParse(null).success).toBe(false);
+  });
+});
+
+describe('coordsToExtra', () => {
+  it('stringifies a valid geo-point for storage', () => {
+    expect(coordsToExtra({ lat: 44.4949, lon: 11.3426 })).toEqual({
+      lat: '44.4949',
+      lon: '11.3426',
+    });
+  });
+
+  it('maps null / undefined to null fields (dropped by compactExtra)', () => {
+    expect(coordsToExtra(null)).toEqual({ lat: null, lon: null });
+    expect(coordsToExtra(undefined)).toEqual({ lat: null, lon: null });
+  });
+
+  it('rejects NaN (z.number admits it) and out-of-range coordinates', () => {
+    expect(coordsToExtra({ lat: NaN, lon: 11.3 })).toEqual({ lat: null, lon: null });
+    expect(coordsToExtra({ lat: 44.5, lon: Infinity })).toEqual({ lat: null, lon: null });
+    expect(coordsToExtra({ lat: 91, lon: 11.3 })).toEqual({ lat: null, lon: null });
+    expect(coordsToExtra({ lat: 44.5, lon: 181 })).toEqual({ lat: null, lon: null });
+  });
+
+  it('keeps a coordinate at the exact WGS84 bounds', () => {
+    expect(coordsToExtra({ lat: -90, lon: 180 })).toEqual({ lat: '-90', lon: '180' });
+  });
+
+  it('round-trips through compactExtra as string values', () => {
+    const c = coordsToExtra({ lat: 44.5, lon: 11.3 });
+    expect(JSON.parse(compactExtra({ lat: c.lat, lon: c.lon }))).toEqual({
+      lat: '44.5',
+      lon: '11.3',
+    });
+    // A null point leaves no lat/lon keys at all.
+    const none = coordsToExtra(null);
+    expect(JSON.parse(compactExtra({ lat: none.lat, lon: none.lon }))).toEqual({});
   });
 });

@@ -2,7 +2,13 @@ import { z } from 'zod';
 import { makePageParser, optNull, type ParsedPage } from './schemas';
 import { normalizeQuartiere } from './quartiere-normalize';
 import { SOURCES } from './sources';
-import { compactExtra, portalTableSearchLink, toIsoDate } from './source-shared';
+import {
+  compactExtra,
+  coordsToExtra,
+  geoPointSchema,
+  portalTableSearchLink,
+  toIsoDate,
+} from './source-shared';
 import type { NormalizedPermit } from './normalize';
 
 /**
@@ -39,6 +45,9 @@ export const cantiereRowSchema = z
     effectivestartdate: optNull(z.string()),
     effectiveenddate: optNull(z.string()),
     visualizationnotes: optNull(z.string()),
+    // Roadwork site geo-point `{ lon, lat }` — extracted into `extra` for the P4
+    // map; absent/malformed points normalize to null (see coordsToExtra).
+    pinpoint: optNull(geoPointSchema),
   })
   .passthrough();
 
@@ -62,6 +71,7 @@ function normalizeCantiereStatus(raw: string | null): string {
 }
 
 export function normalizeCantiere(raw: CantiereRow): NormalizedPermit {
+  const coords = coordsToExtra(raw.pinpoint);
   return {
     dataset: 'lavori',
     source_id: `lavori-${raw.id}`,
@@ -84,6 +94,10 @@ export function normalizeCantiere(raw: CantiereRow): NormalizedPermit {
     title: raw.description,
     // Only non-null, non-empty extra keys are stored, so the on-device decoder
     // never sees a JSON `null` where it expects an optional string.
-    extra: compactExtra({ trafficchangesmeasure: raw.trafficchangesmeasure }),
+    extra: compactExtra({
+      trafficchangesmeasure: raw.trafficchangesmeasure,
+      lat: coords.lat,
+      lon: coords.lon,
+    }),
   };
 }

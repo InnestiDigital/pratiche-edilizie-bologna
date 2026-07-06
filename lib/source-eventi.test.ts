@@ -168,6 +168,15 @@ describe('normalizeEvento', () => {
     expect(JSON.parse(absent.extra).start).toBeUndefined();
   });
 
+  it('extracts the coordinate into extra.lat/lon as strings, omitted when absent', () => {
+    const withGeo = JSON.parse(
+      normalizeEvento(parse({ coordinate: { lon: 11.3145, lat: 44.5058 } })).extra
+    );
+    expect(withGeo.lat).toBe('44.5058');
+    expect(withGeo.lon).toBe('11.3145');
+    expect(JSON.parse(normalizeEvento(parse()).extra).lat).toBeUndefined();
+  });
+
   it('maps an unknown quartiere to null', () => {
     expect(normalizeEvento(parse({ quartiere: 'Nowhere' })).zone).toBeNull();
   });

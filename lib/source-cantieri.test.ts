@@ -117,6 +117,23 @@ describe('normalizeCantiere', () => {
     expect(JSON.parse(normalizeCantiere(parse({ trafficchangesmeasure: null })).extra)).toEqual({});
   });
 
+  it('extracts the pinpoint geo-point into extra.lat/lon as strings', () => {
+    expect(
+      JSON.parse(normalizeCantiere(parse({ pinpoint: { lon: 11.3612, lat: 44.5222 } })).extra)
+    ).toEqual({
+      trafficchangesmeasure: 'Divieto di transito veicolare',
+      lat: '44.5222',
+      lon: '11.3612',
+    });
+  });
+
+  it('stores no coordinate when the pinpoint is absent or out of range', () => {
+    expect(JSON.parse(normalizeCantiere(parse()).extra).lat).toBeUndefined();
+    expect(
+      JSON.parse(normalizeCantiere(parse({ pinpoint: { lon: 999, lat: 44.5 } })).extra).lon
+    ).toBeUndefined();
+  });
+
   it('maps the spaced-hyphen neighborhood to the canonical quartiere', () => {
     expect(normalizeCantiere(parse({ neighborhood1: 'San Donato - San Vitale' })).zone).toBe(
       'San Donato-San Vitale'

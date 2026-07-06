@@ -184,6 +184,11 @@ Tagline: *"Cosa cambia intorno a te"* / *"La tua città, sotto casa"*.
 
 ## 4b. P4 — Mappa + raggio: contesto per l'automazione
 
+> **Memo decisionale con probe LIVE + verifica codice: [`docs/P4-map-radius.md`](P4-map-radius.md)**
+> (2026-07-06). Decide la libreria (`react-native-maps`), documenta che le coordinate NON sono
+> oggi in `extra`, identifica il gazetteer `rifter_civici_pt` per il geocoding on-device, e
+> sequenzia gli slice puri (loop-shippabili) prima del rebuild nativo (Matteo-gated).
+
 La ricerca e l'implementazione sono delegate all'automazione. Contesto necessario:
 
 **Scelta libreria mappa (decidere per prima, condiziona tutto):**

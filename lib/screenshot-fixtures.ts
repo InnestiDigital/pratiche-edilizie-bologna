@@ -374,7 +374,20 @@ export const STATS_FIXTURE = {
   newCount: PERMIT_FIXTURES.filter((p) => p.is_new === 1).length,
 };
 
-export const LAST_SYNC_FIXTURE = '2025-01-04T09:12:00.000Z';
+/**
+ * Last-sync timestamp for the Sync-screen demo — computed **2 days before load**
+ * (not a fixed date) so the screen renders the reassuring `fresh` freshness tier
+ * (green "aggiornato 2 giorni fa"). The Sync screen reads freshness against the
+ * *real* clock (`new Date()`), so a hard-coded past date would perpetually read
+ * "1 anno fa" in amber `stale` — hiding the tiered-freshness tone the app ships
+ * and making the App Store marketing screenshots (same fixtures via `shoot.mjs`)
+ * look neglected. `new Date()` is fine here: web-only module, browser runtime.
+ */
+export const LAST_SYNC_FIXTURE = (() => {
+  const d = new Date(Date.now() - 2 * 86_400_000);
+  d.setHours(9, 12, 0, 0);
+  return d.toISOString();
+})();
 
 /**
  * `source_id`s of the permits shown as **saved** in the screenshot build (see

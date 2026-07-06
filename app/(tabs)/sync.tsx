@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ComponentProps } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../lib/sync';
@@ -15,9 +15,22 @@ import {
   type ProcessingStats,
 } from '../../lib/processing-stats';
 import { italianDaySpan } from '../../lib/duration-span';
-import { syncFreshness } from '../../lib/sync-freshness';
+import { syncFreshness, type SyncFreshnessTier } from '../../lib/sync-freshness';
 import { recordNoun } from '../../lib/record-noun';
 import Ionicons from '@expo/vector-icons/Ionicons';
+
+/* Sync-freshness tone: the pure lib decides the tier, the screen owns how each
+   tier reads. Fresh = reassuring green check ("your data is current"), recent =
+   quiet neutral, stale = amber alarm (paired with the resync nudge below). */
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+const FRESHNESS_TONE: Record<
+  SyncFreshnessTier,
+  { icon: IoniconName | null; iconColor: string; textClass: string }
+> = {
+  fresh: { icon: 'checkmark-circle', iconColor: '#15803d', textClass: 'text-green-700' },
+  recent: { icon: null, iconColor: '', textClass: 'text-stone-700' },
+  stale: { icon: 'alert-circle', iconColor: '#b45309', textClass: 'text-amber-700' },
+};
 
 /* Composition-bar segments, derived from the SOURCES registry so a new source
    can never be forgotten (its rows would otherwise be invisible in stats.byDataset).
@@ -194,30 +207,30 @@ export default function SyncScreen() {
         {lastSync &&
           (() => {
             // Freshness cue: turn the raw timestamp into a human "Aggiornato N …
-            // fa" and, once the local snapshot is stale, flag it (amber + icon) to
-            // nudge a resync. `new Date()` (the real clock) is read only here; the
-            // label/staleness mapping is the pure, tested `syncFreshness`.
+            // fa" and tone it by tier — a just-synced snapshot gets a reassuring
+            // green check, a mid-range one stays neutral, and only genuinely stale
+            // data raises the amber alarm + resync nudge (so it never over-alarms).
+            // `new Date()` (the real clock) is read only here; the label/tier
+            // mapping is the pure, tested `syncFreshness`.
             const fresh = syncFreshness(lastSync, new Date());
+            const tone = FRESHNESS_TONE[fresh?.tier ?? 'recent'];
             return (
               <View className="mt-3 items-center">
                 <View className="flex-row items-center">
-                  {fresh?.stale && (
+                  {tone.icon && (
                     <Ionicons
-                      name="alert-circle"
+                      name={tone.icon}
                       size={13}
-                      color="#b45309"
+                      color={tone.iconColor}
                       style={{ marginRight: 4 }}
                     />
                   )}
-                  <Text
-                    className={`text-xs font-semibold ${
-                      fresh?.stale ? 'text-amber-700' : 'text-stone-700'
-                    }`}>
+                  <Text className={`text-xs font-semibold ${tone.textClass}`}>
                     {fresh ? `Aggiornato ${fresh.label}` : 'Ultimo aggiornamento'}
                   </Text>
                 </View>
                 <Text className="mt-0.5 text-[11px] text-stone-400">{formatDate(lastSync)}</Text>
-                {fresh?.stale && (
+                {fresh?.tier === 'stale' && (
                   <Text className="mt-0.5 text-[11px] text-amber-700">
                     Tocca Aggiornamento Rapido per aggiornare i dati.
                   </Text>

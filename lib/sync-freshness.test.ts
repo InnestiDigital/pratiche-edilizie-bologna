@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { syncFreshness, SYNC_STALE_DAYS } from './sync-freshness';
+import { syncFreshness, SYNC_FRESH_DAYS, SYNC_STALE_DAYS } from './sync-freshness';
 
 /** Build an ISO timestamp exactly `days` (+ optional `hours`) before `now`. */
 function isoDaysBefore(now: Date, days: number, hours = 0): string {
@@ -84,5 +84,42 @@ describe('syncFreshness — staleness flag', () => {
 
   it('stale well beyond the threshold', () => {
     expect(syncFreshness(isoDaysBefore(NOW, 400), NOW)?.stale).toBe(true);
+  });
+});
+
+describe('syncFreshness — semantic tier', () => {
+  it('a same-instant / same-day sync is fresh', () => {
+    expect(syncFreshness(NOW.toISOString(), NOW)?.tier).toBe('fresh');
+  });
+
+  it('a future/skewed stamp (days clamped to 0) is fresh, never stale', () => {
+    expect(syncFreshness(isoDaysBefore(NOW, -5), NOW)?.tier).toBe('fresh');
+  });
+
+  it.each([0, 1, SYNC_FRESH_DAYS - 1])('%i days → fresh', (d) => {
+    expect(syncFreshness(isoDaysBefore(NOW, d), NOW)?.tier).toBe('fresh');
+  });
+
+  it(`crosses to recent exactly at the ${SYNC_FRESH_DAYS}-day fresh threshold`, () => {
+    expect(syncFreshness(isoDaysBefore(NOW, SYNC_FRESH_DAYS), NOW)?.tier).toBe('recent');
+  });
+
+  it.each([SYNC_FRESH_DAYS, 14, SYNC_STALE_DAYS - 1])('%i days → recent', (d) => {
+    expect(syncFreshness(isoDaysBefore(NOW, d), NOW)?.tier).toBe('recent');
+  });
+
+  it(`crosses to stale exactly at the ${SYNC_STALE_DAYS}-day stale threshold`, () => {
+    expect(syncFreshness(isoDaysBefore(NOW, SYNC_STALE_DAYS), NOW)?.tier).toBe('stale');
+  });
+
+  it.each([SYNC_STALE_DAYS, 90, 400])('%i days → stale', (d) => {
+    expect(syncFreshness(isoDaysBefore(NOW, d), NOW)?.tier).toBe('stale');
+  });
+
+  it('tier and the stale convenience flag agree', () => {
+    for (const d of [0, 6, 7, 29, 30, 400]) {
+      const f = syncFreshness(isoDaysBefore(NOW, d), NOW);
+      expect(f?.stale).toBe(f?.tier === 'stale');
+    }
   });
 });

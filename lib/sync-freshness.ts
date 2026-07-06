@@ -16,15 +16,29 @@
  * is timezone-independent.
  */
 
+/** Data newer than this many days reads as fresh (a reassuring "you're current" cue). */
+export const SYNC_FRESH_DAYS = 7;
 /** Data at least this many days old is flagged stale (a resync is nudged). */
 export const SYNC_STALE_DAYS = 30;
+
+/**
+ * Semantic freshness tier driving the Sync-screen tone. Three levels instead of a
+ * flat stale/not-stale so a just-synced snapshot gets a positive signal and a
+ * mid-range one stays neutral — only genuinely old data raises the amber alarm.
+ * - `fresh`  (< SYNC_FRESH_DAYS): reassuring, "your data is current"
+ * - `recent` (SYNC_FRESH_DAYS…SYNC_STALE_DAYS): neutral, informational
+ * - `stale`  (>= SYNC_STALE_DAYS): amber warning + resync nudge
+ */
+export type SyncFreshnessTier = 'fresh' | 'recent' | 'stale';
 
 export interface SyncFreshness {
   /** Human Italian relative label, e.g. "oggi", "ieri", "3 giorni fa", "2 mesi fa". */
   label: string;
   /** Whole days between the sync and `now` (0 for a future/skewed stamp). */
   days: number;
-  /** True once the snapshot is at least `SYNC_STALE_DAYS` old. */
+  /** Semantic tier the UI maps to a tone (green / neutral / amber). */
+  tier: SyncFreshnessTier;
+  /** Convenience alias for `tier === 'stale'` (kept for existing callers). */
   stale: boolean;
 }
 
@@ -47,12 +61,21 @@ export function syncFreshness(iso: string | null | undefined, now: Date): SyncFr
 
   // Floor to whole days; clamp a negative diff (future stamp / clock skew) to 0.
   const days = Math.max(0, Math.floor((now.getTime() - then) / MS_PER_DAY));
+  const tier = freshnessTier(days);
 
   return {
     label: relativeLabel(days),
     days,
-    stale: days >= SYNC_STALE_DAYS,
+    tier,
+    stale: tier === 'stale',
   };
+}
+
+/** Whole-day count → semantic freshness tier (thresholds at FRESH/STALE days). */
+function freshnessTier(days: number): SyncFreshnessTier {
+  if (days < SYNC_FRESH_DAYS) return 'fresh';
+  if (days < SYNC_STALE_DAYS) return 'recent';
+  return 'stale';
 }
 
 /** Whole-day count → Italian relative label with correct singular/plural agreement. */

@@ -50,7 +50,18 @@ import {
   getEventoExtra,
   getSegnalazioneExtra,
 } from '../../lib/permit-extra';
-import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_HAS_STATUS_SIGNAL } from '../../lib/sources';
+import {
+  CATEGORY_LABELS,
+  CATEGORY_COLORS,
+  CATEGORY_HAS_STATUS_SIGNAL,
+  type Category,
+} from '../../lib/sources';
+import {
+  effectiveFeedCategories,
+  showFilingSubRow,
+  categoryChoices,
+  showCategoryRow as shouldShowCategoryRow,
+} from '../../lib/feed-category';
 import {
   buildActiveFilterChips,
   ZONES_CHIP_KEY,
@@ -924,6 +935,14 @@ export default function FeedScreen() {
   const [notePreviews, setNotePreviews] = useState<Map<string, string>>(new Map());
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  // Session-local category quick-filter: `null` = show all followed categories,
+  // a value = narrow the feed to just that one. Independent of Settings ›
+  // Interessi (never mutates the persisted follow-set). `followedCategories`
+  // mirrors prefs.interests so the chip row can render before a reload; it is
+  // refreshed from prefs on every reset load.
+  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [followedCategories, setFollowedCategories] = useState<Category[]>([]);
+
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [activeZones, setActiveZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set());
@@ -973,10 +992,13 @@ export default function FeedScreen() {
       const filters: FeedFilters = {
         zones: activeZones.size < QUARTIERI.length ? [...activeZones] : prefs.zones,
         filingTypes: [...activeTypes].filter((t) => prefs.filingTypes.includes(t)),
-        // Scope the feed to the categories the user follows (mirrors zones). The
-        // filing-type IN test above is edilizia-scoped in build-feed-query, so a
-        // cantiere/event/… row is kept as long as its category is followed.
-        categories: prefs.interests,
+        // Scope the feed to the categories the user follows (mirrors zones), then
+        // apply the session-local category quick-filter on top: a selected
+        // category narrows to just that one, `null` keeps all followed. An
+        // orphaned selection falls back to all followed (never an empty feed).
+        // The filing-type IN test above is edilizia-scoped in build-feed-query,
+        // so a cantiere/event/… row is kept as long as its category is in scope.
+        categories: effectiveFeedCategories(activeCategory, prefs.interests),
         // In-feed tag chips override the persistent settings tag filter for this
         // session; fall back to prefs.tags when no chip is active (mirrors zones).
         tags: activeTags.size > 0 ? [...activeTags] : prefs.tags,
@@ -993,6 +1015,9 @@ export default function FeedScreen() {
       };
 
       if (reset) {
+        // Mirror the followed set into state so the category quick-filter row can
+        // render (and re-hydrate) without waiting on the next prefs read.
+        setFollowedCategories(prefs.interests);
         const allFilters: FeedFilters = {
           zones: prefs.zones,
           filingTypes: prefs.filingTypes,
@@ -1031,6 +1056,7 @@ export default function FeedScreen() {
       setLoading(false);
     },
     [
+      activeCategory,
       activeTypes,
       activeZones,
       activeStatuses,
@@ -1204,6 +1230,7 @@ export default function FeedScreen() {
   };
 
   const resetFilters = () => {
+    setActiveCategory(null);
     setActiveTypes(new Set(FILING_TYPE_ORDER));
     setActiveZones(new Set(QUARTIERI));
     setActiveStatuses(new Set());
@@ -1241,6 +1268,16 @@ export default function FeedScreen() {
   // when no search is active, so an empty feed with only filters set still falls
   // through to the generic filter empty-state below.
   const searchTermForEmpty = formatSearchTerm(search);
+
+  // Category quick-filter derivation (pure, tested in feed-category.test.ts):
+  // which categories the feed is scoped to, whether to show the category chip
+  // row at all (≥2 followed), and whether the PDC/SCIA/CILA filing sub-row
+  // applies (feed scoped to edilizia alone).
+  const catChoices = categoryChoices(followedCategories);
+  const showCategoryRow = shouldShowCategoryRow(followedCategories);
+  const showFilingRow = showFilingSubRow(
+    effectiveFeedCategories(activeCategory, followedCategories)
+  );
 
   const removeFilter = (key: string) => {
     if (key === ZONES_CHIP_KEY) setActiveZones(new Set(QUARTIERI));
@@ -1285,29 +1322,78 @@ export default function FeedScreen() {
         </Pressable>
       </View>
 
-      {/* Filing type chips — always visible */}
-      <View className="flex-row bg-white px-4 pb-3 pt-1">
-        {FILING_TYPE_ORDER.map((type) => {
-          const active = activeTypes.has(type);
-          const fc = FILING_COLORS[type];
-          return (
-            <Pressable
-              key={type}
-              onPress={() => toggleType(type)}
-              accessibilityRole="button"
-              accessibilityLabel={`Tipo pratica ${type}`}
-              accessibilityState={{ selected: active }}
-              className={`mr-2 rounded-full px-4 py-2 ${active ? '' : 'bg-parchment-100'}`}
-              style={active ? { backgroundColor: fc.bg } : undefined}>
-              <Text
-                className={`text-sm font-bold ${active ? '' : 'text-stone-500'}`}
-                style={active ? { color: fc.text } : undefined}>
-                {type}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* Category quick-filter — the primary always-visible scope row. Present
+          only when ≥2 categories are followed (a lone category has nothing to
+          switch between). "Tutte" clears the session narrowing; each category
+          chip narrows the feed to that one, session-only (Settings › Interessi
+          is untouched). Horizontally scrollable so all followed categories fit. */}
+      {showCategoryRow && (
+        <FadeScrollRow className="bg-white px-4 pb-2.5 pt-1">
+          <Pressable
+            onPress={() => setActiveCategory(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Tutte le categorie"
+            accessibilityState={{ selected: activeCategory === null }}
+            className={`mr-2 rounded-full px-4 py-2 ${
+              activeCategory === null ? 'bg-brick-600' : 'bg-parchment-100'
+            }`}>
+            <Text
+              className={`text-sm font-bold ${
+                activeCategory === null ? 'text-white' : 'text-stone-500'
+              }`}>
+              Tutte
+            </Text>
+          </Pressable>
+          {catChoices.map((cat) => {
+            const active = activeCategory === cat;
+            const cc = CATEGORY_COLORS[cat];
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setActiveCategory(active ? null : cat)}
+                accessibilityRole="button"
+                accessibilityLabel={`Categoria ${CATEGORY_LABELS[cat]}`}
+                accessibilityState={{ selected: active }}
+                className={`mr-2 rounded-full px-4 py-2 ${active ? '' : 'bg-parchment-100'}`}
+                style={active ? { backgroundColor: cc.bg } : undefined}>
+                <Text
+                  className={`text-sm font-bold ${active ? '' : 'text-stone-500'}`}
+                  style={active ? { color: cc.text } : undefined}>
+                  {CATEGORY_LABELS[cat]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </FadeScrollRow>
+      )}
+
+      {/* Filing-type sub-row (PDC/SCIA/CILA) — edilizia-only, so shown only when
+          the feed is scoped to edilizia alone (see showFilingSubRow). Hidden for
+          a non-edilizia category or a mixed view, where the acronyms mean nothing. */}
+      {showFilingRow && (
+        <View className="flex-row bg-white px-4 pb-3 pt-1">
+          {FILING_TYPE_ORDER.map((type) => {
+            const active = activeTypes.has(type);
+            const fc = FILING_COLORS[type];
+            return (
+              <Pressable
+                key={type}
+                onPress={() => toggleType(type)}
+                accessibilityRole="button"
+                accessibilityLabel={`Tipo pratica ${type}`}
+                accessibilityState={{ selected: active }}
+                className={`mr-2 rounded-full px-4 py-2 ${active ? '' : 'bg-parchment-100'}`}
+                style={active ? { backgroundColor: fc.bg } : undefined}>
+                <Text
+                  className={`text-sm font-bold ${active ? '' : 'text-stone-500'}`}
+                  style={active ? { color: fc.text } : undefined}>
+                  {type}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       {/* Active-filter summary — visible when the panel is collapsed */}
       {!filtersOpen && activeChips.length > 0 && (

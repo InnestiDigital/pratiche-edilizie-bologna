@@ -162,10 +162,13 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
   // one permit contributes to every label it holds (mirrors the pure `tallyTags`
   // used by the web shim). The inner subquery gates on json_valid so a malformed
   // row can't make json_each raise "malformed JSON" — it is skipped instead.
+  // Filter on je.type (json_each's pre-parsed type column): je.value holds the
+  // DEQUOTED SQL text ('Con lavori'), so json_type(je.value) would re-parse it
+  // as JSON and raise "malformed JSON" for every ordinary tag string.
   const tagRows = await db.getAllAsync<{ tag: string; c: number }>(
     'SELECT je.value AS tag, COUNT(*) AS c FROM ' +
       '(SELECT tags FROM permits WHERE json_valid(tags)) p, json_each(p.tags) je ' +
-      "WHERE json_type(je.value) = 'text' GROUP BY je.value"
+      "WHERE je.type = 'text' GROUP BY je.value"
   );
   const byTag: Record<string, number> = {};
   for (const r of tagRows) byTag[r.tag] = r.c;

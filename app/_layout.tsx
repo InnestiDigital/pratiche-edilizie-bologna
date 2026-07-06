@@ -28,11 +28,16 @@ export default function RootLayout() {
     setReady(true);
   }, []);
 
-  // Register background sync if notifications are enabled
+  // Register background sync if notifications are enabled. Registration is an
+  // optional capability: it fails on hosts without background-fetch entitlements
+  // (Expo Go, a stale local prebuild) and must degrade to a warning, never crash
+  // startup with an unhandled rejection. Settings' toggle re-attempts explicitly.
   useEffect(() => {
-    isNotificationsEnabled().then((enabled) => {
-      if (enabled) registerBackgroundSync();
-    });
+    isNotificationsEnabled()
+      .then((enabled) => (enabled ? registerBackgroundSync() : undefined))
+      .catch((err) => {
+        console.warn('[background-sync] registration failed at startup:', err);
+      });
   }, []);
 
   // Re-check onboarding state every time segments change (i.e. after navigation)

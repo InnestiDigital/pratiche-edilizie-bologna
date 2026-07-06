@@ -1355,8 +1355,19 @@ export default function FeedScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Categoria ${CATEGORY_LABELS[cat]}`}
                 accessibilityState={{ selected: active }}
-                className={`mr-2 rounded-full px-4 py-2 ${active ? '' : 'bg-parchment-100'}`}
+                className={`mr-2 flex-row items-center rounded-full px-4 py-2 ${active ? '' : 'bg-parchment-100'}`}
                 style={active ? { backgroundColor: cc.bg } : undefined}>
+                {/* Leading identity dot on the idle chip only — unifies this row
+                    with every other category/status surface (Settings Interessi,
+                    Sync legend, Stato chips) that prefixes CATEGORY_COLORS. The
+                    selected chip already carries its color as the pill fill, so
+                    the dot is dropped there to not fight it. */}
+                {!active && (
+                  <View
+                    className="mr-1.5 h-2 w-2 rounded-full"
+                    style={{ backgroundColor: cc.text }}
+                  />
+                )}
                 <Text
                   className={`text-sm font-bold ${active ? '' : 'text-stone-500'}`}
                   style={active ? { color: cc.text } : undefined}>

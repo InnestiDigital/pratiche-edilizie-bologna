@@ -7,7 +7,7 @@ describe('buildResultCount', () => {
       shown: 8,
       total: 8,
       showTotal: false,
-      noun: 'pratiche',
+      noun: 'voci',
     });
   });
 
@@ -16,7 +16,7 @@ describe('buildResultCount', () => {
       shown: 1,
       total: 1,
       showTotal: false,
-      noun: 'pratica',
+      noun: 'voce',
     });
   });
 
@@ -25,21 +25,21 @@ describe('buildResultCount', () => {
       shown: 12,
       total: 480,
       showTotal: true,
-      noun: 'pratiche',
+      noun: 'voci',
     });
   });
 
   it('agrees the noun with the total (not shown) in the "di total" form', () => {
     // shown is 1 but the governing number is the total → plural.
-    expect(buildResultCount(1, 20).noun).toBe('pratiche');
+    expect(buildResultCount(1, 20).noun).toBe('voci');
   });
 
-  it('handles a single-permit total narrowing (0 di 1 pratica)', () => {
+  it('handles a single-permit total narrowing (0 di 1 voce)', () => {
     expect(buildResultCount(0, 1)).toEqual({
       shown: 0,
       total: 1,
       showTotal: true,
-      noun: 'pratica',
+      noun: 'voce',
     });
   });
 
@@ -49,16 +49,16 @@ describe('buildResultCount', () => {
       shown: 5,
       total: 5,
       showTotal: false,
-      noun: 'pratiche',
+      noun: 'voci',
     });
   });
 
-  it('is plain and singular for zero results (0 pratiche)', () => {
+  it('is plain and singular for zero results (0 voci)', () => {
     expect(buildResultCount(0, 0)).toEqual({
       shown: 0,
       total: 0,
       showTotal: false,
-      noun: 'pratiche',
+      noun: 'voci',
     });
   });
 
@@ -67,7 +67,7 @@ describe('buildResultCount', () => {
       shown: 2,
       total: 20,
       showTotal: true,
-      noun: 'pratiche',
+      noun: 'voci',
     });
   });
 
@@ -76,13 +76,13 @@ describe('buildResultCount', () => {
       shown: 0,
       total: 0,
       showTotal: false,
-      noun: 'pratiche',
+      noun: 'voci',
     });
     expect(buildResultCount(Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY)).toEqual({
       shown: 0,
       total: 0,
       showTotal: false,
-      noun: 'pratiche',
+      noun: 'voci',
     });
   });
 });

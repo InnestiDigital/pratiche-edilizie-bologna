@@ -25,6 +25,7 @@ import { buildOdsUrl, buildPageParams, buildDateRangeWhere, buildSinceWhere } fr
 import { SOURCES, type Category, type SourceConfig, type SourceKey } from './sources';
 import { SOURCE_RUNTIME } from './source-runtime';
 import { assertNever } from './assert-never';
+import { recordNoun } from './record-noun';
 
 /** The default first year swept by a `year-refine` / `date-range` full scan. */
 const DEFAULT_FULL_SCAN_FROM_YEAR = 2000;
@@ -371,7 +372,9 @@ async function syncSources(
     try {
       onProgress?.(downloadLabel(label));
       const permits = await fetchSource(key, mode, onProgress);
-      onProgress?.(`Elaborazione ${permits.length} pratiche ${key.toUpperCase()}...`);
+      onProgress?.(
+        `Elaborazione ${permits.length} ${recordNoun(permits.length)} ${key.toUpperCase()}...`
+      );
 
       const outcomes: UpsertOutcome[] = [];
       for (const permit of permits) {

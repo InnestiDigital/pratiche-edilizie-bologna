@@ -40,6 +40,7 @@ import { applySeenToList } from '../../lib/mark-seen';
 import { groupPermitsBySection } from '../../lib/feed-sections';
 import { sectionCountLabel } from '../../lib/section-count-label';
 import { buildResultCount } from '../../lib/result-count-label';
+import { recordNoun } from '../../lib/record-noun';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import { formatItDate } from '../../lib/format-date';
@@ -488,7 +489,7 @@ function EmptyDataState() {
       </View>
       <Text className="text-lg font-bold text-ink-800">Nessun dato</Text>
       <Text className="mt-1 text-center text-sm text-stone-500">
-        Scarica le pratiche dalla scheda Aggiorna.
+        Scarica le voci dalla scheda Aggiorna.
       </Text>
       <Pressable
         onPress={() => router.push('/(tabs)/sync')}
@@ -510,17 +511,17 @@ function EmptySavedState({ onShowAll }: { onShowAll: () => void }) {
       <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-brick-50">
         <Ionicons name="bookmark-outline" size={28} color="#9B2335" />
       </View>
-      <Text className="text-lg font-bold text-ink-800">Nessuna pratica salvata</Text>
+      <Text className="text-lg font-bold text-ink-800">Nessuna voce salvata</Text>
       <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
         Tocca il segnalibro <Ionicons name="bookmark-outline" size={13} color="#8B7355" /> su una
-        pratica per salvarla e ritrovarla qui.
+        voce per salvarla e ritrovarla qui.
       </Text>
       <Pressable
         onPress={onShowAll}
         accessibilityRole="button"
-        accessibilityLabel="Mostra tutte le pratiche"
+        accessibilityLabel="Mostra tutte le voci"
         className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
-        <Text className="font-semibold text-stone-600">Mostra tutte le pratiche</Text>
+        <Text className="font-semibold text-stone-600">Mostra tutte le voci</Text>
       </Pressable>
     </View>
   );
@@ -534,16 +535,16 @@ function EmptyNotedState({ onShowAll }: { onShowAll: () => void }) {
       <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-brick-50">
         <Ionicons name="create-outline" size={28} color="#9B2335" />
       </View>
-      <Text className="text-lg font-bold text-ink-800">Nessuna pratica con note</Text>
+      <Text className="text-lg font-bold text-ink-800">Nessuna voce con note</Text>
       <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
-        Apri una pratica e tocca «Le mie note» per annotarla; comparirà qui.
+        Apri una voce e tocca «Le mie note» per annotarla; comparirà qui.
       </Text>
       <Pressable
         onPress={onShowAll}
         accessibilityRole="button"
-        accessibilityLabel="Mostra tutte le pratiche"
+        accessibilityLabel="Mostra tutte le voci"
         className="mt-4 rounded-xl bg-parchment-200 px-5 py-2.5">
-        <Text className="font-semibold text-stone-600">Mostra tutte le pratiche</Text>
+        <Text className="font-semibold text-stone-600">Mostra tutte le voci</Text>
       </Pressable>
     </View>
   );
@@ -559,7 +560,7 @@ function EmptySearchState({ term, onClearSearch }: { term: string; onClearSearch
       </View>
       <Text className="text-lg font-bold text-ink-800">Nessun risultato</Text>
       <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
-        Nessuna pratica corrisponde a «{term}». Controlla l’ortografia o prova un altro termine.
+        Nessuna voce corrisponde a «{term}». Controlla l’ortografia o prova un altro termine.
       </Text>
       <Pressable
         onPress={onClearSearch}
@@ -582,7 +583,7 @@ function EmptyFilterState({ onReset }: { onReset: () => void }) {
       </View>
       <Text className="text-lg font-bold text-ink-800">Nessun risultato</Text>
       <Text className="mt-1 text-center text-sm leading-5 text-stone-500">
-        Nessuna pratica corrisponde ai filtri attivi. Prova ad allargarli o azzerarli.
+        Nessuna voce corrisponde ai filtri attivi. Prova ad allargarli o azzerarli.
       </Text>
       <Pressable
         onPress={onReset}
@@ -1449,7 +1450,7 @@ export default function FeedScreen() {
             <Pressable
               onPress={handleMarkAllSeen}
               accessibilityRole="button"
-              accessibilityLabel={`Segna ${newCount} ${newCount === 1 ? 'pratica' : 'pratiche'} come ${newCount === 1 ? 'letta' : 'lette'}`}
+              accessibilityLabel={`Segna ${newCount} ${recordNoun(newCount)} come ${newCount === 1 ? 'letta' : 'lette'}`}
               className="ml-auto flex-row items-center rounded-full bg-brick-50 px-3 py-1">
               <Ionicons name="checkmark-done" size={13} color="#9B2335" />
               <Text className="ml-1 text-xs font-semibold text-brick-600">Segna lette</Text>

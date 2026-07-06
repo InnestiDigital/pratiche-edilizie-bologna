@@ -1,11 +1,12 @@
 /**
  * Pure core for the feed's result-count header.
  *
- * The header shows how many permits match the current view. When filters or a
+ * The header shows how many records match the current view. When filters or a
  * search narrow the feed below the unfiltered total, it also surfaces that total
- * ("12 di 480 pratiche") so the user understands the list is a slice of their
- * followed permits, not the whole dataset. When nothing narrows (shown === total)
- * it stays a plain count ("480 pratiche"), matching the pre-feature behaviour.
+ * ("12 di 480 voci") so the user understands the list is a slice of their followed
+ * records, not the whole dataset. When nothing narrows (shown === total) it stays a
+ * plain count ("480 voci"), matching the pre-feature behaviour. The noun is the
+ * category-neutral `recordNoun` (the feed mixes all 5 categories, not just filings).
  *
  * `showTotal` is derived purely from the two counts — total strictly greater than
  * shown — so it fires for ANY narrowing cause (a deselected filing-type chip, a
@@ -15,15 +16,17 @@
  * and the Italian plural of the noun.
  */
 
+import { recordNoun } from './record-noun';
+
 export interface ResultCount {
-  /** Sanitized count of permits matching the current view. */
+  /** Sanitized count of records matching the current view. */
   shown: number;
   /** Sanitized unfiltered total; equals `shown` when the "di total" form is hidden. */
   total: number;
   /** True when the view is narrowed (total > shown) and the total is worth showing. */
   showTotal: boolean;
-  /** Italian noun agreeing with the governing number (total when shown, else shown). */
-  noun: 'pratica' | 'pratiche';
+  /** Neutral noun agreeing with the governing number (total when shown, else shown). */
+  noun: string;
 }
 
 function sanitizeCount(n: number): number {
@@ -35,6 +38,5 @@ export function buildResultCount(shown: number, total: number): ResultCount {
   const t = sanitizeCount(total);
   const showTotal = t > s;
   const governing = showTotal ? t : s;
-  const noun: ResultCount['noun'] = governing === 1 ? 'pratica' : 'pratiche';
-  return { shown: s, total: showTotal ? t : s, showTotal, noun };
+  return { shown: s, total: showTotal ? t : s, showTotal, noun: recordNoun(governing) };
 }

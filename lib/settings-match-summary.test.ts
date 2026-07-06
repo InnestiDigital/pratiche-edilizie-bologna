@@ -23,9 +23,9 @@ describe('buildMatchSummary', () => {
   });
 
   it('agrees the noun with the match count', () => {
-    expect(buildMatchSummary(1, 10).label).toBe('pratica corrisponde ai filtri');
-    expect(buildMatchSummary(2, 10).label).toBe('pratiche corrispondono ai filtri');
-    expect(buildMatchSummary(0, 10).label).toBe('pratiche corrispondono ai filtri');
+    expect(buildMatchSummary(1, 10).label).toBe('voce corrisponde ai filtri');
+    expect(buildMatchSummary(2, 10).label).toBe('voci corrispondono ai filtri');
+    expect(buildMatchSummary(0, 10).label).toBe('voci corrispondono ai filtri');
   });
 
   it('says all are visible when the filters do not narrow anything', () => {

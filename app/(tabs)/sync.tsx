@@ -16,6 +16,7 @@ import {
 } from '../../lib/processing-stats';
 import { italianDaySpan } from '../../lib/duration-span';
 import { syncFreshness } from '../../lib/sync-freshness';
+import { recordNoun } from '../../lib/record-noun';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 /* Composition-bar segments, derived from the SOURCES registry so a new source
@@ -136,7 +137,7 @@ export default function SyncScreen() {
             </View>
             <Text className="text-lg font-bold text-ink-800">Sincronizzazione completata</Text>
             <Text className="mt-1 text-sm text-stone-500">
-              {totalInserted} nuove pratiche, {totalUpdated} aggiornate
+              {totalInserted} nuove voci, {totalUpdated} aggiornate
             </Text>
             <Pressable
               onPress={handleGoToFeed}
@@ -303,7 +304,7 @@ export default function SyncScreen() {
                       <Text className="text-3xl font-bold text-ink-800">
                         {stats.total.toLocaleString('it-IT')}
                       </Text>
-                      <Text className="text-xs text-stone-600">pratiche totali</Text>
+                      <Text className="text-xs text-stone-600">voci totali</Text>
                     </View>
                     {stats.newCount > 0 && (
                       <View className="rounded-full bg-brick-50 px-3 py-1">
@@ -345,7 +346,7 @@ export default function SyncScreen() {
               );
             })()}
 
-            {/* Pratiche per mese — trailing-months activity, bucketed by the
+            {/* Voci per mese — trailing-months activity, bucketed by the
                 request date, anchored to the most recent month in the data (a
                 stale offline snapshot still shows its meaningful tail). Series +
                 labels come from the pure, tested buildMonthlyActivity. */}
@@ -357,7 +358,7 @@ export default function SyncScreen() {
               return (
                 <View className="mb-6">
                   <View className="mb-2 flex-row items-baseline justify-between">
-                    <Text className="text-base font-bold text-ink-800">Pratiche per mese</Text>
+                    <Text className="text-base font-bold text-ink-800">Voci per mese</Text>
                     {range && <Text className="text-xs text-stone-500">{range}</Text>}
                   </View>
                   <View
@@ -377,9 +378,9 @@ export default function SyncScreen() {
                             key={m.monthKey}
                             className="flex-1 items-center"
                             accessibilityRole="text"
-                            accessibilityLabel={`${m.label} ${m.year}: ${m.count} ${
-                              m.count === 1 ? 'pratica' : 'pratiche'
-                            }`}>
+                            accessibilityLabel={`${m.label} ${m.year}: ${m.count} ${recordNoun(
+                              m.count
+                            )}`}>
                             {/* Count caption rides directly on top of its bar (not
                                 pinned to the column top) so short bars don't leave
                                 their number floating — every column reads as one
@@ -440,8 +441,7 @@ export default function SyncScreen() {
                 <View className="mb-2 flex-row items-baseline justify-between">
                   <Text className="text-base font-bold text-ink-800">Tempi di rilascio</Text>
                   <Text className="text-xs text-stone-500">
-                    su {processing.count.toLocaleString('it-IT')}{' '}
-                    {processing.count === 1 ? 'pratica' : 'pratiche'}
+                    su {processing.count.toLocaleString('it-IT')} {recordNoun(processing.count)}
                   </Text>
                 </View>
                 <View
@@ -491,8 +491,8 @@ export default function SyncScreen() {
                       })
                     }
                     accessibilityRole="button"
-                    accessibilityLabel={`${zone}, ${count} ${count === 1 ? 'pratica' : 'pratiche'}`}
-                    accessibilityHint="Mostra le pratiche di questo quartiere nel feed"
+                    accessibilityLabel={`${zone}, ${count} ${recordNoun(count)}`}
+                    accessibilityHint="Mostra le voci di questo quartiere nel feed"
                     className={`px-4 py-3 ${
                       i < arr.length - 1 ? 'border-b border-parchment-200' : ''
                     }`}>
@@ -547,10 +547,8 @@ export default function SyncScreen() {
                           })
                         }
                         accessibilityRole="button"
-                        accessibilityLabel={`${s.label}, ${s.count} ${
-                          s.count === 1 ? 'pratica' : 'pratiche'
-                        }`}
-                        accessibilityHint="Mostra le pratiche con questo stato nel feed"
+                        accessibilityLabel={`${s.label}, ${s.count} ${recordNoun(s.count)}`}
+                        accessibilityHint="Mostra le voci con questo stato nel feed"
                         className={`px-4 py-3 ${
                           i < breakdown.length - 1 ? 'border-b border-parchment-200' : ''
                         }`}>

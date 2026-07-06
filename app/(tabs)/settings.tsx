@@ -33,6 +33,7 @@ import { getDb } from '../../lib/db';
 import { CITY } from '../../lib/city';
 import { countPermits, getStats } from '../../lib/queries';
 import { buildMatchSummary } from '../../lib/settings-match-summary';
+import { recordNoun } from '../../lib/record-noun';
 
 /** Read-only, non-personal source Bologna publishes the open data under. */
 const OPEN_DATA_PORTAL_URL = 'https://opendata.comune.bologna.it';
@@ -99,7 +100,7 @@ function ToggleRow({
       you can see how much data each zone / type holds before toggling it. */
   count?: number;
 }) {
-  const a11yLabel = count === undefined ? label : `${label}, ${count} pratiche`;
+  const a11yLabel = count === undefined ? label : `${label}, ${count} ${recordNoun(count)}`;
   return (
     <View
       className={`flex-row items-center justify-between px-4 py-3 ${
@@ -343,7 +344,7 @@ export default function SettingsScreen() {
 
       <SectionHeader
         title="Notifiche"
-        hint="Controlla in background e avvisa quando ci sono nuove pratiche"
+        hint="Controlla in background e avvisa quando ci sono nuove voci"
       />
       <View
         className="mx-4 overflow-hidden rounded-xl bg-white"
@@ -412,7 +413,7 @@ export default function SettingsScreen() {
         ))}
       </View>
 
-      <SectionHeader title="Filtri Etichette" hint="Mostra solo pratiche con queste etichette" />
+      <SectionHeader title="Filtri Etichette" hint="Mostra solo voci con queste etichette" />
       <View
         className="mx-4 overflow-hidden rounded-xl bg-white"
         style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>

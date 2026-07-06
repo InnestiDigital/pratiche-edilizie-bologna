@@ -51,10 +51,10 @@ import {
 // context, not an error.
 const PROCESSING_COMPARISON_STYLE: Record<
   'faster' | 'typical' | 'slower',
-  { icon: 'trending-down-outline' | 'remove-outline' | 'trending-up-outline'; color: string }
+  { icon: 'trending-down-outline' | 'remove-circle-outline' | 'trending-up-outline'; color: string }
 > = {
   faster: { icon: 'trending-down-outline', color: '#16a34a' },
-  typical: { icon: 'remove-outline', color: '#78716c' },
+  typical: { icon: 'remove-circle-outline', color: '#78716c' },
   slower: { icon: 'trending-up-outline', color: '#d97706' },
 };
 

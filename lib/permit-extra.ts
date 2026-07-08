@@ -134,3 +134,23 @@ export function getCoords(raw: string): Coords | null {
   if (Math.abs(latN) > 90 || Math.abs(lonN) > 180) return null;
   return { lat: latN, lon: lonN };
 }
+
+/**
+ * Read the edilizia `civico` (house number) back out of `extra` as a number, or
+ * `null` when absent/unusable — the join key that lets the gazetteer geocode a
+ * coordinate-less edilizia row from its `codvia`+`civico` (docs/P4-map-radius.md
+ * §3). Edilizia is the only category that stores this; other sources carry a real
+ * coordinate instead (see {@link getCoords}).
+ *
+ * Storage boundary → defensive: the value is written as a string, so a blank /
+ * corrupt / legacy / non-numeric value collapses to `null` rather than a bogus
+ * key. `Number('')` is `0`, so the blank guard is load-bearing; a civic number is
+ * a positive integer, so a non-integer or non-positive value is rejected too.
+ */
+export function getCivico(raw: string): number | null {
+  const { civico } = pickExtra(raw, ['civico']);
+  if (civico == null || civico.trim() === '') return null;
+  const n = Number(civico);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return n;
+}

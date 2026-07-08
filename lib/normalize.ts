@@ -6,6 +6,7 @@ import {
   type DatasetKey,
 } from './constants';
 import { SOURCES, type Category } from './sources';
+import { compactExtra } from './source-shared';
 import codviaMap from '../assets/data/codvia_to_zone.json';
 
 const zoneMap = codviaMap as Record<string, string>;
@@ -114,9 +115,14 @@ export function normalizeRecord(datasetKey: DatasetKey, raw: RawRecord): Normali
       String(raw.richiesta_anno_prot),
       raw.richiesta_ndeg_prot
     ),
-    // Edilizia rows carry no title (the card heads with the address) and no
-    // category-specific extra data — byte-identical to the pre-title/extra rows.
+    // Edilizia rows carry no title (the card heads with the address). Their only
+    // `extra` field is the raw `civico` (house number): edilizia has no source
+    // coordinate, so it is geocoded from `codvia`+`civico` against the gazetteer
+    // (docs/P4-map-radius.md §3) — persisting `civico` here (as a string, so
+    // `compactExtra` keeps it) is the read-side key that geocode makes usable.
+    // `compactExtra({})` → `'{}'` when the record has no civic number, so a
+    // civic-less edilizia row stays byte-identical to the pre-civico rows.
     title: null,
-    extra: '{}',
+    extra: compactExtra({ civico: raw.civico != null ? String(raw.civico) : null }),
   };
 }

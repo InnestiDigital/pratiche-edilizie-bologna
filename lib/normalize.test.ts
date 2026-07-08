@@ -151,4 +151,14 @@ describe('normalizeRecord', () => {
     const out = normalizeRecord('scia', rawRecord({ procedimento: 'SCIA NON RESIDENZIALE' }));
     expect(JSON.parse(out.tags)).toContain('non_residenziale');
   });
+
+  it('persists the civic number into extra (the gazetteer geocode key)', () => {
+    const out = normalizeRecord('pdc', rawRecord({ civico: 24 }));
+    expect(JSON.parse(out.extra)).toEqual({ civico: '24' });
+  });
+
+  it('leaves extra empty for a civic-less edilizia row (byte-identical to before)', () => {
+    const out = normalizeRecord('pdc', rawRecord({ civico: null }));
+    expect(out.extra).toBe('{}');
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getCantiereExtra,
+  getCivico,
   getCommercioExtra,
   getCoords,
   getEventoExtra,
@@ -132,5 +133,37 @@ describe('permit-extra — getCoords', () => {
   it('never throws on corrupt JSON — collapses to null', () => {
     expect(getCoords('not json')).toBeNull();
     expect(getCoords('[1,2]')).toBeNull();
+  });
+});
+
+describe('permit-extra — getCivico', () => {
+  it('decodes the stored edilizia civic number back into a positive integer', () => {
+    expect(getCivico(JSON.stringify({ civico: '24' }))).toBe(24);
+  });
+
+  it('ignores unrelated extra keys and reads only civico', () => {
+    expect(getCivico(JSON.stringify({ lat: '44.5', lon: '11.3', civico: '7' }))).toBe(7);
+  });
+
+  it('returns null when civico is absent (a civic-less edilizia row)', () => {
+    expect(getCivico('{}')).toBeNull();
+    expect(getCivico(JSON.stringify({ lat: '44.5' }))).toBeNull();
+  });
+
+  it('returns null for a blank string (Number("") is 0 — the blank guard)', () => {
+    expect(getCivico(JSON.stringify({ civico: '' }))).toBeNull();
+    expect(getCivico(JSON.stringify({ civico: '  ' }))).toBeNull();
+  });
+
+  it('rejects non-integer, non-positive, or non-numeric stored values', () => {
+    expect(getCivico(JSON.stringify({ civico: 'abc' }))).toBeNull();
+    expect(getCivico(JSON.stringify({ civico: '24.5' }))).toBeNull();
+    expect(getCivico(JSON.stringify({ civico: '0' }))).toBeNull();
+    expect(getCivico(JSON.stringify({ civico: '-3' }))).toBeNull();
+  });
+
+  it('never throws on corrupt JSON — collapses to null', () => {
+    expect(getCivico('not json')).toBeNull();
+    expect(getCivico('[1,2]')).toBeNull();
   });
 });

@@ -3,7 +3,10 @@
     "name": "Civico",
     "slug": "pratiche-edilizie-bologna",
     "version": "2.0.0",
-    "scheme": ["civico", "pratiche-bologna"],
+    "scheme": [
+      "civico",
+      "pratiche-bologna"
+    ],
     "experiments": {
       "tsconfigPaths": true
     },
@@ -28,17 +31,24 @@
       "resizeMode": "contain",
       "backgroundColor": "#9B2335"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "it.innesti.praticheediliziebologna",
       "infoPlist": {
         "CFBundleDevelopmentRegion": "it",
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["fetch", "processing"],
-        "BGTaskSchedulerPermittedIdentifiers": ["background-permit-sync"]
+        "UIBackgroundModes": [
+          "fetch",
+          "processing"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "background-permit-sync"
+        ]
       },
-      "buildNumber": "7"
+      "buildNumber": "8"
     },
     "android": {
       "adaptiveIcon": {

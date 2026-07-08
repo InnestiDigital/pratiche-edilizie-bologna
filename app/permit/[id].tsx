@@ -12,7 +12,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { HeaderBrand } from '../../components/HeaderBrand';
-import { CATEGORY_DETAIL_TITLE } from '../../lib/sources';
+import { CATEGORY_DETAIL_TITLE, CATEGORY_REFERENCE_LABEL } from '../../lib/sources';
 import { getDb } from '../../lib/db';
 import {
   getPermitById,
@@ -602,10 +602,14 @@ export default function PermitDetail() {
             </View>
           )}
 
-          {/* Protocol */}
-          <Text className="mt-1 text-sm text-stone-600" selectable>
-            Prot. {protocol}
-          </Text>
+          {/* Reference id: a protocollo for edilizia/commercio, a plain record/
+              ticket id (→ "Rif.") for cantieri/eventi/segnalazioni. Omitted
+              entirely when the source_id yields no protocol string. */}
+          {protocol !== '' && (
+            <Text className="mt-1 text-sm text-stone-600" selectable>
+              {CATEGORY_REFERENCE_LABEL[permit.category] ?? 'Rif.'} {protocol}
+            </Text>
+          )}
 
           {/* Status */}
           <View className="mt-3 flex-row items-center self-start rounded-full bg-parchment-100 px-3 py-1.5">

@@ -97,6 +97,26 @@ export const CATEGORY_TIMELINE_LABELS: Record<
 };
 
 /**
+ * Prefix for the detail-screen identifier line (the number under the address).
+ * The stored `source_id` means DIFFERENT things per source: for edilizia and
+ * commercio it is a real administrative **protocollo** (edilizia protocollo /
+ * commercio `n. e anno protocollo domanda`), so "Prot." is truthful. But a
+ * cantiere (`lavori-<id>`), an evento (`eventi-<id>`) and a segnalazione
+ * (`segnalazioni-<ticketid>`) carry an open-data **record/ticket id**, NOT a
+ * protocollo — labelling those "Prot." is edilizia copy bleeding into every
+ * category (the same class as `CATEGORY_DETAIL_TITLE` / `CATEGORY_TIMELINE_LABELS`).
+ * They get the neutral "Rif." (riferimento). Exhaustive `Record<Category, …>`: a
+ * new category cannot ship without deciding whether its id is a protocollo.
+ */
+export const CATEGORY_REFERENCE_LABEL: Record<Category, string> = {
+  edilizia: 'Prot.',
+  cantieri: 'Rif.',
+  commercio: 'Prot.',
+  eventi: 'Rif.',
+  segnalazioni: 'Rif.',
+};
+
+/**
  * The per-category soft-badge palette (parchment-toned, matching `FILING_COLORS`
  * in `constants.ts`). `bg` is the soft badge fill, `text` the saturated accent
  * (also used as a leading dot/marker color). Exhaustive `Record<Category, …>` so

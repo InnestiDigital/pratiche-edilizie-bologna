@@ -7,6 +7,7 @@ import {
   CATEGORY_COLORS,
   CATEGORY_NOUNS,
   CATEGORY_DETAIL_TITLE,
+  CATEGORY_REFERENCE_LABEL,
   CATEGORY_HAS_STATUS_SIGNAL,
   type Category,
 } from './sources';
@@ -127,6 +128,9 @@ describe('CATEGORY_* maps', () => {
 
       expect(typeof CATEGORY_DETAIL_TITLE[category]).toBe('string');
       expect(CATEGORY_DETAIL_TITLE[category].length).toBeGreaterThan(0);
+
+      expect(typeof CATEGORY_REFERENCE_LABEL[category]).toBe('string');
+      expect(CATEGORY_REFERENCE_LABEL[category].length).toBeGreaterThan(0);
     }
   );
 
@@ -136,7 +140,19 @@ describe('CATEGORY_* maps', () => {
     expect(Object.keys(CATEGORY_COLORS).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_NOUNS).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_DETAIL_TITLE).sort()).toEqual(expected);
+    expect(Object.keys(CATEGORY_REFERENCE_LABEL).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_HAS_STATUS_SIGNAL).sort()).toEqual(expected);
+  });
+
+  it('labels the detail id line "Prot." only where the id is a real protocollo', () => {
+    // edilizia + commercio source_ids are administrative protocolli.
+    expect(CATEGORY_REFERENCE_LABEL.edilizia).toBe('Prot.');
+    expect(CATEGORY_REFERENCE_LABEL.commercio).toBe('Prot.');
+    // cantieri/eventi/segnalazioni carry a record/ticket id, not a protocollo —
+    // labelling them "Prot." would be edilizia copy bleed.
+    expect(CATEGORY_REFERENCE_LABEL.cantieri).toBe('Rif.');
+    expect(CATEGORY_REFERENCE_LABEL.eventi).toBe('Rif.');
+    expect(CATEGORY_REFERENCE_LABEL.segnalazioni).toBe('Rif.');
   });
 
   it('gives each category a category-specific detail-screen title', () => {

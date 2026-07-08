@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { buildNotificationMessage } from './notification-message';
 import { buildNotificationData } from './notification-link';
+import { APP_NAME } from './brand';
 import type { BackgroundSyncSummary } from './background-result';
 
 // Configure how notifications appear when app is in foreground
@@ -34,7 +35,7 @@ export async function sendNewPermitsNotification(summary: BackgroundSyncSummary)
 
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Pratiche Edilizie Bologna',
+      title: APP_NAME,
       body,
       // `new: '1'` when the sync brought genuinely-new permits → tapping the
       // notification deep-links the feed to its "Solo nuovi" filter (consumed by

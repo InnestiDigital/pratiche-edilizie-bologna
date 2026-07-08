@@ -1,6 +1,9 @@
-# Pratiche Edilizie Bologna
+# Civico (già "Pratiche Edilizie Bologna")
 
-App mobile per consultare le pratiche edilizie del Comune di Bologna (PdC, SCIA, CILA), basata sui dati aperti pubblicati su [opendata.comune.bologna.it](https://opendata.comune.bologna.it).
+App mobile per seguire cosa cambia intorno a te a Bologna — pratiche edilizie (PdC, SCIA,
+CILA), cantieri stradali, nuove attività commerciali, eventi culturali e segnalazioni dei
+cittadini — basata sui dati aperti pubblicati su
+[opendata.comune.bologna.it](https://opendata.comune.bologna.it).
 
 ## Scopo educativo
 

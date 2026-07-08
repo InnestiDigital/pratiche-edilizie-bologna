@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Pratiche Edilizie Bologna",
+    "name": "Civico",
     "slug": "pratiche-edilizie-bologna",
-    "version": "1.1.2",
-    "scheme": "pratiche-bologna",
+    "version": "2.0.0",
+    "scheme": ["civico", "pratiche-bologna"],
     "experiments": {
       "tsconfigPaths": true
     },

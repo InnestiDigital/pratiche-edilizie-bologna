@@ -31,6 +31,7 @@ import { requestNotificationPermissions } from '../../lib/notifications';
 import { registerBackgroundSync, unregisterBackgroundSync } from '../../lib/background-sync';
 import { getDb } from '../../lib/db';
 import { CITY } from '../../lib/city';
+import { APP_NAME } from '../../lib/brand';
 import { countPermits, getStats } from '../../lib/queries';
 import { buildMatchSummary } from '../../lib/settings-match-summary';
 import { recordNoun } from '../../lib/record-noun';
@@ -450,7 +451,7 @@ export default function SettingsScreen() {
             <TowersMark size={24} color="#F5F0E8" />
           </View>
           <View className="flex-1">
-            <Text className="text-[15px] font-bold text-ink-800">Pratiche Edilizie Bologna</Text>
+            <Text className="text-[15px] font-bold text-ink-800">{APP_NAME}</Text>
             <Text className="text-xs text-stone-500">
               {appVersion ? `Versione ${appVersion}` : `Dati aperti del ${CITY.provider}`}
             </Text>

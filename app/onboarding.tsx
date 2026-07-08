@@ -11,6 +11,7 @@ import {
   type Quartiere,
 } from '../lib/constants';
 import { completeOnboarding } from '../lib/preferences';
+import { APP_NAME } from '../lib/brand';
 import { CATEGORIES, CATEGORY_LABELS, CATEGORY_COLORS, type Category } from '../lib/sources';
 import { TowersMark } from '../components/TowersMark';
 
@@ -220,11 +221,9 @@ export default function OnboardingScreen() {
           <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-brick-600">
             <TowersMark size={38} />
           </View>
-          <Text className="text-center text-2xl font-bold text-ink-800">
-            Pratiche Edilizie Bologna
-          </Text>
+          <Text className="text-center text-2xl font-bold text-ink-800">{APP_NAME}</Text>
           <Text className="mt-2 text-center text-base leading-6 text-stone-500">
-            Consulta le pratiche edilizie del Comune di Bologna.
+            Cosa cambia intorno a te — dati aperti del Comune di Bologna.
           </Text>
         </View>
 

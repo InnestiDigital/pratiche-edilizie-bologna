@@ -129,6 +129,22 @@ describe('buildPermitTimeline', () => {
     const chiusura = events.find((e) => e.key === 'chiusura');
     expect(chiusura?.label).toBe("Data dell'evento");
     expect(events.some((e) => e.label === 'Pratica conclusa')).toBe(false);
+    // A future evento date must NOT wear the green "done" check — it contradicts
+    // an "In programma" status. Scheduled dates get a neutral calendar marker.
+    expect(chiusura?.icon).toBe('calendar-outline');
+    expect(chiusura?.color).not.toBe('#22c55e');
+  });
+
+  it('keeps the green completion check for a real edilizia conclusion', () => {
+    const events = buildPermitTimeline({
+      category: 'edilizia',
+      source_updated_at: '2024-01-10',
+      date_issued: '2024-06-20',
+      first_seen_at: null,
+    });
+    const chiusura = events.find((e) => e.key === 'chiusura');
+    expect(chiusura?.icon).toBe('checkmark-circle-outline');
+    expect(chiusura?.color).toBe('#22c55e');
   });
 
   it('labels a segnalazione report date "Segnalazione inviata"', () => {

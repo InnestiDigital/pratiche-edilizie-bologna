@@ -65,13 +65,35 @@ export const CATEGORY_DETAIL_TITLE: Record<Category, string> = {
  * event. (The third timeline event, "Rilevata dall'app" from `first_seen_at`, is
  * category-independent and stays hard-coded in `buildPermitTimeline`.) Exhaustive
  * `Record<Category, …>`: a new category cannot ship without naming its dates.
+ *
+ * `chiusuraKind` says what the `chiusura` date MEANS, which drives its timeline
+ * marker: `completion` is a real conclusion (green check — the filing/procedure
+ * closed), `scheduled` is a plain calendar date that has NOT necessarily happened
+ * (an evento's future "Data dell'evento", a cantiere's planned "Fine lavori"). A
+ * green done-check on a future evento ("In programma") reads as a contradiction —
+ * so `scheduled` gets a neutral calendar marker instead.
  */
-export const CATEGORY_TIMELINE_LABELS: Record<Category, { richiesta: string; chiusura: string }> = {
-  edilizia: { richiesta: 'Richiesta presentata', chiusura: 'Pratica conclusa' },
-  cantieri: { richiesta: 'Inizio lavori', chiusura: 'Fine lavori' },
-  commercio: { richiesta: 'Richiesta presentata', chiusura: 'Procedimento concluso' },
-  eventi: { richiesta: 'Data richiesta', chiusura: "Data dell'evento" },
-  segnalazioni: { richiesta: 'Segnalazione inviata', chiusura: 'Pratica conclusa' },
+export const CATEGORY_TIMELINE_LABELS: Record<
+  Category,
+  { richiesta: string; chiusura: string; chiusuraKind: 'completion' | 'scheduled' }
+> = {
+  edilizia: {
+    richiesta: 'Richiesta presentata',
+    chiusura: 'Pratica conclusa',
+    chiusuraKind: 'completion',
+  },
+  cantieri: { richiesta: 'Inizio lavori', chiusura: 'Fine lavori', chiusuraKind: 'scheduled' },
+  commercio: {
+    richiesta: 'Richiesta presentata',
+    chiusura: 'Procedimento concluso',
+    chiusuraKind: 'completion',
+  },
+  eventi: { richiesta: 'Data richiesta', chiusura: "Data dell'evento", chiusuraKind: 'scheduled' },
+  segnalazioni: {
+    richiesta: 'Segnalazione inviata',
+    chiusura: 'Pratica conclusa',
+    chiusuraKind: 'completion',
+  },
 };
 
 /**

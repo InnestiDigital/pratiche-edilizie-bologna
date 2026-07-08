@@ -83,8 +83,11 @@ export function buildPermitTimeline(permit: PermitTimelineInput): PermitTimeline
     {
       key: 'chiusura',
       label: labels.chiusura,
-      icon: 'checkmark-circle-outline',
-      color: '#22c55e',
+      // A real conclusion reads as a green "done" check; a merely-scheduled date
+      // (future evento / planned works end) gets a neutral calendar marker so it
+      // never contradicts an "In programma" status above it.
+      icon: labels.chiusuraKind === 'completion' ? 'checkmark-circle-outline' : 'calendar-outline',
+      color: labels.chiusuraKind === 'completion' ? '#22c55e' : '#8B7355',
       raw: permit.date_issued,
     },
     {

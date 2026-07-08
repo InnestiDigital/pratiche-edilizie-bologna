@@ -53,6 +53,28 @@ export const CATEGORY_DETAIL_TITLE: Record<Category, string> = {
 };
 
 /**
+ * Per-category labels for the detail-screen "Cronologia" timeline. The stored
+ * `source_updated_at` and `date_issued` columns hold DIFFERENT real-world dates
+ * per source — for edilizia they are the filing request + closing, but for a
+ * cantiere they are the works' start + end, for an evento the event's end date,
+ * for a segnalazione the report date. So a single edilizia-flavored label
+ * ("Richiesta presentata" / "Pratica conclusa") mislabels every other category —
+ * most visibly an evento whose "In programma" status contradicts a "Pratica
+ * conclusa" timeline row. Each category names what its two dates actually are:
+ * `richiesta` = the `source_updated_at` event, `chiusura` = the `date_issued`
+ * event. (The third timeline event, "Rilevata dall'app" from `first_seen_at`, is
+ * category-independent and stays hard-coded in `buildPermitTimeline`.) Exhaustive
+ * `Record<Category, …>`: a new category cannot ship without naming its dates.
+ */
+export const CATEGORY_TIMELINE_LABELS: Record<Category, { richiesta: string; chiusura: string }> = {
+  edilizia: { richiesta: 'Richiesta presentata', chiusura: 'Pratica conclusa' },
+  cantieri: { richiesta: 'Inizio lavori', chiusura: 'Fine lavori' },
+  commercio: { richiesta: 'Richiesta presentata', chiusura: 'Procedimento concluso' },
+  eventi: { richiesta: 'Data richiesta', chiusura: "Data dell'evento" },
+  segnalazioni: { richiesta: 'Segnalazione inviata', chiusura: 'Pratica conclusa' },
+};
+
+/**
  * The per-category soft-badge palette (parchment-toned, matching `FILING_COLORS`
  * in `constants.ts`). `bg` is the soft badge fill, `text` the saturated accent
  * (also used as a leading dot/marker color). Exhaustive `Record<Category, …>` so

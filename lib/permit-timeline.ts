@@ -17,6 +17,7 @@
  */
 
 import { formatItDate } from './format-date';
+import { CATEGORY_TIMELINE_LABELS, type Category } from './sources';
 
 export type PermitTimelineKey = 'richiesta' | 'chiusura' | 'rilevata';
 
@@ -34,6 +35,8 @@ export interface PermitTimelineEvent {
 
 /** The minimal permit shape the timeline needs — a structural subset of `Permit`. */
 export interface PermitTimelineInput {
+  /** Drives the category-appropriate `richiesta` / `chiusura` labels. */
+  category: Category;
   source_updated_at: string | null;
   date_issued: string | null;
   first_seen_at: string | null;
@@ -68,17 +71,18 @@ interface Candidate {
  * detected order so a same-day request and closing read naturally.
  */
 export function buildPermitTimeline(permit: PermitTimelineInput): PermitTimelineEvent[] {
+  const labels = CATEGORY_TIMELINE_LABELS[permit.category];
   const candidates: Candidate[] = [
     {
       key: 'richiesta',
-      label: 'Richiesta presentata',
+      label: labels.richiesta,
       icon: 'document-text-outline',
       color: '#8B7355',
       raw: permit.source_updated_at,
     },
     {
       key: 'chiusura',
-      label: 'Pratica conclusa',
+      label: labels.chiusura,
       icon: 'checkmark-circle-outline',
       color: '#22c55e',
       raw: permit.date_issued,

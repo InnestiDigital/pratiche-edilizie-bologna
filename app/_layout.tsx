@@ -97,8 +97,11 @@ export default function RootLayout() {
           name="permit/[id]"
           options={{
             headerShown: true,
-            title: 'Dettaglio Pratica',
-            headerTitle: () => <HeaderBrand title="Dettaglio Pratica" />,
+            // Neutral fallback shown during the skeleton load; the detail screen
+            // overrides it with a category-aware title (Pratica / Cantiere / …)
+            // once the row resolves. See app/permit/[id].tsx.
+            title: 'Dettaglio',
+            headerTitle: () => <HeaderBrand title="Dettaglio" />,
             headerTitleAlign: 'left',
             presentation: 'card',
             headerStyle: { backgroundColor: '#9B2335' },

@@ -9,8 +9,10 @@ import {
   Share,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HeaderBrand } from '../../components/HeaderBrand';
+import { CATEGORY_DETAIL_TITLE } from '../../lib/sources';
 import { getDb } from '../../lib/db';
 import {
   getPermitById,
@@ -554,8 +556,14 @@ export default function PermitDetail() {
     await Share.share({ message });
   };
 
+  // Category-aware header title (rebrand: the app is no longer edilizia-only, so a
+  // cantiere / evento / segnalazione must not read "Dettaglio Pratica"). Overrides
+  // the neutral fallback set on the parent route once the row's category is known.
+  const detailTitle = CATEGORY_DETAIL_TITLE[permit.category] ?? 'Dettaglio';
+
   return (
     <ScrollView className="flex-1 bg-parchment-100">
+      <Stack.Screen options={{ headerTitle: () => <HeaderBrand title={detailTitle} /> }} />
       <View className="p-4">
         {/* Header card */}
         <View
@@ -665,7 +673,7 @@ export default function PermitDetail() {
               })
             }
             accessibilityRole="button"
-            accessibilityLabel={`Altre pratiche in ${streetName}`}
+            accessibilityLabel={`Altre voci in ${streetName}`}
             accessibilityHint="Apre il feed con la ricerca su questa via"
             className="mt-3 flex-row items-center rounded-2xl bg-white p-4"
             style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
@@ -673,7 +681,7 @@ export default function PermitDetail() {
               <Ionicons name="trail-sign-outline" size={18} color="#8B7355" />
             </View>
             <View className="flex-1">
-              <Text className="text-xs font-semibold text-stone-600">Altre pratiche in</Text>
+              <Text className="text-xs font-semibold text-stone-600">Altre voci in</Text>
               <Text className="text-[15px] font-semibold text-ink-800" numberOfLines={1}>
                 {streetName}
               </Text>

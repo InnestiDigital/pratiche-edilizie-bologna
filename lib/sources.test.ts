@@ -6,6 +6,7 @@ import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
   CATEGORY_NOUNS,
+  CATEGORY_DETAIL_TITLE,
   CATEGORY_HAS_STATUS_SIGNAL,
   type Category,
 } from './sources';
@@ -123,6 +124,9 @@ describe('CATEGORY_* maps', () => {
 
       expect(CATEGORY_NOUNS[category].singularNew.length).toBeGreaterThan(0);
       expect(CATEGORY_NOUNS[category].pluralNew.length).toBeGreaterThan(0);
+
+      expect(typeof CATEGORY_DETAIL_TITLE[category]).toBe('string');
+      expect(CATEGORY_DETAIL_TITLE[category].length).toBeGreaterThan(0);
     }
   );
 
@@ -131,7 +135,21 @@ describe('CATEGORY_* maps', () => {
     expect(Object.keys(CATEGORY_LABELS).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_COLORS).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_NOUNS).sort()).toEqual(expected);
+    expect(Object.keys(CATEGORY_DETAIL_TITLE).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_HAS_STATUS_SIGNAL).sort()).toEqual(expected);
+  });
+
+  it('gives each category a category-specific detail-screen title', () => {
+    // The rebrand's category-neutral promise: no non-edilizia row reads "Pratica".
+    expect(CATEGORY_DETAIL_TITLE.edilizia).toBe('Dettaglio Pratica');
+    expect(CATEGORY_DETAIL_TITLE.cantieri).toBe('Dettaglio Cantiere');
+    expect(CATEGORY_DETAIL_TITLE.commercio).toBe('Dettaglio Attività');
+    expect(CATEGORY_DETAIL_TITLE.eventi).toBe('Dettaglio Evento');
+    expect(CATEGORY_DETAIL_TITLE.segnalazioni).toBe('Dettaglio Segnalazione');
+    // Only edilizia keeps the word "Pratica".
+    for (const c of CATEGORIES) {
+      if (c !== 'edilizia') expect(CATEGORY_DETAIL_TITLE[c]).not.toMatch(/Pratica/);
+    }
   });
 });
 

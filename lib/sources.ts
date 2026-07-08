@@ -37,6 +37,22 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 };
 
 /**
+ * Header title for the permit-detail screen, per category. Since the rebrand to
+ * "Civico" the app is category-neutral (five open-data domains, not just building
+ * permits), so a hard-coded "Dettaglio Pratica" mislabels a cantiere / evento /
+ * segnalazione. Each category names what it actually is; the detail screen reads
+ * this off the loaded row's `category`. Exhaustive `Record<Category, …>` so a new
+ * category cannot ship without deciding its detail-screen title.
+ */
+export const CATEGORY_DETAIL_TITLE: Record<Category, string> = {
+  edilizia: 'Dettaglio Pratica',
+  cantieri: 'Dettaglio Cantiere',
+  commercio: 'Dettaglio Attività',
+  eventi: 'Dettaglio Evento',
+  segnalazioni: 'Dettaglio Segnalazione',
+};
+
+/**
  * The per-category soft-badge palette (parchment-toned, matching `FILING_COLORS`
  * in `constants.ts`). `bg` is the soft badge fill, `text` the saturated accent
  * (also used as a leading dot/marker color). Exhaustive `Record<Category, …>` so

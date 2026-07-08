@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, Alert, Linking } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
-import { TowersMark } from '../../components/TowersMark';
+import { CivicoMark } from '../../components/CivicoMark';
 import { SettingsSkeleton } from '../../components/SettingsSkeleton';
 import {
   QUARTIERI,
@@ -448,7 +448,7 @@ export default function SettingsScreen() {
         {/* App identity — brand mark, name, version (single source: app.json) */}
         <View className="flex-row items-center border-b border-parchment-200 px-4 py-4">
           <View className="mr-3 h-11 w-11 items-center justify-center rounded-2xl bg-brick-600">
-            <TowersMark size={24} color="#F5F0E8" />
+            <CivicoMark size={24} color="#F5F0E8" />
           </View>
           <View className="flex-1">
             <Text className="text-[15px] font-bold text-ink-800">{APP_NAME}</Text>

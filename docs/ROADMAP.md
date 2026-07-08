@@ -120,6 +120,12 @@ commercio+segnalazioni (~400 richieste sequenziali sulla finestra recente) può 
 budget iOS (~30s) — il primo popolamento va fatto dal tab Aggiorna (foreground). Mitigazione
 futura se serve: sync incrementale per data di ultimo sync invece della finestra fissa 2 anni.
 
+**Manutenzione pendente (SDK 54, lug 2026):** `expo-background-fetch` è deprecato a favore di
+`expo-background-task` (WorkManager/BGTaskScheduler). Funziona ancora in SDK 54; migrare
+deliberatamente (tocca `background-sync.ts`, gli entitlements in `app.json` e il contratto
+`BackgroundFetchResult`) — non in drive-by, e testare su build reale (non Expo Go, dove il
+background non gira comunque).
+
 ---
 
 ## 4. Rebrand — da "Pratiche Edilizie Bologna" a brand civico

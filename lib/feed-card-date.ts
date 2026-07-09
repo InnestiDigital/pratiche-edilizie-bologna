@@ -20,10 +20,13 @@
 
 import { formatItDate } from './format-date';
 import type { SortOption } from './build-feed-query';
+import { CATEGORY_TIMELINE_LABELS, type Category } from './sources';
 
 export type FeedCardDateKind = 'richiesta' | 'chiusura' | 'rilevata';
 
 export interface FeedCardDateInput {
+  /** Drives the category-appropriate `chiusura` label + icon (see `chiusuraLabelIcon`). */
+  category: Category;
   source_updated_at: string | null;
   date_issued: string | null;
   first_seen_at: string | null;
@@ -58,6 +61,8 @@ const FIELDS: Record<FeedCardDateKind, Field> = {
   },
   chiusura: {
     kind: 'chiusura',
+    // Completion default (edilizia/commercio/segnalazioni); `chiusuraLabelIcon`
+    // overrides these for categories whose `date_issued` is merely scheduled.
     label: 'Conclusa',
     icon: 'checkmark-circle-outline',
     raw: (p) => p.date_issued,
@@ -81,6 +86,24 @@ const PREFERENCE: Record<SortOption, FeedCardDateKind[]> = {
   newest: ['rilevata', 'richiesta', 'chiusura'],
   oldest: ['rilevata', 'richiesta', 'chiusura'],
 };
+
+/**
+ * The `chiusura` field's label + icon depend on what `date_issued` MEANS for the
+ * category, exactly as `buildPermitTimeline` branches on `chiusuraKind`: a real
+ * conclusion (`completion` — edilizia/commercio/segnalazioni) reads as a compact
+ * "Conclusa" with a done-check; a merely-scheduled date (`scheduled` — a
+ * cantiere's "Fine lavori", an evento's future "Data dell'evento") takes the
+ * category's own date name + a neutral calendar marker, so the card never claims
+ * an in-corso/in-programma record is "Conclusa" on a date that hasn't happened.
+ * `richiesta`/`rilevata` are category-independent and keep their static labels.
+ */
+function resolveLabelIcon(field: Field, category: Category): { label: string; icon: string } {
+  if (field.kind !== 'chiusura') return { label: field.label, icon: field.icon };
+  const labels = CATEGORY_TIMELINE_LABELS[category];
+  return labels.chiusuraKind === 'completion'
+    ? { label: field.label, icon: field.icon }
+    : { label: labels.chiusura, icon: 'calendar-outline' };
+}
 
 /** The date field chosen for a permit under a sort — with its raw ODS string. */
 export interface PickedFeedDateField {
@@ -110,7 +133,8 @@ export function pickFeedDateField(
     const raw = field.raw(permit);
     if (formatItDate(raw) !== null) {
       // raw is non-null here: formatItDate only returns non-null for a non-blank string.
-      return { kind: field.kind, label: field.label, icon: field.icon, raw: raw as string };
+      const { label, icon } = resolveLabelIcon(field, permit.category);
+      return { kind: field.kind, label, icon, raw: raw as string };
     }
   }
   return null;

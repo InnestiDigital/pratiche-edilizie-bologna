@@ -7,6 +7,7 @@ function permit(
   dates: Partial<FeedCardDateInput> & { id: number }
 ): FeedCardDateInput & { id: number } {
   return {
+    category: 'edilizia',
     source_updated_at: null,
     date_issued: null,
     first_seen_at: null,

@@ -684,6 +684,10 @@ function FilterPanel({
   activeCount: number;
   onReset: () => void;
 }) {
+  // Under "Tutte" the Stato section is the full 13-status wall (every category's
+  // vocabulary mixed) — the heaviest block on the sheet. Collapse it behind a
+  // disclosure, default closed, so the common unscoped view stays scannable.
+  const [statusExpanded, setStatusExpanded] = useState(false);
   return (
     <View className="border-b border-stone-200 bg-white px-4 pb-3">
       {/* Panel header: title + an in-panel "Azzera" reset. The collapsed
@@ -859,44 +863,75 @@ function FilterPanel({
         if (applicable !== null && applicable.size === 0) return null;
         const keys =
           applicable === null ? STATUS_KEYS : STATUS_KEYS.filter((s) => applicable.has(s));
+        // Collapse only the unscoped wall; a scoped signal-category shows its short
+        // list expanded as before. The header carries a count so an active status
+        // filter stays visible while the section is closed.
+        const collapsible = activeCategory === null;
+        const activeInSection = keys.reduce((n, s) => (activeStatuses.has(s) ? n + 1 : n), 0);
+        const showChips = !collapsible || statusExpanded;
         return (
           <>
-            <Text className="mb-1.5 text-xs font-semibold text-stone-600">Stato</Text>
-            <View className="flex-row flex-wrap">
-              {keys.map((s) => {
-                const active = activeStatuses.has(s);
-                const dot = STATUS_COLORS[s] ?? '#9ca3af';
-                // Under a single signal-category the chip agrees in gender with that
-                // category's noun (edilizia/commercio `concluso` → "Conclusa"), so the
-                // filter matches the pills the cards now show. Under "Tutte" the list is
-                // category-mixed → keep the shared generic label.
-                const label = activeCategory
-                  ? statusLabelFor(s, activeCategory, STATUS_LABELS[s] ?? s)
-                  : (STATUS_LABELS[s] ?? s);
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => toggleStatus(s)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Stato ${label}`}
-                    accessibilityState={{ selected: active }}
-                    className={`mb-1.5 mr-1.5 flex-row items-center rounded-full border px-3 py-1.5 ${
-                      active
-                        ? 'border-brick-600 bg-brick-50'
-                        : 'border-transparent bg-parchment-100'
-                    }`}>
-                    <View
-                      className="mr-1.5 h-2 w-2 rounded-full"
-                      style={{ backgroundColor: dot }}
-                    />
-                    <Text
-                      className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {collapsible ? (
+              <Pressable
+                onPress={() => setStatusExpanded((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel="Stato"
+                accessibilityState={{ expanded: statusExpanded }}
+                hitSlop={8}
+                className="mb-1.5 flex-row items-center">
+                <Text className="text-xs font-semibold text-stone-600">Stato</Text>
+                {activeInSection > 0 && (
+                  <View className="ml-1.5 rounded-full bg-brick-50 px-1.5 py-0.5">
+                    <Text className="text-[10px] font-bold text-brick-600">{activeInSection}</Text>
+                  </View>
+                )}
+                <Ionicons
+                  name={statusExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color="#78716c"
+                  style={{ marginLeft: 4 }}
+                />
+              </Pressable>
+            ) : (
+              <Text className="mb-1.5 text-xs font-semibold text-stone-600">Stato</Text>
+            )}
+            {showChips && (
+              <View className="flex-row flex-wrap">
+                {keys.map((s) => {
+                  const active = activeStatuses.has(s);
+                  const dot = STATUS_COLORS[s] ?? '#9ca3af';
+                  // Under a single signal-category the chip agrees in gender with that
+                  // category's noun (edilizia/commercio `concluso` → "Conclusa"), so the
+                  // filter matches the pills the cards now show. Under "Tutte" the list is
+                  // category-mixed → keep the shared generic label.
+                  const label = activeCategory
+                    ? statusLabelFor(s, activeCategory, STATUS_LABELS[s] ?? s)
+                    : (STATUS_LABELS[s] ?? s);
+                  return (
+                    <Pressable
+                      key={s}
+                      onPress={() => toggleStatus(s)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Stato ${label}`}
+                      accessibilityState={{ selected: active }}
+                      className={`mb-1.5 mr-1.5 flex-row items-center rounded-full border px-3 py-1.5 ${
+                        active
+                          ? 'border-brick-600 bg-brick-50'
+                          : 'border-transparent bg-parchment-100'
+                      }`}>
+                      <View
+                        className="mr-1.5 h-2 w-2 rounded-full"
+                        style={{ backgroundColor: dot }}
+                      />
+                      <Text
+                        className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </>
         );
       })()}

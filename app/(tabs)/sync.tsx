@@ -181,10 +181,10 @@ export default function SyncScreen() {
             <Pressable
               onPress={handleGoToFeed}
               accessibilityRole="button"
-              accessibilityLabel="Vai alle pratiche"
+              accessibilityLabel="Esplora le voci"
               className="mt-4 flex-row items-center rounded-xl bg-brick-600 px-5 py-3">
-              <Ionicons name="document-text-outline" size={16} color="white" />
-              <Text className="ml-2 font-bold text-white">Vai alle Pratiche</Text>
+              <Ionicons name="compass-outline" size={16} color="white" />
+              <Text className="ml-2 font-bold text-white">Esplora le voci</Text>
             </Pressable>
           </View>
         )}

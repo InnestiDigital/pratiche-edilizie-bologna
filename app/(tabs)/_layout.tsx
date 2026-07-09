@@ -24,10 +24,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Pratiche',
+          // Category-neutral label + icon: the feed spans all 5 civic categories
+          // (edilizia/cantieri/commercio/eventi/segnalazioni), so a permit-document
+          // glyph + "Pratiche" framed the app as permit-only and clashed with the
+          // "Civico" lockup in the same header. "Esplora" + a compass reads as browse.
+          title: 'Esplora',
           headerTitle: () => <HeaderBrand title={APP_NAME} />,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size} color={color} />
+            <Ionicons name="compass-outline" size={size} color={color} />
           ),
         }}
       />

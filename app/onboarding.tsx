@@ -239,7 +239,7 @@ export default function OnboardingScreen() {
           />
           <FeatureRow
             icon="notifications-outline"
-            text="Ricevi un avviso quando vengono pubblicate nuove pratiche."
+            text="Ricevi un avviso quando vengono pubblicate nuove voci."
           />
           <FeatureRow
             icon="lock-closed-outline"

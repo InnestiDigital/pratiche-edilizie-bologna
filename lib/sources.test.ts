@@ -10,6 +10,8 @@ import {
   CATEGORY_REFERENCE_LABEL,
   CATEGORY_REFERENCE_LABEL_LONG,
   CATEGORY_HAS_STATUS_SIGNAL,
+  CATEGORY_DESCRIPTIONS,
+  datasetLabelFor,
   type Category,
 } from './sources';
 import { DATASETS, type DatasetKey } from './constants';
@@ -135,6 +137,10 @@ describe('CATEGORY_* maps', () => {
 
       expect(typeof CATEGORY_REFERENCE_LABEL_LONG[category]).toBe('string');
       expect(CATEGORY_REFERENCE_LABEL_LONG[category].length).toBeGreaterThan(0);
+
+      // Every category has a plain-Italian detail explainer (a full sentence).
+      expect(typeof CATEGORY_DESCRIPTIONS[category]).toBe('string');
+      expect(CATEGORY_DESCRIPTIONS[category].length).toBeGreaterThan(10);
     }
   );
 
@@ -147,6 +153,7 @@ describe('CATEGORY_* maps', () => {
     expect(Object.keys(CATEGORY_REFERENCE_LABEL).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_REFERENCE_LABEL_LONG).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_HAS_STATUS_SIGNAL).sort()).toEqual(expected);
+    expect(Object.keys(CATEGORY_DESCRIPTIONS).sort()).toEqual(expected);
   });
 
   it('labels the detail id line "Prot." only where the id is a real protocollo', () => {
@@ -181,6 +188,23 @@ describe('CATEGORY_* maps', () => {
     for (const c of CATEGORIES) {
       if (c !== 'edilizia') expect(CATEGORY_DETAIL_TITLE[c]).not.toMatch(/Pratica/);
     }
+  });
+});
+
+describe('datasetLabelFor', () => {
+  it('maps a stored dataset key to its human source label', () => {
+    // Non-edilizia keys: the detail "Dataset" row + explainer card read the human
+    // label, not the raw uppercase key ("Eventi culturali", not "EVENTI").
+    expect(datasetLabelFor('eventi')).toBe('Eventi culturali');
+    expect(datasetLabelFor('lavori')).toBe('Cantieri stradali');
+    expect(datasetLabelFor('commercio')).toBe('Attività commerciali');
+    expect(datasetLabelFor('segnalazioni')).toBe('Segnalazioni civiche');
+    // Edilizia keys carry their DATASETS label.
+    expect(datasetLabelFor('pdc')).toBe('Permesso di Costruire');
+  });
+
+  it('falls back to the raw key for an unknown dataset', () => {
+    expect(datasetLabelFor('nonexistent')).toBe('nonexistent');
   });
 });
 

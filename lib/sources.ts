@@ -53,6 +53,28 @@ export const CATEGORY_DETAIL_TITLE: Record<Category, string> = {
 };
 
 /**
+ * Plain-Italian one-line explainer of what each category's records ARE, for the
+ * detail-screen "Che cos'è" card. Edilizia rows get the richer per-filing-type
+ * explainer (`FILING_TYPE_DESCRIPTIONS` — PDC vs SCIA vs CILA differ and matter),
+ * so its entry here is the neutral fallback and normally unused; every OTHER
+ * category has no filing-type nuance, so this is the card that keeps a cantiere /
+ * commercio / evento / segnalazione detail from feeling thinner than an edilizia
+ * one (previously they showed only a bare uppercase "Dataset" row). Neutral,
+ * jargon-free, no legal references — the sibling of `FILING_TYPE_DESCRIPTIONS`.
+ * Exhaustive `Record<Category, …>`: a new category cannot ship without one.
+ */
+export const CATEGORY_DESCRIPTIONS: Record<Category, string> = {
+  edilizia: 'Titoli e pratiche edilizie presentati al Comune di Bologna.',
+  cantieri:
+    'Cantieri e lavori stradali del Comune, in corso o in programma sul territorio cittadino.',
+  commercio:
+    'Aperture, subingressi e modifiche di attività commerciali comunicati al Comune di Bologna.',
+  eventi: 'Eventi culturali in programma a Bologna, dall’agenda ufficiale del Comune.',
+  segnalazioni:
+    'Segnalazioni inviate dai cittadini al Comune attraverso il servizio di relazione con il pubblico.',
+};
+
+/**
  * Per-category labels for the detail-screen "Cronologia" timeline. The stored
  * `source_updated_at` and `date_issued` columns hold DIFFERENT real-world dates
  * per source — for edilizia they are the filing request + closing, but for a
@@ -320,6 +342,24 @@ export const SOURCES = {
 
 /** Every source key in the registry (edilizia today; widens as sources are added). */
 export type SourceKey = keyof typeof SOURCES;
+
+/**
+ * String-indexable view of {@link SOURCES}. `SOURCES` is inferred as a narrow
+ * literal (for autocompletion on the known keys), so indexing it by a plain
+ * `string` — e.g. a stored `permits.dataset` value — is a type error. This
+ * widening assignment (no `as`) exposes the same object as a lookup keyed by any
+ * string, returning `undefined` for an unknown dataset key.
+ */
+const SOURCE_BY_KEY: Record<string, SourceConfig> = SOURCES;
+
+/**
+ * Human dataset label for a stored `permits.dataset` key (e.g. `'eventi'` →
+ * "Eventi culturali", `'pdc'` → "Permesso di Costruire"). Falls back to the raw
+ * key for an unrecognized dataset rather than throwing.
+ */
+export function datasetLabelFor(datasetKey: string): string {
+  return SOURCE_BY_KEY[datasetKey]?.label ?? datasetKey;
+}
 
 /**
  * Compile-time guarantee that every edilizia `DatasetKey` has a `SOURCES` entry.

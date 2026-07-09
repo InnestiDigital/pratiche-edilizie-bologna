@@ -16,6 +16,10 @@ import {
   CATEGORY_DETAIL_TITLE,
   CATEGORY_REFERENCE_LABEL,
   CATEGORY_REFERENCE_LABEL_LONG,
+  CATEGORY_DESCRIPTIONS,
+  CATEGORY_LABELS,
+  CATEGORY_COLORS,
+  datasetLabelFor,
 } from '../../lib/sources';
 import { getDb } from '../../lib/db';
 import {
@@ -546,6 +550,19 @@ export default function PermitDetail() {
   const filingFullName = FILING_TYPE_FULL_NAMES[filingType];
   const filingDescription = FILING_TYPE_DESCRIPTIONS[filingType];
 
+  // Human dataset name (e.g. "Eventi culturali", "Permesso di Costruire") from the
+  // source registry — replaces the raw uppercase dataset key both in the explainer
+  // card title and in the "Dataset" fact row below.
+  const datasetLabel = datasetLabelFor(permit.dataset);
+
+  // Non-edilizia categories have no per-filing-type nuance, so they get a single
+  // category-level "Che cos'è" card (edilizia keeps the richer filing-type one
+  // above). This closes the asymmetry where a cantiere / commercio / evento /
+  // segnalazione detail showed only a bare uppercase "Dataset" row and read as
+  // less finished than an edilizia detail.
+  const categoryColor = CATEGORY_COLORS[permit.category] ?? CATEGORY_COLORS.edilizia;
+  const categoryDescription = filingDescription ? null : CATEGORY_DESCRIPTIONS[permit.category];
+
   const handleShare = async () => {
     const message = buildShareMessage({
       filingLabel,
@@ -725,6 +742,33 @@ export default function PermitDetail() {
           </View>
         )}
 
+        {/* Che cos'è (categoria) — plain-Italian explainer for a non-edilizia
+            category, the sibling of the filing-type card above. Renders only when
+            there is no filing-type description (i.e. every category except
+            edilizia), so the two never both appear. */}
+        {categoryDescription && (
+          <View
+            className="mt-3 rounded-2xl bg-white p-5"
+            style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+            <View className="flex-row items-start">
+              <View
+                className="mr-3 h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: categoryColor.bg }}>
+                <Ionicons name="information-circle-outline" size={18} color={categoryColor.text} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs font-bold" style={{ color: categoryColor.text }}>
+                  {CATEGORY_LABELS[permit.category]}
+                </Text>
+                <Text className="text-[15px] font-bold leading-5 text-ink-800">{datasetLabel}</Text>
+                <Text className="mt-1.5 text-[13px] leading-5 text-stone-600">
+                  {categoryDescription}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Procedimento */}
         {permit.procedimento && (
           <View
@@ -758,12 +802,7 @@ export default function PermitDetail() {
               value={permit.status_raw}
             />
           )}
-          <InfoRow
-            icon="layers-outline"
-            label="Dataset"
-            value={permit.dataset.toUpperCase()}
-            isLast
-          />
+          <InfoRow icon="layers-outline" label="Dataset" value={datasetLabel} isLast />
         </View>
 
         {/* Tags — each is a shortcut into the feed filtered to that topic tag

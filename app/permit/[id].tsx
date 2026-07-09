@@ -65,14 +65,16 @@ import {
 // Visual treatment for the "vs. local median" caption: a muted, secondary line
 // under the green "Conclusa in …" duration. Green when faster, neutral stone when
 // typical, amber (informative, not alarming) when slower — an over-median wait is
-// context, not an error.
+// context, not an error. "slower" uses an hourglass (a longer wait) rather than an
+// up-trend arrow, whose upward direction reads as "better/more" and clashes with a
+// slower-than-median outcome.
 const PROCESSING_COMPARISON_STYLE: Record<
   'faster' | 'typical' | 'slower',
-  { icon: 'trending-down-outline' | 'remove-circle-outline' | 'trending-up-outline'; color: string }
+  { icon: 'trending-down-outline' | 'remove-circle-outline' | 'hourglass-outline'; color: string }
 > = {
   faster: { icon: 'trending-down-outline', color: '#16a34a' },
   typical: { icon: 'remove-circle-outline', color: '#78716c' },
-  slower: { icon: 'trending-up-outline', color: '#d97706' },
+  slower: { icon: 'hourglass-outline', color: '#d97706' },
 };
 
 function InfoRow({

@@ -18,8 +18,13 @@
  * that is not a JSON object of string values is dropped: invalid JSON, a JSON
  * array/primitive, or a non-string field all yield `{}` / are filtered out,
  * never a throw.
+ *
+ * Exported so the write side that merges NEW keys into an existing `extra` (the
+ * civici geocode back-fill, `civici-backfill.ts`) reuses this one canonical
+ * decoder instead of re-deriving the same guarded parse — a second parser would
+ * be free to drift from this one's null/array/non-string handling.
  */
-function decodeExtra(raw: string): Record<string, string> {
+export function decodeExtra(raw: string): Record<string, string> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);

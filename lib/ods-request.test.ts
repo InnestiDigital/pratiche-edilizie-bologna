@@ -5,6 +5,7 @@ import {
   buildPageParams,
   buildDateRangeWhere,
   buildSinceWhere,
+  buildCodviaInWhere,
   YEAR_REFINE_FIELD,
 } from './ods-request';
 
@@ -134,5 +135,31 @@ describe('buildSinceWhere', () => {
   it('rejects a bound that is not a YYYY-MM-DD date', () => {
     expect(() => buildSinceWhere('start', '2026')).toThrow(RangeError);
     expect(() => buildSinceWhere('start', "2026-06-28' OR 1=1")).toThrow(RangeError);
+  });
+});
+
+describe('buildCodviaInWhere', () => {
+  it('builds an ODS-QL in-list clause with bare integer codes', () => {
+    expect(buildCodviaInWhere([12, 47, 350])).toBe('codvia in (12, 47, 350)');
+  });
+
+  it('handles a single code', () => {
+    expect(buildCodviaInWhere([350])).toBe('codvia in (350)');
+  });
+
+  it('is URL-encodable into a well-formed where param', () => {
+    const where = buildCodviaInWhere([12, 47]);
+    const qs = new URLSearchParams(buildPageParams({ offset: 0, where })).toString();
+    expect(qs).toBe('limit=100&offset=0&where=codvia+in+%2812%2C+47%29');
+  });
+
+  it('rejects an empty list', () => {
+    expect(() => buildCodviaInWhere([])).toThrow(RangeError);
+  });
+
+  it('rejects a non-integer or negative code', () => {
+    expect(() => buildCodviaInWhere([12, -1])).toThrow(RangeError);
+    expect(() => buildCodviaInWhere([12, 3.5])).toThrow(RangeError);
+    expect(() => buildCodviaInWhere([Number.NaN])).toThrow(RangeError);
   });
 });

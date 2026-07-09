@@ -112,6 +112,39 @@ export function buildSinceWhere(field: string, isoDate: string): string {
 }
 
 /**
+ * Build an ODS-QL `in`-list `where` clause scoping a page to a set of street
+ * codes: `codvia in (12, 47, 350)`.
+ *
+ * This is the network contract for the P4 "widen Nei dintorni to edilizia"
+ * scoped gazetteer fetch (docs/P4-map-radius.md §3, director mandate #1): the
+ * `rifter_civici_pt` gazetteer is ~77 600 rows — far past the ODS `MAX_OFFSET`
+ * (9900) cap, so a naive full walk silently loses ~87% of it. Instead we fetch
+ * ONLY the civici for the `codvia` values that actually appear in local edilizia
+ * rows (a small subset of all Bologna streets), batched under the cap by
+ * {@link import('./civici-fetch-plan').planCiviciFetch}. Each batch's `codvia`
+ * set becomes one of these clauses.
+ *
+ * Codes are emitted as bare integers (the ODS `codvia` field is numeric, so no
+ * quoting) in the order given — `planCiviciFetch` passes an ascending, de-duped
+ * set, so the string is deterministic. Each is validated as a non-negative
+ * integer for the same reason as {@link buildDateRangeWhere}: a stray
+ * `NaN`/negative would otherwise produce a silently malformed (or empty) page
+ * with no error.
+ *
+ * @throws {RangeError} when `codvias` is empty or any code is not a
+ *   non-negative integer.
+ */
+export function buildCodviaInWhere(codvias: readonly number[]): string {
+  if (codvias.length === 0) {
+    throw new RangeError('buildCodviaInWhere: codvias must be a non-empty list');
+  }
+  for (const codvia of codvias) {
+    requireNonNegativeInt('codvia', codvia);
+  }
+  return `codvia in (${codvias.join(', ')})`;
+}
+
+/**
  * Build the query params for one page fetch. `limit`/`offset` are always
  * present; `year`, when given, adds the `richiesta_anno_prot:<year>` refine, and
  * `where`, when given, is passed through verbatim as the ODS-QL `where` clause.

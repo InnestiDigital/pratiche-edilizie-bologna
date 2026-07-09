@@ -1,4 +1,5 @@
-import { View, Text, Pressable, type DimensionValue } from 'react-native';
+import { useState } from 'react';
+import { View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { homeCircleFraction, type MapPin, type MapRegion, type HomeMarker } from '../lib/map-pins';
 
@@ -27,19 +28,25 @@ export function PermitMap({
   home?: HomeMarker | null;
 }) {
   const router = useRouter();
+  // Measured container size (px). We project into pixels rather than percentages so
+  // the home radius can render as a TRUE circle: sizing it as `w%`-of-width ×
+  // `h%`-of-height stretched it into a vertical pill on the tall phone viewport.
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const onLayout = (e: LayoutChangeEvent) =>
+    setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height });
+
   const minLat = region.latitude - region.latitudeDelta / 2;
   const minLon = region.longitude - region.longitudeDelta / 2;
 
   const clamp = (v: number) => Math.min(0.94, Math.max(0.06, v));
-  const project = (lat: number, lon: number): { left: DimensionValue; top: DimensionValue } => {
+  const project = (lat: number, lon: number): { left: number; top: number } => {
     const x = (lon - minLon) / region.longitudeDelta;
     const y = 1 - (lat - minLat) / region.latitudeDelta; // higher lat → nearer top
-    return { left: `${clamp(x) * 100}%`, top: `${clamp(y) * 100}%` };
+    return { left: clamp(x) * (size?.w ?? 0), top: clamp(y) * (size?.h ?? 0) };
   };
-  const norm = (pin: MapPin) => project(pin.lat, pin.lon);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f0ece3', overflow: 'hidden' }}>
+    <View style={{ flex: 1, backgroundColor: '#f0ece3', overflow: 'hidden' }} onLayout={onLayout}>
       {/* faint grid to read as a map plane */}
       {[0.25, 0.5, 0.75].map((f) => (
         <View
@@ -67,26 +74,30 @@ export function PermitMap({
           }}
         />
       ))}
-      {/* Home radius ring — an ellipse sized by the circle's fraction of the region
-          span (metric on the native map, approximated here for the placeholder). */}
+      {/* Home radius ring — a TRUE circle centered on the home pin. Its diameter is
+          the metric radius mapped to pixels: the region's two axes stretch to fill
+          the container unequally, so we average the horizontal and vertical pixel
+          extents of the radius and draw one round ring (the native map draws a real
+          metric <Circle>; this schematic just needs to read as "raggio da casa",
+          not as a stretched pill). Only drawn once the container is measured. */}
       {home &&
+        size &&
         (() => {
           const c = project(home.lat, home.lon);
           const { widthFrac, heightFrac } = homeCircleFraction(home, region);
-          const w = Math.min(1.6, widthFrac);
-          const h = Math.min(1.6, heightFrac);
+          const wPx = Math.min(1.6, widthFrac) * size.w;
+          const hPx = Math.min(1.6, heightFrac) * size.h;
+          const d = (wPx + hPx) / 2; // one diameter → circle, not ellipse
           return (
             <View
               pointerEvents="none"
               style={{
                 position: 'absolute',
-                left: c.left,
-                top: c.top,
-                width: `${w * 100}%`,
-                height: `${h * 100}%`,
-                marginLeft: `${(-w * 100) / 2}%`,
-                marginTop: `${(-h * 100) / 2}%`,
-                borderRadius: 9999,
+                left: c.left - d / 2,
+                top: c.top - d / 2,
+                width: d,
+                height: d,
+                borderRadius: d / 2,
                 borderWidth: 2,
                 borderColor: 'rgba(155,35,53,0.75)',
                 backgroundColor: 'rgba(155,35,53,0.10)',
@@ -94,34 +105,34 @@ export function PermitMap({
             />
           );
         })()}
-      {pins.map((pin) => {
-        const pos = norm(pin);
-        return (
-          <Pressable
-            key={pin.id}
-            onPress={() => router.push(`/permit/${pin.id}`)}
-            style={{
-              position: 'absolute',
-              left: pos.left,
-              top: pos.top,
-              marginLeft: -7,
-              marginTop: -7,
-            }}>
-            <View
+      {size &&
+        pins.map((pin) => {
+          const pos = project(pin.lat, pin.lon);
+          return (
+            <Pressable
+              key={pin.id}
+              onPress={() => router.push(`/permit/${pin.id}`)}
               style={{
-                width: 14,
-                height: 14,
-                borderRadius: 7,
-                backgroundColor: pin.color,
-                borderWidth: 2,
-                borderColor: '#ffffff',
-              }}
-            />
-          </Pressable>
-        );
-      })}
+                position: 'absolute',
+                left: pos.left - 7,
+                top: pos.top - 7,
+              }}>
+              <View
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: 7,
+                  backgroundColor: pin.color,
+                  borderWidth: 2,
+                  borderColor: '#ffffff',
+                }}
+              />
+            </Pressable>
+          );
+        })}
       {/* Home marker — a distinct brand dot with a house glyph, over the pins. */}
       {home &&
+        size &&
         (() => {
           const pos = project(home.lat, home.lon);
           return (
@@ -129,10 +140,8 @@ export function PermitMap({
               pointerEvents="none"
               style={{
                 position: 'absolute',
-                left: pos.left,
-                top: pos.top,
-                marginLeft: -14,
-                marginTop: -14,
+                left: pos.left - 14,
+                top: pos.top - 14,
                 width: 28,
                 height: 28,
                 borderRadius: 14,

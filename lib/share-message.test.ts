@@ -7,6 +7,7 @@ const full: ShareMessageInput = {
   zone: 'Porto-Saragozza',
   procedimento: 'Ristrutturazione edilizia con cambio di destinazione d’uso',
   statusLabel: 'Rilasciata',
+  referenceLabel: 'Protocollo',
   protocol: '000481/2024',
   requestDate: '2024-11-18',
   sourceLink: 'https://opendata.comune.bologna.it/pdc/2024/481',
@@ -34,6 +35,7 @@ describe('buildShareMessage', () => {
       zone: null,
       procedimento: null,
       statusLabel: 'In attesa',
+      referenceLabel: 'Protocollo',
       protocol: '2210/2023',
       requestDate: null,
       sourceLink: null,
@@ -79,6 +81,26 @@ describe('buildShareMessage', () => {
   it('keeps an unparseable non-empty date verbatim (never a crash or Invalid Date)', () => {
     const msg = buildShareMessage({ ...full, requestDate: 'boh' });
     expect(msg).toContain('Richiesta: boh');
+  });
+
+  it('uses the category-aware reference label instead of hardcoding "Protocollo"', () => {
+    // An evento's source_id is a record id, not a protocollo — sharing it must
+    // read "Riferimento: …", not the edilizia-only "Protocollo:" copy bleed.
+    const msg = buildShareMessage({
+      ...full,
+      filingLabel: 'Evento',
+      referenceLabel: 'Riferimento',
+      protocol: '467834',
+    });
+    expect(msg).toContain('Riferimento: 467834');
+    expect(msg).not.toContain('Protocollo');
+  });
+
+  it('drops the reference line entirely when the id is blank', () => {
+    const msg = buildShareMessage({ ...full, protocol: '   ' });
+    expect(msg).not.toContain('Protocollo');
+    expect(msg).not.toContain('Riferimento');
+    expect(msg).not.toContain('\n\n');
   });
 
   it('trims surrounding whitespace on the optional lines it keeps', () => {

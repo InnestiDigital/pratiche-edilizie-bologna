@@ -28,7 +28,13 @@ export interface ShareMessageInput {
   procedimento: string | null;
   /** Human status label, e.g. "Rilasciata". */
   statusLabel: string;
-  /** Formatted protocol, e.g. "000481/2024". */
+  /**
+   * Category-aware label for the reference id line, e.g. "Protocollo" for
+   * edilizia/commercio, "Riferimento" for cantieri/eventi/segnalazioni whose
+   * `source_id` is a record/ticket id, not an administrative protocollo.
+   */
+  referenceLabel: string;
+  /** Formatted reference id, e.g. "000481/2024"; line dropped when blank. */
   protocol: string;
   /** Raw ODS request date (`richiesta_data`); formatted here, omitted when absent. */
   requestDate: string | null;
@@ -46,7 +52,7 @@ const NO_ADDRESS = 'Indirizzo non disponibile';
  *   2. `<zone>`
  *   3. `<procedimento>`
  *   4. `Stato: <status>`
- *   5. `Protocollo: <protocol>`
+ *   5. `<referenceLabel>: <protocol>`   (dropped when the reference id is blank)
  *   6. `Richiesta: <dd/mm/yyyy>`
  *   7. `<portal link>`
  *
@@ -56,13 +62,14 @@ const NO_ADDRESS = 'Indirizzo non disponibile';
 export function buildShareMessage(input: ShareMessageInput): string {
   const address = nonBlank(input.address) ?? NO_ADDRESS;
   const requestDate = formatItDate(input.requestDate);
+  const protocol = nonBlank(input.protocol);
 
   const lines: (string | null)[] = [
     `${input.filingLabel} — ${address}`,
     nonBlank(input.zone),
     nonBlank(input.procedimento),
     `Stato: ${input.statusLabel}`,
-    `Protocollo: ${input.protocol}`,
+    protocol ? `${input.referenceLabel}: ${protocol}` : null,
     requestDate ? `Richiesta: ${requestDate}` : null,
     nonBlank(input.sourceLink),
   ];

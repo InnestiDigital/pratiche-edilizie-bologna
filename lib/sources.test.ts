@@ -8,6 +8,7 @@ import {
   CATEGORY_NOUNS,
   CATEGORY_DETAIL_TITLE,
   CATEGORY_REFERENCE_LABEL,
+  CATEGORY_REFERENCE_LABEL_LONG,
   CATEGORY_HAS_STATUS_SIGNAL,
   type Category,
 } from './sources';
@@ -131,6 +132,9 @@ describe('CATEGORY_* maps', () => {
 
       expect(typeof CATEGORY_REFERENCE_LABEL[category]).toBe('string');
       expect(CATEGORY_REFERENCE_LABEL[category].length).toBeGreaterThan(0);
+
+      expect(typeof CATEGORY_REFERENCE_LABEL_LONG[category]).toBe('string');
+      expect(CATEGORY_REFERENCE_LABEL_LONG[category].length).toBeGreaterThan(0);
     }
   );
 
@@ -141,6 +145,7 @@ describe('CATEGORY_* maps', () => {
     expect(Object.keys(CATEGORY_NOUNS).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_DETAIL_TITLE).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_REFERENCE_LABEL).sort()).toEqual(expected);
+    expect(Object.keys(CATEGORY_REFERENCE_LABEL_LONG).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_HAS_STATUS_SIGNAL).sort()).toEqual(expected);
   });
 
@@ -153,6 +158,16 @@ describe('CATEGORY_* maps', () => {
     expect(CATEGORY_REFERENCE_LABEL.cantieri).toBe('Rif.');
     expect(CATEGORY_REFERENCE_LABEL.eventi).toBe('Rif.');
     expect(CATEGORY_REFERENCE_LABEL.segnalazioni).toBe('Rif.');
+  });
+
+  it('spells out the same protocollo/riferimento split in the long-form label', () => {
+    // The prose (share) surface uses full words; the semantic split must match
+    // the abbreviated map so the two never drift.
+    expect(CATEGORY_REFERENCE_LABEL_LONG.edilizia).toBe('Protocollo');
+    expect(CATEGORY_REFERENCE_LABEL_LONG.commercio).toBe('Protocollo');
+    expect(CATEGORY_REFERENCE_LABEL_LONG.cantieri).toBe('Riferimento');
+    expect(CATEGORY_REFERENCE_LABEL_LONG.eventi).toBe('Riferimento');
+    expect(CATEGORY_REFERENCE_LABEL_LONG.segnalazioni).toBe('Riferimento');
   });
 
   it('gives each category a category-specific detail-screen title', () => {

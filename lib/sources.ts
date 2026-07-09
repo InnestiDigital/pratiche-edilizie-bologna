@@ -117,6 +117,21 @@ export const CATEGORY_REFERENCE_LABEL: Record<Category, string> = {
 };
 
 /**
+ * Full-word form of {@link CATEGORY_REFERENCE_LABEL} for prose surfaces (the
+ * shared/pasted text), where the compact "Prot." / "Rif." abbreviations of the
+ * detail line read as cramped. Same per-category decision — a protocollo is a
+ * protocollo, a record id is a riferimento — just spelled out. Kept exhaustive
+ * so it can never drift out of sync with the abbreviated map.
+ */
+export const CATEGORY_REFERENCE_LABEL_LONG: Record<Category, string> = {
+  edilizia: 'Protocollo',
+  cantieri: 'Riferimento',
+  commercio: 'Protocollo',
+  eventi: 'Riferimento',
+  segnalazioni: 'Riferimento',
+};
+
+/**
  * The per-category soft-badge palette (parchment-toned, matching `FILING_COLORS`
  * in `constants.ts`). `bg` is the soft badge fill, `text` the saturated accent
  * (also used as a leading dot/marker color). Exhaustive `Record<Category, …>` so

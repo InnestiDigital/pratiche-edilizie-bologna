@@ -12,7 +12,11 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { HeaderBrand } from '../../components/HeaderBrand';
-import { CATEGORY_DETAIL_TITLE, CATEGORY_REFERENCE_LABEL } from '../../lib/sources';
+import {
+  CATEGORY_DETAIL_TITLE,
+  CATEGORY_REFERENCE_LABEL,
+  CATEGORY_REFERENCE_LABEL_LONG,
+} from '../../lib/sources';
 import { getDb } from '../../lib/db';
 import {
   getPermitById,
@@ -549,6 +553,7 @@ export default function PermitDetail() {
       zone: permit.zone,
       procedimento: permit.procedimento,
       statusLabel,
+      referenceLabel: CATEGORY_REFERENCE_LABEL_LONG[permit.category] ?? 'Riferimento',
       protocol,
       requestDate: permit.source_updated_at,
       sourceLink: permit.source_link,

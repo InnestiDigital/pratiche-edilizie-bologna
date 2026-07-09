@@ -15,7 +15,6 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORIES, type Category } from '../
 import { loadPreferences } from '../../lib/preferences';
 import { formatRadiusLabel } from '../../lib/home-location';
 import { PermitMap } from '../../components/PermitMap';
-import { FadeScrollRow } from '../../components/FadeScrollRow';
 
 /** Brand wine-red — matches the home marker/ring drawn in PermitMap. */
 const HOME_COLOR = '#9B2335';
@@ -140,9 +139,20 @@ export default function MapScreen() {
             borderWidth: 1,
             borderColor: '#e2d9cd',
           }}>
-          <FadeScrollRow>
+          {/* The legend is a fixed, small set (home + up to 5 categories) — wrap
+              it across lines so every item is always visible at a glance. A
+              horizontal-scroll legend hides items a still frame can never reveal;
+              legends benefit from being seen in full. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              columnGap: 16,
+              rowGap: 8,
+            }}>
             {data.home !== null && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View
                   style={{
                     width: 10,
@@ -162,15 +172,13 @@ export default function MapScreen() {
               <View
                 style={{
                   width: 1,
-                  alignSelf: 'stretch',
-                  marginVertical: 2,
-                  marginRight: 16,
+                  height: 14,
                   backgroundColor: '#d8cdbd',
                 }}
               />
             )}
             {presentCategories.map((c) => (
-              <View key={c} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+              <View key={c} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View
                   style={{
                     width: 10,
@@ -185,7 +193,7 @@ export default function MapScreen() {
                 </Text>
               </View>
             ))}
-          </FadeScrollRow>
+          </View>
         </View>
       )}
 

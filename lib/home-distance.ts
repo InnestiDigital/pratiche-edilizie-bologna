@@ -29,12 +29,17 @@ export function homeDistanceMeters(home: HomeLocation, point: Coords): number {
  * Italian decimal comma, a whole value dropping its ",0" → "~2 km"). Non-finite
  * or non-positive input collapses to the "~10 m" floor so a corrupt coordinate
  * can never render "NaN"/"-5 m" on a card.
+ *
+ * The m-vs-km branch is decided on the ROUNDED metres, not the raw input, so a
+ * value in `[995, 1000)` — which rounds up to `1000` — reads as "~1 km" rather
+ * than the contradictory "~1000 m" (a metre label at/over 1 km). Mirrors the
+ * same boundary fix in `nearby-permits.ts::formatNearbyDistance`.
  */
 export function formatDistanceApprox(meters: number): string {
   const m = Number.isFinite(meters) && meters > 0 ? meters : 0;
-  if (m < 1000) {
-    const rounded = Math.max(10, Math.round(m / 10) * 10);
-    return `~${rounded} m`;
+  const roundedM = Math.max(10, Math.round(m / 10) * 10);
+  if (roundedM < 1000) {
+    return `~${roundedM} m`;
   }
   const km = Math.round(m / 100) / 10;
   const label = Number.isInteger(km) ? `${km}` : km.toFixed(1).replace('.', ',');

@@ -49,6 +49,14 @@ describe('formatDistanceApprox', () => {
     expect(formatDistanceApprox(1970)).toBe('~2 km');
   });
 
+  it('rounds up to km at the [995,1000) boundary, never the contradictory "~1000 m"', () => {
+    expect(formatDistanceApprox(995)).toBe('~1 km');
+    expect(formatDistanceApprox(997)).toBe('~1 km');
+    expect(formatDistanceApprox(999.9)).toBe('~1 km');
+    // just below the round-up threshold stays in metres
+    expect(formatDistanceApprox(994)).toBe('~990 m');
+  });
+
   it('sanitises non-finite / negative input to the 10 m floor', () => {
     expect(formatDistanceApprox(NaN)).toBe('~10 m');
     expect(formatDistanceApprox(Infinity)).toBe('~10 m');

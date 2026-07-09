@@ -134,6 +134,12 @@ function ToggleRow({
         accessibilityLabel={a11yLabel}
         trackColor={{ false: '#e2d9cd', true: '#9B2335' }}
         thumbColor="#fdfcfa"
+        // react-native-web reads `activeThumbColor` (not `thumbColor`) for the ON
+        // state; without it the web render falls back to a teal default thumb that
+        // clashes with the crimson track. Inert on native (core Switch has no such
+        // prop and uses `thumbColor` for both states) — this only fixes the web
+        // screenshot fidelity the review loops depend on.
+        activeThumbColor="#fdfcfa"
         ios_backgroundColor="#e2d9cd"
       />
     </View>

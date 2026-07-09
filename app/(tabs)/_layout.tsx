@@ -36,6 +36,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="map"
+        options={{
+          // Map view of the followed permits' pinpoints (P4). "Mappa" + a pin glyph;
+          // a spatial companion to the "Esplora" list, sharing the same synced data.
+          title: 'Mappa',
+          headerTitle: () => <HeaderBrand title="Mappa" />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="map-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="sync"
         options={{
           title: 'Aggiorna',

@@ -7,6 +7,7 @@
  */
 import { QUARTIERI, FILING_TYPE_ORDER, type FilingType, type Quartiere } from './constants';
 import { CATEGORIES, type Category } from './sources';
+import { DEFAULT_HOME_RADIUS_M, type HomeLocation } from './home-location';
 
 export interface UserPreferences {
   zones: Quartiere[];
@@ -14,6 +15,8 @@ export interface UserPreferences {
   interests: Category[];
   tags: string[];
   onboardingDone: boolean;
+  home: HomeLocation | null;
+  homeRadiusMeters: number;
 }
 
 const FIXTURE: UserPreferences = {
@@ -22,6 +25,11 @@ const FIXTURE: UserPreferences = {
   interests: [...CATEGORIES],
   tags: [],
   onboardingDone: true,
+  // Anchored on the Navile cantiere cluster (screenshot-fixtures ids 9/13/14), so
+  // the Settings "Casa" card renders set + the feed "Vicino a casa" filter has a
+  // real neighbourhood to narrow to in the web screenshot build.
+  home: { coords: { lat: 44.5236, lon: 11.361 }, label: 'Via Stalingrado 45' },
+  homeRadiusMeters: DEFAULT_HOME_RADIUS_M,
 };
 
 export async function loadPreferences(): Promise<UserPreferences> {

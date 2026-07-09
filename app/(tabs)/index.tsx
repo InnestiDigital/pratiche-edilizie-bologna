@@ -50,7 +50,15 @@ import {
   getCommercioExtra,
   getEventoExtra,
   getSegnalazioneExtra,
+  getCoords,
 } from '../../lib/permit-extra';
+import {
+  homeFilterActive,
+  filterPermitsNearHome,
+  formatRadiusLabel,
+  DEFAULT_HOME_RADIUS_M,
+  type HomeLocation,
+} from '../../lib/home-location';
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
@@ -71,6 +79,7 @@ import {
   ONLY_NEW_CHIP_KEY,
   ONLY_FAVORITES_CHIP_KEY,
   ONLY_NOTED_CHIP_KEY,
+  ONLY_NEAR_HOME_CHIP_KEY,
   SORT_CHIP_KEY,
   STATUS_CHIP_PREFIX,
   TAG_CHIP_PREFIX,
@@ -111,6 +120,14 @@ const STATUS_DOT: Record<string, string> = {
 
 const STATUS_KEYS = Object.keys(STATUS_LABELS);
 const TAG_KEYS = Object.keys(TAG_LABELS);
+
+// "Vicino a casa" is a JS post-filter (haversine over the row's extra.lat/lon,
+// which no SQL predicate can express), so its query loads a large unpaged window
+// and filters it in memory instead of the normal LIMIT/OFFSET page. The cap
+// bounds that scan; a radius filter yields a small near-home set well under it,
+// but if a dense DB ever exceeds it the feed shows the nearest `HOME_SCAN_CAP`
+// matches (never a silent wrong page) — pagination is disabled while active.
+const HOME_SCAN_CAP = 2000;
 
 /* ── Tag Badge ──────────────────────────────────── */
 
@@ -621,6 +638,10 @@ function FilterPanel({
   toggleOnlyFavorites,
   onlyNoted,
   toggleOnlyNoted,
+  home,
+  onlyNearHome,
+  toggleOnlyNearHome,
+  homeRadiusMeters,
   period,
   setPeriod,
   sort,
@@ -641,6 +662,11 @@ function FilterPanel({
   toggleOnlyFavorites: () => void;
   onlyNoted: boolean;
   toggleOnlyNoted: () => void;
+  /** The user's home anchor; the near-home toggle only shows when this is set. */
+  home: HomeLocation | null;
+  onlyNearHome: boolean;
+  toggleOnlyNearHome: () => void;
+  homeRadiusMeters: number;
   period: FeedPeriod;
   setPeriod: (p: FeedPeriod) => void;
   sort: SortOption;
@@ -722,6 +748,29 @@ function FilterPanel({
             Solo con note
           </Text>
         </Pressable>
+        {/* "Vicino a casa" — only offered once a home is anchored (from a permit
+            detail's "Imposta come casa"); narrows the feed to rows within the
+            chosen radius of home. Names the radius so the scope is legible. */}
+        {home && (
+          <Pressable
+            onPress={toggleOnlyNearHome}
+            accessibilityRole="button"
+            accessibilityLabel={`Vicino a casa, entro ${formatRadiusLabel(homeRadiusMeters)}`}
+            accessibilityState={{ selected: onlyNearHome }}
+            className={`mb-1.5 ml-2 flex-row items-center self-start rounded-full px-3.5 py-2 ${
+              onlyNearHome ? 'bg-brick-600' : 'bg-parchment-100'
+            }`}>
+            <Ionicons
+              name={onlyNearHome ? 'home' : 'home-outline'}
+              size={14}
+              color={onlyNearHome ? 'white' : '#8B7355'}
+            />
+            <Text
+              className={`ml-1.5 text-xs font-semibold ${onlyNearHome ? 'text-white' : 'text-stone-500'}`}>
+              Vicino a casa · {formatRadiusLabel(homeRadiusMeters)}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Period (request date) */}
@@ -974,6 +1023,11 @@ export default function FeedScreen() {
   const [onlyNew, setOnlyNew] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [onlyNoted, setOnlyNoted] = useState(false);
+  // "Vicino a casa" radius filter: the toggle plus the home anchor + radius it
+  // reads (both mirrored from prefs on every reset load, like followedCategories).
+  const [onlyNearHome, setOnlyNearHome] = useState(false);
+  const [home, setHome] = useState<HomeLocation | null>(null);
+  const [homeRadiusMeters, setHomeRadiusMeters] = useState<number>(DEFAULT_HOME_RADIUS_M);
   const [period, setPeriod] = useState<FeedPeriod>('all');
   const [sort, setSort] = useState<SortOption>('request_newest');
   // `searchInput` drives the text box (updates on every keystroke so typing
@@ -1005,6 +1059,7 @@ export default function FeedScreen() {
     (onlyNew ? 1 : 0) +
     (onlyFavorites ? 1 : 0) +
     (onlyNoted ? 1 : 0) +
+    (onlyNearHome && home ? 1 : 0) +
     (sort !== 'request_newest' ? 1 : 0);
 
   const loadPermits = useCallback(
@@ -1038,10 +1093,18 @@ export default function FeedScreen() {
         sort,
       };
 
+      // Read the near-home filter from the freshly-loaded prefs (not the possibly
+      // stale `home` state), so a reset triggered right after setting a home uses
+      // the new anchor. homeFilterActive gates on both the toggle AND a home set.
+      const nearHomeActive = homeFilterActive(prefs.home, onlyNearHome);
+
       if (reset) {
         // Mirror the followed set into state so the category quick-filter row can
         // render (and re-hydrate) without waiting on the next prefs read.
         setFollowedCategories(prefs.interests);
+        // Mirror the home anchor + radius so the FilterPanel toggle and chip render.
+        setHome(prefs.home);
+        setHomeRadiusMeters(prefs.homeRadiusMeters);
         const allFilters: FeedFilters = {
           zones: prefs.zones,
           filingTypes: prefs.filingTypes,
@@ -1050,11 +1113,10 @@ export default function FeedScreen() {
         };
         const checkRows = await getPermits(db, allFilters, 1, 0);
         setHasData(checkRows.length > 0);
-        // Total matching the active filters (pagination-independent) for the
-        // result-count header; shares getPermits' WHERE so the number is exact.
-        setResultCount(await countPermits(db, filters));
         // Unfiltered total (base prefs, no in-feed refinement) — the denominator
-        // for the "N di TOTAL" header when the view is narrowed.
+        // for the "N di TOTAL" header when the view is narrowed. (The filtered
+        // result count is set below, after the rows are known: in radius mode it
+        // is the post-haversine count, which no SQL COUNT can express.)
         setTotalCount(await countPermits(db, allFilters));
         // New (unseen) permits across the whole DB — drives the "mark all seen"
         // action; global, matching markAllSeen's global UPDATE.
@@ -1068,15 +1130,32 @@ export default function FeedScreen() {
         setNotePreviews(await listNotePreviews(db));
       }
 
-      const rows = await getPermits(db, filters, 50, newOffset);
+      let rows: Permit[];
+      if (nearHomeActive && prefs.home) {
+        // Radius mode: load a large unpaged window, then haversine-filter it to
+        // the home radius in JS — coords live in the `extra` JSON, so no SQL WHERE
+        // can express proximity. Rows without a coordinate (not-yet-geocoded
+        // edilizia) are dropped by filterPermitsNearHome.
+        const scan = await getPermits(db, filters, HOME_SCAN_CAP, 0);
+        rows = filterPermitsNearHome(prefs.home, prefs.homeRadiusMeters, scan, (p) =>
+          getCoords(p.extra)
+        );
+      } else {
+        rows = await getPermits(db, filters, 50, newOffset);
+      }
+
       if (reset) {
+        // In radius mode the filtered array IS the whole result, so its length is
+        // the exact count; otherwise the paginated total comes from SQL COUNT.
+        setResultCount(nearHomeActive ? rows.length : await countPermits(db, filters));
         setPermits(rows);
-        offsetRef.current = 50;
+        offsetRef.current = nearHomeActive ? rows.length : 50;
       } else {
         setPermits((prev) => [...prev, ...rows]);
         offsetRef.current = newOffset + 50;
       }
-      setHasMore(rows.length === 50);
+      // Radius mode loaded everything in one window → no further pages to fetch.
+      setHasMore(!nearHomeActive && rows.length === 50);
       setLoading(false);
     },
     [
@@ -1088,6 +1167,7 @@ export default function FeedScreen() {
       onlyNew,
       onlyFavorites,
       onlyNoted,
+      onlyNearHome,
       period,
       sort,
       search,
@@ -1268,6 +1348,7 @@ export default function FeedScreen() {
     setOnlyNew(false);
     setOnlyFavorites(false);
     setOnlyNoted(false);
+    setOnlyNearHome(false);
     setPeriod('all');
     setSort('request_newest');
     clearSearch();
@@ -1285,6 +1366,10 @@ export default function FeedScreen() {
     onlyNew,
     onlyFavorites,
     onlyNoted,
+    // Gate on a home being set so a cleared anchor can't leave a phantom chip
+    // (the FilterPanel toggle is likewise hidden when there is no home).
+    onlyNearHome: onlyNearHome && home !== null,
+    homeRadiusLabel: formatRadiusLabel(homeRadiusMeters),
     sort,
     defaultSort: 'request_newest',
   });
@@ -1315,6 +1400,7 @@ export default function FeedScreen() {
     else if (key === ONLY_NEW_CHIP_KEY) setOnlyNew(false);
     else if (key === ONLY_FAVORITES_CHIP_KEY) setOnlyFavorites(false);
     else if (key === ONLY_NOTED_CHIP_KEY) setOnlyNoted(false);
+    else if (key === ONLY_NEAR_HOME_CHIP_KEY) setOnlyNearHome(false);
     else if (key === SORT_CHIP_KEY) setSort('request_newest');
     else if (key.startsWith(STATUS_CHIP_PREFIX)) toggleStatus(key.slice(STATUS_CHIP_PREFIX.length));
     else if (key.startsWith(TAG_CHIP_PREFIX)) toggleTag(key.slice(TAG_CHIP_PREFIX.length));
@@ -1463,6 +1549,10 @@ export default function FeedScreen() {
           toggleOnlyFavorites={() => setOnlyFavorites((v) => !v)}
           onlyNoted={onlyNoted}
           toggleOnlyNoted={() => setOnlyNoted((v) => !v)}
+          home={home}
+          onlyNearHome={onlyNearHome}
+          toggleOnlyNearHome={() => setOnlyNearHome((v) => !v)}
+          homeRadiusMeters={homeRadiusMeters}
           period={period}
           setPeriod={setPeriod}
           sort={sort}

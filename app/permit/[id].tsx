@@ -8,6 +8,7 @@ import {
   Linking,
   Share,
   Platform,
+  Alert,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -45,6 +46,9 @@ import { buildProcessingStats, type ProcessingStats } from '../../lib/processing
 import { buildProcessingComparison } from '../../lib/processing-comparison';
 import { buildShareMessage } from '../../lib/share-message';
 import { extractStreetName } from '../../lib/street-name';
+import { getCoords } from '../../lib/permit-extra';
+import { loadPreferences, savePreferences } from '../../lib/preferences';
+import { isSameLocation, type HomeLocation } from '../../lib/home-location';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
   FILING_TYPE_LABELS,
@@ -450,6 +454,9 @@ export default function PermitDetail() {
   const [nearby, setNearby] = useState<NearbyResult<Permit>[]>([]);
   const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
   const [saved, setSaved] = useState(false);
+  // The current home anchor, so this detail can show whether THIS permit is the
+  // set home (and offer to set/clear it when the row carries a coordinate).
+  const [home, setHome] = useState<HomeLocation | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -482,12 +489,37 @@ export default function PermitDetail() {
         }
       })
     );
+    // Load the home anchor so the "Imposta come casa" card reflects whether this
+    // permit is already the set home.
+    loadPreferences().then((prefs) => setHome(prefs.home));
   }, [id]);
 
   const handleToggleSave = async () => {
     if (!permit) return;
     const db = await getDb();
     setSaved(await toggleFavorite(db, permit.source_id, new Date().toISOString()));
+  };
+
+  // Anchor the feed's "Vicino a casa" filter on THIS permit's coordinate. Only
+  // reachable when the row carries one (the card is gated on getCoords below), so
+  // the coordinate here is real; the label is the permit's address/title.
+  const handleSetHome = async () => {
+    if (!permit) return;
+    const coords = getCoords(permit.extra);
+    if (!coords) return;
+    const label = permit.address ?? permit.title ?? 'Posizione';
+    const next: HomeLocation = { coords, label };
+    await savePreferences({ home: next });
+    setHome(next);
+    Alert.alert(
+      'Casa impostata',
+      `Ora puoi filtrare il feed con «Vicino a casa» attorno a ${label}.`
+    );
+  };
+
+  const handleClearHome = async () => {
+    await savePreferences({ home: null });
+    setHome(null);
   };
 
   if (!permit) {
@@ -582,6 +614,12 @@ export default function PermitDetail() {
   // cantiere / evento / segnalazione must not read "Dettaglio Pratica"). Overrides
   // the neutral fallback set on the parent route once the row's category is known.
   const detailTitle = CATEGORY_DETAIL_TITLE[permit.category] ?? 'Dettaglio';
+
+  // This permit's own coordinate (from `extra.lat/lon`), present on geo-dotted
+  // rows and geocoded edilizia. When set it can anchor the "Vicino a casa" feed
+  // filter; `isHome` tells whether it is already the current anchor.
+  const homeCoords = getCoords(permit.extra);
+  const isHome = isSameLocation(homeCoords, home?.coords ?? null);
 
   return (
     <ScrollView className="flex-1 bg-parchment-100">
@@ -851,6 +889,57 @@ export default function PermitDetail() {
             </View>
           </View>
         )}
+
+        {/* Imposta come casa — anchor the feed's "Vicino a casa" radius filter on
+            this permit's location. Shown only for a row that carries a coordinate
+            (geo-dotted categories + geocoded edilizia); a coordinate-less row (a
+            not-yet-geocoded edilizia) simply omits it. When this permit already IS
+            the home, the card confirms it and offers to remove the anchor. */}
+        {homeCoords &&
+          (isHome ? (
+            <View
+              className="mt-3 flex-row items-center rounded-2xl border-l-[3px] border-brick-600 bg-brick-50 p-4"
+              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+              <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-brick-100">
+                <Ionicons name="home" size={18} color="#9B2335" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[15px] font-semibold text-brick-700">
+                  Questa è la tua casa
+                </Text>
+                <Text className="text-xs text-stone-600">
+                  Il feed può filtrare le voci vicine con «Vicino a casa».
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleClearHome}
+                accessibilityRole="button"
+                accessibilityLabel="Rimuovi casa"
+                hitSlop={8}
+                className="rounded-full bg-white px-3 py-1.5">
+                <Text className="text-xs font-semibold text-stone-600">Rimuovi</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={handleSetHome}
+              accessibilityRole="button"
+              accessibilityLabel="Imposta come casa"
+              accessibilityHint="Filtra il feed sulle voci vicine a questa posizione"
+              className="mt-3 flex-row items-center rounded-2xl bg-white p-4"
+              style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+              <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-parchment-100">
+                <Ionicons name="home-outline" size={18} color="#8B7355" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[15px] font-semibold text-ink-800">Imposta come casa</Text>
+                <Text className="text-xs text-stone-500">
+                  Filtra il feed sulle voci vicine con «Vicino a casa»
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#a89888" />
+            </Pressable>
+          ))}
 
         {/* Nei dintorni — other permits within ~500 m, nearest first. Catches the
             cross-street neighbour that the quartiere-wide "Nella stessa zona" and

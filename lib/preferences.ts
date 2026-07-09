@@ -2,6 +2,13 @@ import { getDb, getPreference, setPreference } from './db';
 import { QUARTIERI, FILING_TYPE_ORDER, type FilingType, type Quartiere } from './constants';
 import { CATEGORIES, type Category } from './sources';
 import { decodeStringArray, decodeEnumArray } from './preferences-decode';
+import {
+  parseStoredHome,
+  serializeHome,
+  sanitizeHomeRadius,
+  DEFAULT_HOME_RADIUS_M,
+  type HomeLocation,
+} from './home-location';
 
 export interface UserPreferences {
   zones: Quartiere[];
@@ -9,6 +16,10 @@ export interface UserPreferences {
   interests: Category[];
   tags: string[];
   onboardingDone: boolean;
+  /** The user's home anchor for the "Vicino a casa" feed radius filter, or null. */
+  home: HomeLocation | null;
+  /** Chosen radius (metres) for that filter; snapped to a valid option on read. */
+  homeRadiusMeters: number;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -27,6 +38,8 @@ const DEFAULTS: UserPreferences = {
   interests: ['edilizia'],
   tags: [],
   onboardingDone: false,
+  home: null,
+  homeRadiusMeters: DEFAULT_HOME_RADIUS_M,
 };
 
 export async function loadPreferences(): Promise<UserPreferences> {
@@ -36,6 +49,8 @@ export async function loadPreferences(): Promise<UserPreferences> {
   const interests = await getPreference(db, 'interests', JSON.stringify(DEFAULTS.interests));
   const tags = await getPreference(db, 'tags', JSON.stringify(DEFAULTS.tags));
   const onboarding = await getPreference(db, 'onboarding_done', 'false');
+  const home = await getPreference(db, 'home', 'null');
+  const homeRadius = await getPreference(db, 'home_radius_m', String(DEFAULTS.homeRadiusMeters));
 
   return {
     zones: decodeEnumArray(zones, QUARTIERI, DEFAULTS.zones),
@@ -43,6 +58,10 @@ export async function loadPreferences(): Promise<UserPreferences> {
     interests: decodeEnumArray(interests, CATEGORIES, DEFAULTS.interests),
     tags: decodeStringArray(tags, DEFAULTS.tags),
     onboardingDone: onboarding === 'true',
+    // parseStoredHome hardens against a corrupt/legacy value (→ null); the radius
+    // is snapped to a valid option so a stale/garbage number can't skew the filter.
+    home: parseStoredHome(home),
+    homeRadiusMeters: sanitizeHomeRadius(Number(homeRadius)),
   };
 }
 
@@ -85,5 +104,13 @@ export async function savePreferences(prefs: Partial<UserPreferences>): Promise<
   }
   if (prefs.onboardingDone !== undefined) {
     await setPreference(db, 'onboarding_done', String(prefs.onboardingDone));
+  }
+  // `home: null` is a real value (clear the anchor) — serializeHome maps it to the
+  // literal 'null' string, distinct from the `undefined` "field not being saved".
+  if (prefs.home !== undefined) {
+    await setPreference(db, 'home', serializeHome(prefs.home));
+  }
+  if (prefs.homeRadiusMeters !== undefined) {
+    await setPreference(db, 'home_radius_m', String(sanitizeHomeRadius(prefs.homeRadiusMeters)));
   }
 }

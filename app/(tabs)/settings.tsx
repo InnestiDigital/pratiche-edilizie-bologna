@@ -35,6 +35,12 @@ import { APP_NAME } from '../../lib/brand';
 import { countPermits, getStats } from '../../lib/queries';
 import { buildMatchSummary } from '../../lib/settings-match-summary';
 import { recordNoun } from '../../lib/record-noun';
+import {
+  HOME_RADIUS_OPTIONS,
+  formatRadiusLabel,
+  DEFAULT_HOME_RADIUS_M,
+  type HomeLocation,
+} from '../../lib/home-location';
 
 /** Read-only, non-personal source Bologna publishes the open data under. */
 const OPEN_DATA_PORTAL_URL = 'https://opendata.comune.bologna.it';
@@ -140,6 +146,11 @@ export default function SettingsScreen() {
   const [filingTypes, setFilingTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [tags, setTags] = useState<Set<string>>(new Set());
   const [notificationsOn, setNotificationsOn] = useState(false);
+  // "Casa" — the home anchor + radius for the feed's "Vicino a casa" filter. The
+  // anchor is set from a permit detail ("Imposta come casa"); here it is shown,
+  // its radius chosen, and it can be cleared.
+  const [home, setHome] = useState<HomeLocation | null>(null);
+  const [homeRadius, setHomeRadius] = useState<number>(DEFAULT_HOME_RADIUS_M);
   const [loaded, setLoaded] = useState(false);
   // Live "how many permits match these filters" preview + the DB total. Either is
   // null while its count is loading. `matchCount` recomputes whenever a filter set
@@ -158,6 +169,8 @@ export default function SettingsScreen() {
       setInterests(new Set(prefs.interests));
       setFilingTypes(new Set(prefs.filingTypes));
       setTags(new Set(prefs.tags));
+      setHome(prefs.home);
+      setHomeRadius(prefs.homeRadiusMeters);
       setNotificationsOn(notifEnabled);
       setLoaded(true);
     });
@@ -273,6 +286,25 @@ export default function SettingsScreen() {
     });
   };
 
+  const chooseHomeRadius = (meters: number) => {
+    setHomeRadius(meters);
+    savePreferences({ homeRadiusMeters: meters });
+  };
+
+  const clearHome = () => {
+    Alert.alert('Rimuovi casa', 'La posizione di casa verrà rimossa. Continuare?', [
+      { text: 'Annulla', style: 'cancel' },
+      {
+        text: 'Rimuovi',
+        style: 'destructive',
+        onPress: () => {
+          setHome(null);
+          savePreferences({ home: null });
+        },
+      },
+    ]);
+  };
+
   const handleReset = () => {
     Alert.alert(
       'Ripristina Predefiniti',
@@ -376,6 +408,81 @@ export default function SettingsScreen() {
             count={statsLoaded ? (byCategory[category] ?? 0) : undefined}
           />
         ))}
+      </View>
+
+      <SectionHeader
+        title="Casa"
+        hint="Filtra il feed per vicinanza alla tua posizione con «Vicino a casa»"
+      />
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+        {home ? (
+          <>
+            {/* Current anchor + remove */}
+            <View className="flex-row items-center border-b border-parchment-200 px-4 py-3">
+              <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
+                <Ionicons name="home" size={17} color="#9B2335" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs font-semibold text-stone-600">Casa impostata</Text>
+                <Text className="text-[15px] font-semibold text-ink-800" numberOfLines={1}>
+                  {home.label}
+                </Text>
+              </View>
+              <Pressable
+                onPress={clearHome}
+                accessibilityRole="button"
+                accessibilityLabel="Rimuovi casa"
+                hitSlop={8}
+                className="flex-row items-center rounded-full bg-parchment-100 px-3 py-1.5">
+                <Ionicons name="trash-outline" size={13} color="#8B7355" />
+                <Text className="ml-1 text-xs font-semibold text-stone-600">Rimuovi</Text>
+              </Pressable>
+            </View>
+            {/* Radius picker */}
+            <View className="px-4 py-3">
+              <Text className="mb-2 text-xs font-semibold text-stone-600">Raggio</Text>
+              <View className="flex-row flex-wrap">
+                {HOME_RADIUS_OPTIONS.map((m) => {
+                  const active = homeRadius === m;
+                  return (
+                    <Pressable
+                      key={m}
+                      onPress={() => chooseHomeRadius(m)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Raggio ${formatRadiusLabel(m)}`}
+                      accessibilityState={{ selected: active }}
+                      className={`mb-1.5 mr-1.5 rounded-full border px-3.5 py-1.5 ${
+                        active
+                          ? 'border-brick-600 bg-brick-50'
+                          : 'border-transparent bg-parchment-100'
+                      }`}>
+                      <Text
+                        className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
+                        {formatRadiusLabel(m)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          </>
+        ) : (
+          // No anchor yet: teach the set gesture (the anchor is captured from a
+          // permit that carries a coordinate, via the detail "Imposta come casa").
+          <View className="flex-row items-start px-4 py-4">
+            <View className="mr-3 mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-parchment-100">
+              <Ionicons name="home-outline" size={17} color="#8B7355" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-[15px] font-semibold text-ink-800">Nessuna casa impostata</Text>
+              <Text className="mt-0.5 text-xs leading-5 text-stone-500">
+                Apri una voce e tocca «Imposta come casa» per filtrare il feed sulle voci vicine.
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
 
       <SectionHeader title="Quartieri" hint={`${zones.size} di ${QUARTIERI.length} attivi`} />

@@ -6,6 +6,7 @@ import {
   ONLY_NEW_CHIP_KEY,
   ONLY_FAVORITES_CHIP_KEY,
   ONLY_NOTED_CHIP_KEY,
+  ONLY_NEAR_HOME_CHIP_KEY,
   SORT_CHIP_KEY,
   STATUS_CHIP_PREFIX,
   TAG_CHIP_PREFIX,
@@ -93,6 +94,21 @@ describe('buildActiveFilterChips', () => {
     expect(buildActiveFilterChips(base).find((c) => c.key === ONLY_NOTED_CHIP_KEY)).toBeUndefined();
   });
 
+  it('adds a near-home chip (with the radius) when onlyNearHome is set, none when absent', () => {
+    expect(
+      buildActiveFilterChips({ ...base, onlyNearHome: true, homeRadiusLabel: '500 m' })
+    ).toContainEqual({ key: ONLY_NEAR_HOME_CHIP_KEY, label: 'Vicino a casa · 500 m' });
+    // No radius label → bare chip.
+    expect(buildActiveFilterChips({ ...base, onlyNearHome: true })).toContainEqual({
+      key: ONLY_NEAR_HOME_CHIP_KEY,
+      label: 'Vicino a casa',
+    });
+    // Optional field absent → no chip (default off).
+    expect(
+      buildActiveFilterChips(base).find((c) => c.key === ONLY_NEAR_HOME_CHIP_KEY)
+    ).toBeUndefined();
+  });
+
   it('adds a sort chip only when sort differs from the default', () => {
     expect(
       buildActiveFilterChips({ ...base, sort: 'request_newest' }).find(
@@ -103,7 +119,7 @@ describe('buildActiveFilterChips', () => {
     expect(chips).toContainEqual({ key: SORT_CHIP_KEY, label: SORT_LABELS.closing_newest });
   });
 
-  it('orders chips zones → period → statuses → tags → onlyNew → onlyFavorites → onlyNoted → sort', () => {
+  it('orders chips zones → period → statuses → tags → onlyNew → onlyFavorites → onlyNoted → nearHome → sort', () => {
     const s = Object.keys(STATUS_LABELS)[0];
     const t = Object.keys(TAG_LABELS)[0];
     const chips = buildActiveFilterChips({
@@ -116,6 +132,8 @@ describe('buildActiveFilterChips', () => {
       onlyNew: true,
       onlyFavorites: true,
       onlyNoted: true,
+      onlyNearHome: true,
+      homeRadiusLabel: '500 m',
       sort: 'closing_newest',
       defaultSort: 'request_newest',
     });
@@ -127,6 +145,7 @@ describe('buildActiveFilterChips', () => {
       ONLY_NEW_CHIP_KEY,
       ONLY_FAVORITES_CHIP_KEY,
       ONLY_NOTED_CHIP_KEY,
+      ONLY_NEAR_HOME_CHIP_KEY,
       SORT_CHIP_KEY,
     ]);
   });

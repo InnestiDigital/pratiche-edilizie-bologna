@@ -31,6 +31,8 @@ export const STATUS_COLORS: Record<string, string> = {
   rinunciata: '#9ca3af',
   in_attesa: '#3b82f6',
   concluso: '#22c55e',
+  in_corso: '#3b82f6',
+  in_programma: '#8b5cf6',
   altro: '#9ca3af',
 };
 

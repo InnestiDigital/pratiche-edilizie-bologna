@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildStatusBreakdown, STATUS_COLORS } from './status-breakdown';
+import { STATUS_LABELS } from './constants';
 
 describe('buildStatusBreakdown', () => {
   it('returns an empty list for an empty map', () => {
@@ -72,5 +73,16 @@ describe('buildStatusBreakdown', () => {
     const snapshot = { ...input };
     buildStatusBreakdown(input, 4);
     expect(input).toEqual(snapshot);
+  });
+
+  // STATUS_COLORS is the single source of truth for the status-dot palette shared
+  // by the feed, filter panel, detail and sync screens. If a status has a label but
+  // no color it silently falls back to grey on every surface — exactly the drift
+  // (in_corso / in_programma greyed on detail while purple/blue elsewhere) this
+  // guard prevents. Every labelled status must carry an accent color.
+  it('assigns an accent color to every labelled status (no grey-fallback drift)', () => {
+    for (const status of Object.keys(STATUS_LABELS)) {
+      expect(STATUS_COLORS[status], `missing color for status "${status}"`).toBeDefined();
+    }
   });
 });

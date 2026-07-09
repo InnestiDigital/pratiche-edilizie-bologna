@@ -49,6 +49,7 @@ import { extractStreetName } from '../../lib/street-name';
 import { getCoords } from '../../lib/permit-extra';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { isSameLocation, type HomeLocation } from '../../lib/home-location';
+import { STATUS_COLORS } from '../../lib/status-breakdown';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
   FILING_TYPE_LABELS,
@@ -72,18 +73,6 @@ const PROCESSING_COMPARISON_STYLE: Record<
   faster: { icon: 'trending-down-outline', color: '#16a34a' },
   typical: { icon: 'remove-circle-outline', color: '#78716c' },
   slower: { icon: 'trending-up-outline', color: '#d97706' },
-};
-
-const STATUS_DOT: Record<string, string> = {
-  rilasciata: '#22c55e',
-  rilasciata_con_prescrizioni: '#eab308',
-  diniegata: '#ef4444',
-  annullata: '#ef4444',
-  archiviata: '#9ca3af',
-  decaduta: '#9ca3af',
-  rinunciata: '#9ca3af',
-  in_attesa: '#3b82f6',
-  concluso: '#22c55e',
 };
 
 function InfoRow({
@@ -204,7 +193,7 @@ function RelatedRow({
   const filingType = permit.filing_type as FilingType;
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
-  const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
+  const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
 
   return (
     <Pressable
@@ -530,7 +519,7 @@ export default function PermitDetail() {
   const filingType = permit.filing_type as FilingType;
   const filingLabel = FILING_TYPE_LABELS[filingType] ?? permit.filing_type;
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
-  const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
+  const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
 
   const protocol = formatProtocol(permit.source_id);

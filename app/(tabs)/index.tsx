@@ -42,6 +42,7 @@ import { groupPermitsBySection } from '../../lib/feed-sections';
 import { sectionCountLabel } from '../../lib/section-count-label';
 import { buildResultCount } from '../../lib/result-count-label';
 import { recordNoun } from '../../lib/record-noun';
+import { STATUS_COLORS } from '../../lib/status-breakdown';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import { formatItDate } from '../../lib/format-date';
@@ -105,20 +106,6 @@ import {
 } from '../../lib/constants';
 
 /* ── Colors ─────────────────────────────────────── */
-
-const STATUS_DOT: Record<string, string> = {
-  rilasciata: '#22c55e',
-  rilasciata_con_prescrizioni: '#eab308',
-  diniegata: '#ef4444',
-  annullata: '#ef4444',
-  archiviata: '#9ca3af',
-  decaduta: '#9ca3af',
-  rinunciata: '#9ca3af',
-  in_attesa: '#3b82f6',
-  concluso: '#22c55e',
-  in_corso: '#3b82f6',
-  in_programma: '#8b5cf6',
-};
 
 const STATUS_KEYS = Object.keys(STATUS_LABELS);
 const TAG_KEYS = Object.keys(TAG_LABELS);
@@ -403,7 +390,7 @@ function PermitCard({
   // commercio); eventi/segnalazioni statuses are constants — no dot/label.
   const showStatus = CATEGORY_HAS_STATUS_SIGNAL[permit.category];
   const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
-  const dotColor = STATUS_DOT[permit.status] ?? '#9ca3af';
+  const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
   // The top-left badge: the filing-type acronym for edilizia (its own color), the
   // category label for every other source (its category color).
   const isEdilizia = permit.category === 'edilizia';
@@ -877,7 +864,7 @@ function FilterPanel({
             <View className="flex-row flex-wrap">
               {keys.map((s) => {
                 const active = activeStatuses.has(s);
-                const dot = STATUS_DOT[s] ?? '#9ca3af';
+                const dot = STATUS_COLORS[s] ?? '#9ca3af';
                 return (
                   <Pressable
                     key={s}

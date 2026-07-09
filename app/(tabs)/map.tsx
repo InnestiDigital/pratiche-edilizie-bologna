@@ -2,10 +2,21 @@ import { useCallback, useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { getDb } from '../../lib/db';
-import { getPermits, type FeedFilters, type Permit } from '../../lib/queries';
-import { toMapPins, pinsRegion, type MapPin, type MapRegion } from '../../lib/map-pins';
+import { getPermits, type FeedFilters } from '../../lib/queries';
+import {
+  toMapPins,
+  mapViewport,
+  type MapPin,
+  type MapRegion,
+  type HomeMarker,
+} from '../../lib/map-pins';
 import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORIES, type Category } from '../../lib/sources';
+import { loadPreferences } from '../../lib/preferences';
+import { formatRadiusLabel } from '../../lib/home-location';
 import { PermitMap } from '../../components/PermitMap';
+
+/** Brand wine-red — matches the home marker/ring drawn in PermitMap. */
+const HOME_COLOR = '#9B2335';
 
 // The map frames every stored permit that carries a coordinate; the synced set
 // already respects the user's followed categories (sync skips unfollowed), so an
@@ -17,6 +28,7 @@ const MAP_CAP = 500;
 interface MapData {
   pins: MapPin[];
   region: MapRegion;
+  home: HomeMarker | null;
   withoutCoords: number;
   total: number;
 }
@@ -29,10 +41,27 @@ export default function MapScreen() {
       let active = true;
       (async () => {
         const db = await getDb();
-        const permits: Permit[] = await getPermits(db, ALL_FILTERS, MAP_CAP, 0);
+        const [permits, prefs] = await Promise.all([
+          getPermits(db, ALL_FILTERS, MAP_CAP, 0),
+          loadPreferences(),
+        ]);
         const { pins, withoutCoords } = toMapPins(permits);
+        const home: HomeMarker | null = prefs.home
+          ? {
+              lat: prefs.home.coords.lat,
+              lon: prefs.home.coords.lon,
+              radiusMeters: prefs.homeRadiusMeters,
+              label: prefs.home.label,
+            }
+          : null;
         if (!active) return;
-        setData({ pins, region: pinsRegion(pins), withoutCoords, total: permits.length });
+        setData({
+          pins,
+          region: mapViewport(pins, home),
+          home,
+          withoutCoords,
+          total: permits.length,
+        });
       })();
       return () => {
         active = false;
@@ -57,10 +86,14 @@ export default function MapScreen() {
   const presentCategories = CATEGORIES.filter((c: Category) =>
     data.pins.some((p) => p.category === c)
   );
+  // Show the map whenever there is anything to place — pins OR the home anchor
+  // (a set home draws its radius ring even before any nearby row is geocoded).
+  const hasMap = data.pins.length > 0 || data.home !== null;
+  const hasLegend = presentCategories.length > 0 || data.home !== null;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f0ece3' }}>
-      {data.pins.length === 0 ? (
+      {!hasMap ? (
         <View
           style={{
             flex: 1,
@@ -86,11 +119,11 @@ export default function MapScreen() {
           </Text>
         </View>
       ) : (
-        <PermitMap pins={data.pins} region={data.region} />
+        <PermitMap pins={data.pins} region={data.region} home={data.home} />
       )}
 
       {/* Legend + coverage — overlaid so it reads over the map without a layout shift */}
-      {presentCategories.length > 0 && (
+      {hasLegend && (
         <View
           style={{
             position: 'absolute',
@@ -105,6 +138,20 @@ export default function MapScreen() {
             borderColor: '#e2d9cd',
           }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {data.home !== null && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: HOME_COLOR,
+                    marginRight: 6,
+                  }}
+                />
+                <Text style={{ color: '#4b4238', fontSize: 13, fontWeight: '600' }}>Casa</Text>
+              </View>
+            )}
             {presentCategories.map((c) => (
               <View key={c} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
                 <View
@@ -125,7 +172,7 @@ export default function MapScreen() {
         </View>
       )}
 
-      {data.pins.length > 0 && (
+      {hasMap && (
         <View
           style={{
             position: 'absolute',
@@ -141,6 +188,7 @@ export default function MapScreen() {
           <Text style={{ color: '#6b5f52', fontSize: 12 }}>
             {data.pins.length} sulla mappa
             {data.withoutCoords > 0 ? ` · ${data.withoutCoords} senza posizione` : ''}
+            {data.home !== null ? ` · casa ${formatRadiusLabel(data.home.radiusMeters)}` : ''}
           </Text>
         </View>
       )}

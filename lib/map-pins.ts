@@ -56,6 +56,40 @@ const MIN_DELTA = 0.01;
 /** Fraction of the pin bounding-box added as padding around the fitted region. */
 const PADDING = 0.25;
 
+/** Metres per degree of latitude (constant on a sphere; good to ~0.1% for a map). */
+const METERS_PER_DEG_LAT = 111_320;
+
+/**
+ * The home overlay drawn on the map when the user has set a "vicino a casa" anchor
+ * (docs/P4-map-radius.md §5) — the home coordinate plus the chosen radius. Pure
+ * data (no native import) so the region math and the web placeholder both consume
+ * it; the native map turns the radius into a true metric `<Circle>`.
+ */
+export interface HomeMarker {
+  lat: number;
+  lon: number;
+  /** The "vicino a casa" radius, in metres. */
+  radiusMeters: number;
+  /** Display label (the address the home was anchored from). */
+  label: string;
+}
+
+/** Latitude degrees spanned by a north–south distance in metres. */
+export function metersToLatDelta(meters: number): number {
+  return meters / METERS_PER_DEG_LAT;
+}
+
+/**
+ * Longitude degrees spanned by an east–west distance in metres at a given latitude
+ * (meridians converge toward the poles, so the span widens as `cos(lat)` shrinks).
+ * The cosine is floored to guard the poles (`cos → 0` would blow the span up).
+ */
+export function metersToLonDelta(meters: number, atLat: number): number {
+  const scale = Math.cos(atLat * (Math.PI / 180));
+  const denom = METERS_PER_DEG_LAT * (scale > 1e-6 ? scale : 1);
+  return meters / denom;
+}
+
 const cardTitle = (p: Permit): string =>
   (p.title ?? p.address ?? p.procedimento ?? '').trim() || 'Voce senza titolo';
 
@@ -120,5 +154,55 @@ export function pinsRegion(pins: readonly MapPin[]): MapRegion {
     longitude: (minLon + maxLon) / 2,
     latitudeDelta: Math.max(latSpan * (1 + PADDING), MIN_DELTA),
     longitudeDelta: Math.max(lonSpan * (1 + PADDING), MIN_DELTA),
+  };
+}
+
+/**
+ * The map viewport framing every pin AND the whole home circle, when a home is set
+ * — so the "vicino a casa" radius is always visible even when it sits outside the
+ * pin cloud (or when there are no pins yet). Falls back to {@link BOLOGNA_CENTER}
+ * when there is nothing to frame. Pure; the same padding/min-delta rules as
+ * {@link pinsRegion}, extended with the home circle's degree bounds.
+ */
+export function mapViewport(pins: readonly MapPin[], home: HomeMarker | null): MapRegion {
+  const lats: number[] = [];
+  const lons: number[] = [];
+  for (const pin of pins) {
+    lats.push(pin.lat);
+    lons.push(pin.lon);
+  }
+  if (home) {
+    const dLat = metersToLatDelta(home.radiusMeters);
+    const dLon = metersToLonDelta(home.radiusMeters, home.lat);
+    lats.push(home.lat - dLat, home.lat + dLat);
+    lons.push(home.lon - dLon, home.lon + dLon);
+  }
+  if (lats.length === 0) return BOLOGNA_CENTER;
+
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLon + maxLon) / 2,
+    latitudeDelta: Math.max((maxLat - minLat) * (1 + PADDING), MIN_DELTA),
+    longitudeDelta: Math.max((maxLon - minLon) * (1 + PADDING), MIN_DELTA),
+  };
+}
+
+/**
+ * The home circle's on-plane size as a fraction of the given region span — the web
+ * placeholder map uses this to size the radius ring (the native map draws a true
+ * metric `<Circle>` and needs no fraction). Values can exceed 1 when the circle is
+ * larger than the viewport; the caller clamps for display. Pure.
+ */
+export function homeCircleFraction(
+  home: HomeMarker,
+  region: MapRegion
+): { widthFrac: number; heightFrac: number } {
+  return {
+    widthFrac: (2 * metersToLonDelta(home.radiusMeters, home.lat)) / region.longitudeDelta,
+    heightFrac: (2 * metersToLatDelta(home.radiusMeters)) / region.latitudeDelta,
   };
 }

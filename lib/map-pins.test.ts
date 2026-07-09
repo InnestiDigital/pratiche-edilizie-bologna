@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { toMapPins, pinsRegion, BOLOGNA_CENTER } from './map-pins';
+import {
+  toMapPins,
+  pinsRegion,
+  mapViewport,
+  metersToLatDelta,
+  metersToLonDelta,
+  homeCircleFraction,
+  BOLOGNA_CENTER,
+  type HomeMarker,
+} from './map-pins';
 import type { Permit } from './queries';
 import type { Category } from './sources';
 import { CATEGORY_COLORS } from './sources';
@@ -110,5 +119,73 @@ describe('pinsRegion', () => {
     expect(region.latitude).toBeCloseTo(44.5, 6);
     expect(region.latitudeDelta).toBe(0.01);
     expect(region.longitudeDelta).toBe(0.01);
+  });
+});
+
+const home = (over: Partial<HomeMarker> = {}): HomeMarker => ({
+  lat: 44.5,
+  lon: 11.3,
+  radiusMeters: 500,
+  label: 'Via Test 1',
+  ...over,
+});
+
+describe('metersToLatDelta / metersToLonDelta', () => {
+  it('converts a latitude distance to degrees (≈111.32 km per degree)', () => {
+    expect(metersToLatDelta(111_320)).toBeCloseTo(1, 6);
+    expect(metersToLatDelta(0)).toBe(0);
+  });
+
+  it('widens the longitude span toward the poles (cos scaling)', () => {
+    // At 60°N cos = 0.5, so a metre buys twice the longitude degrees as at the equator.
+    expect(metersToLonDelta(111_320, 60)).toBeCloseTo(2, 4);
+    expect(metersToLonDelta(111_320, 0)).toBeCloseTo(1, 6);
+  });
+
+  it('never blows up at the pole (cos → 0 guarded)', () => {
+    const d = metersToLonDelta(1000, 90);
+    expect(Number.isFinite(d)).toBe(true);
+  });
+});
+
+describe('mapViewport', () => {
+  it('falls back to the Bologna center when there are no pins and no home', () => {
+    expect(mapViewport([], null)).toEqual(BOLOGNA_CENTER);
+  });
+
+  it('matches pinsRegion when there is no home', () => {
+    const { pins } = toMapPins([withCoords(1, '44.40', '11.20'), withCoords(2, '44.60', '11.40')]);
+    expect(mapViewport(pins, null)).toEqual(pinsRegion(pins));
+  });
+
+  it('frames the home circle when a home is set but no pins exist', () => {
+    const region = mapViewport([], home({ lat: 44.5, lon: 11.3, radiusMeters: 500 }));
+    expect(region.latitude).toBeCloseTo(44.5, 6);
+    expect(region.longitude).toBeCloseTo(11.3, 6);
+    // Circle diameter in latitude ≈ 2*500/111320 ≈ 0.00898°, *1.25 padding ≈ 0.01122°.
+    expect(region.latitudeDelta).toBeCloseTo(0.01122, 4);
+    expect(Number.isNaN(region.longitudeDelta)).toBe(false);
+  });
+
+  it('expands the viewport to include a home that sits outside the pin cloud', () => {
+    const { pins } = toMapPins([withCoords(1, '44.50', '11.30')]);
+    const far = home({ lat: 44.6, lon: 11.4, radiusMeters: 500 });
+    const region = mapViewport(pins, far);
+    // Center shifts toward the home, and the span now covers both points (≫ MIN_DELTA).
+    expect(region.latitude).toBeGreaterThan(44.5);
+    expect(region.latitude).toBeLessThan(44.6);
+    expect(region.latitudeDelta).toBeGreaterThan(0.05);
+  });
+});
+
+describe('homeCircleFraction', () => {
+  it('reports the circle size as a fraction of the region span', () => {
+    const region = { latitude: 44.5, longitude: 11.3, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+    const { widthFrac, heightFrac } = homeCircleFraction(home({ radiusMeters: 500 }), region);
+    // heightFrac = 2*500/111320 / 0.1 ≈ 0.0898
+    expect(heightFrac).toBeCloseTo(0.0898, 3);
+    // longitude buys more degrees at latitude, so the ring is wider than it is tall.
+    expect(widthFrac).toBeGreaterThan(heightFrac);
+    expect(Number.isNaN(widthFrac)).toBe(false);
   });
 });

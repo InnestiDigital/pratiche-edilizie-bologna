@@ -1,6 +1,9 @@
 import { View, Text, Pressable, type DimensionValue } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { MapPin, MapRegion } from '../lib/map-pins';
+import { homeCircleFraction, type MapPin, type MapRegion, type HomeMarker } from '../lib/map-pins';
+
+/** Brand wine-red — matches the native home marker + radius ring. */
+const HOME_COLOR = '#9B2335';
 
 /**
  * Web placeholder for {@link PermitMap} (native). The `react-native-maps` view
@@ -14,17 +17,26 @@ import type { MapPin, MapRegion } from '../lib/map-pins';
  * (docs/P4-map-radius.md §4). Inert on device — never imported from a `.tsx`
  * module; the plain `PermitMap.tsx` is loaded on iOS/Android.
  */
-export function PermitMap({ pins, region }: { pins: MapPin[]; region: MapRegion }) {
+export function PermitMap({
+  pins,
+  region,
+  home,
+}: {
+  pins: MapPin[];
+  region: MapRegion;
+  home?: HomeMarker | null;
+}) {
   const router = useRouter();
   const minLat = region.latitude - region.latitudeDelta / 2;
   const minLon = region.longitude - region.longitudeDelta / 2;
 
-  const norm = (pin: MapPin): { left: DimensionValue; top: DimensionValue } => {
-    const x = (pin.lon - minLon) / region.longitudeDelta;
-    const y = 1 - (pin.lat - minLat) / region.latitudeDelta; // higher lat → nearer top
-    const clamp = (v: number) => Math.min(0.94, Math.max(0.06, v));
+  const clamp = (v: number) => Math.min(0.94, Math.max(0.06, v));
+  const project = (lat: number, lon: number): { left: DimensionValue; top: DimensionValue } => {
+    const x = (lon - minLon) / region.longitudeDelta;
+    const y = 1 - (lat - minLat) / region.latitudeDelta; // higher lat → nearer top
     return { left: `${clamp(x) * 100}%`, top: `${clamp(y) * 100}%` };
   };
+  const norm = (pin: MapPin) => project(pin.lat, pin.lon);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f0ece3', overflow: 'hidden' }}>
@@ -55,6 +67,33 @@ export function PermitMap({ pins, region }: { pins: MapPin[]; region: MapRegion 
           }}
         />
       ))}
+      {/* Home radius ring — an ellipse sized by the circle's fraction of the region
+          span (metric on the native map, approximated here for the placeholder). */}
+      {home &&
+        (() => {
+          const c = project(home.lat, home.lon);
+          const { widthFrac, heightFrac } = homeCircleFraction(home, region);
+          const w = Math.min(1.6, widthFrac);
+          const h = Math.min(1.6, heightFrac);
+          return (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: c.left,
+                top: c.top,
+                width: `${w * 100}%`,
+                height: `${h * 100}%`,
+                marginLeft: `${(-w * 100) / 2}%`,
+                marginTop: `${(-h * 100) / 2}%`,
+                borderRadius: 9999,
+                borderWidth: 2,
+                borderColor: 'rgba(155,35,53,0.75)',
+                backgroundColor: 'rgba(155,35,53,0.10)',
+              }}
+            />
+          );
+        })()}
       {pins.map((pin) => {
         const pos = norm(pin);
         return (
@@ -81,6 +120,32 @@ export function PermitMap({ pins, region }: { pins: MapPin[]; region: MapRegion 
           </Pressable>
         );
       })}
+      {/* Home marker — a distinct brand dot with a house glyph, over the pins. */}
+      {home &&
+        (() => {
+          const pos = project(home.lat, home.lon);
+          return (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: pos.left,
+                top: pos.top,
+                marginLeft: -14,
+                marginTop: -14,
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: HOME_COLOR,
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <Text style={{ fontSize: 14 }}>🏠</Text>
+            </View>
+          );
+        })()}
       {/* Placeholder badge, bottom-RIGHT so it clears the screen's coverage chip
           (bottom-left). Web-only; the native map shows no such badge. */}
       <View

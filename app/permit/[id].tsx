@@ -382,7 +382,9 @@ function NotesSection({ sourceId }: { sourceId: string }) {
     );
   }
 
-  // Empty prompt — the whole card taps into the editor.
+  // Empty prompt — the whole card taps into the editor. No red left-accent here:
+  // that accent is the "this permit HAS a note" signal (feed + read view below), so
+  // an empty prompt wears the neutral card like its "Altre voci"/explainer siblings.
   if (!noteText) {
     return (
       <Pressable
@@ -390,7 +392,7 @@ function NotesSection({ sourceId }: { sourceId: string }) {
         accessibilityRole="button"
         accessibilityLabel="Aggiungi una nota personale"
         accessibilityHint="Apre l'editor per scrivere una nota su questa pratica"
-        className="mt-3 flex-row items-center rounded-2xl border-l-[3px] border-brick-600 bg-white p-4"
+        className="mt-3 flex-row items-center rounded-2xl bg-white p-4"
         style={cardStyle}>
         <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
           <Ionicons name="add" size={20} color="#9B2335" />

@@ -160,8 +160,8 @@ export const CATEGORY_REFERENCE_LABEL_LONG: Record<Category, string> = {
  * a new category cannot ship without its color pair.
  */
 export const CATEGORY_COLORS: Record<Category, { bg: string; text: string }> = {
-  edilizia: { bg: '#FDF3E3', text: '#8B5E1A' }, // brick (reuses the edilizia family)
-  cantieri: { bg: '#FBEFD8', text: '#9A6B12' }, // amber
+  edilizia: { bg: '#FDF3E3', text: '#8B5E1A' }, // olive-gold (the edilizia family)
+  cantieri: { bg: '#FCE7CF', text: '#B45309' }, // orange-amber — hue-shifted off edilizia's gold so the two adjacent warm categories stay distinct as an 8px dot / a selected pill fill (they were near-identical before)
   commercio: { bg: '#E4EFE4', text: '#2F6B3A' }, // green
   eventi: { bg: '#EDE7F3', text: '#5B3D82' }, // violet
   segnalazioni: { bg: '#E7EAEE', text: '#41525F' }, // slate

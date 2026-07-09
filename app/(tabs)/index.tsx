@@ -63,6 +63,7 @@ import {
   categoryChoices,
   showCategoryRow as shouldShowCategoryRow,
 } from '../../lib/feed-category';
+import { applicableStatuses, pruneStatusesForCategory } from '../../lib/category-statuses';
 import {
   buildActiveFilterChips,
   ZONES_CHIP_KEY,
@@ -607,6 +608,7 @@ const SORT_OPTIONS: SortOption[] = [
 ];
 
 function FilterPanel({
+  activeCategory,
   activeZones,
   toggleZone,
   activeStatuses,
@@ -626,6 +628,7 @@ function FilterPanel({
   activeCount,
   onReset,
 }: {
+  activeCategory: Category | null;
   activeZones: Set<Quartiere>;
   toggleZone: (z: Quartiere) => void;
   activeStatuses: Set<string>;
@@ -786,31 +789,51 @@ function FilterPanel({
         ))}
       </View>
 
-      {/* Status chips */}
-      <Text className="mb-1.5 text-xs font-semibold text-stone-600">Stato</Text>
-      <View className="flex-row flex-wrap">
-        {STATUS_KEYS.map((s) => {
-          const active = activeStatuses.has(s);
-          const dot = STATUS_DOT[s] ?? '#9ca3af';
-          return (
-            <Pressable
-              key={s}
-              onPress={() => toggleStatus(s)}
-              accessibilityRole="button"
-              accessibilityLabel={`Stato ${STATUS_LABELS[s]}`}
-              accessibilityState={{ selected: active }}
-              className={`mb-1.5 mr-1.5 flex-row items-center rounded-full border px-3 py-1.5 ${
-                active ? 'border-brick-600 bg-brick-50' : 'border-transparent bg-parchment-100'
-              }`}>
-              <View className="mr-1.5 h-2 w-2 rounded-full" style={{ backgroundColor: dot }} />
-              <Text
-                className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
-                {STATUS_LABELS[s]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* Status chips — scoped to the active category so no dead filter is offered.
+          `applicableStatuses` returns null under "Tutte" (show every status: each can
+          match some row), an empty set for a no-signal category (eventi/segnalazioni,
+          whose status is a constant hidden on the card → hide the whole section), or
+          the category's own vocabulary when a single signal-category chip is active. */}
+      {(() => {
+        const applicable = applicableStatuses(activeCategory);
+        // No-signal category selected: the Stato section is meaningless — hide it.
+        if (applicable !== null && applicable.size === 0) return null;
+        const keys =
+          applicable === null ? STATUS_KEYS : STATUS_KEYS.filter((s) => applicable.has(s));
+        return (
+          <>
+            <Text className="mb-1.5 text-xs font-semibold text-stone-600">Stato</Text>
+            <View className="flex-row flex-wrap">
+              {keys.map((s) => {
+                const active = activeStatuses.has(s);
+                const dot = STATUS_DOT[s] ?? '#9ca3af';
+                return (
+                  <Pressable
+                    key={s}
+                    onPress={() => toggleStatus(s)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Stato ${STATUS_LABELS[s]}`}
+                    accessibilityState={{ selected: active }}
+                    className={`mb-1.5 mr-1.5 flex-row items-center rounded-full border px-3 py-1.5 ${
+                      active
+                        ? 'border-brick-600 bg-brick-50'
+                        : 'border-transparent bg-parchment-100'
+                    }`}>
+                    <View
+                      className="mr-1.5 h-2 w-2 rounded-full"
+                      style={{ backgroundColor: dot }}
+                    />
+                    <Text
+                      className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
+                      {STATUS_LABELS[s]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        );
+      })()}
 
       {/* Tag chips */}
       <Text className="mb-1.5 mt-3 text-xs font-semibold text-stone-600">Etichette</Text>
@@ -1123,7 +1146,13 @@ export default function FeedScreen() {
   // re-tapping the same status re-applies it. Mirrors the zone/tag deep links.
   useEffect(() => {
     const status = parseStatusParam(statusParam);
-    if (status) setActiveStatuses(new Set([status]));
+    if (status) {
+      // Clear the session category scope so the deep-linked status is always
+      // applicable (the Sync "Per Stato" rows aggregate across categories) and its
+      // chip stays visible in the now-unscoped Stato filter list.
+      setActiveCategory(null);
+      setActiveStatuses(new Set([status]));
+    }
   }, [statusParam, linkNonce]);
 
   // Apply a `new` deep link from a "new permits" notification tap: pre-activate
@@ -1351,7 +1380,13 @@ export default function FeedScreen() {
             return (
               <Pressable
                 key={cat}
-                onPress={() => setActiveCategory(active ? null : cat)}
+                onPress={() => {
+                  const next = active ? null : cat;
+                  setActiveCategory(next);
+                  // Drop any active status that can't match the new scope so the
+                  // switch never leaves a now-hidden status silently emptying the feed.
+                  setActiveStatuses((prev) => pruneStatusesForCategory(prev, next));
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={`Categoria ${CATEGORY_LABELS[cat]}`}
                 accessibilityState={{ selected: active }}
@@ -1415,6 +1450,7 @@ export default function FeedScreen() {
       {/* Expandable filter panel */}
       {filtersOpen && (
         <FilterPanel
+          activeCategory={activeCategory}
           activeZones={activeZones}
           toggleZone={toggleZone}
           activeStatuses={activeStatuses}

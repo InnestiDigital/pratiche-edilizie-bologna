@@ -2,6 +2,7 @@ import { useState, useEffect, type ComponentProps } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../lib/sync';
+import { backfillEdiliziaCoords } from '../../lib/civici-sync';
 import { loadPreferences } from '../../lib/preferences';
 import { SOURCES, CATEGORY_COLORS, type SourceKey } from '../../lib/sources';
 import { getDb } from '../../lib/db';
@@ -96,6 +97,25 @@ export default function SyncScreen() {
       setProgress((prev) => [...prev, msg]);
     }, interests);
     setResults(syncResults);
+    // P4: once edilizia rows have landed, geocode the coordinate-less ones from
+    // the civici gazetteer so their detail gains the "Nei dintorni" proximity
+    // card (edilizia is the one category with no source coordinate). Only when
+    // edilizia is followed; the pass is a no-op (zero network) once every
+    // edilizia row already carries a coordinate. A failure is surfaced, not
+    // swallowed, and never aborts the completed sync above.
+    if (interests.includes('edilizia')) {
+      try {
+        const db = await getDb();
+        await backfillEdiliziaCoords(db, undefined, (msg) => {
+          setProgress((prev) => [...prev, msg]);
+        });
+      } catch (e) {
+        setProgress((prev) => [
+          ...prev,
+          `Geocodifica edilizia non riuscita — ${e instanceof Error ? e.message : String(e)}`,
+        ]);
+      }
+    }
     setSyncing(false);
     setSyncDone(true);
     await loadInfo();

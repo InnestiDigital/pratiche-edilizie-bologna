@@ -155,6 +155,20 @@ export default function MapScreen() {
                 <Text style={{ color: '#4b4238', fontSize: 13, fontWeight: '600' }}>Casa</Text>
               </View>
             )}
+            {/* Separate the home anchor from the data categories so the wine-red
+                "Casa" chip doesn't read as a sixth permit category — it's the
+                user's reference point, not a data layer. */}
+            {data.home !== null && presentCategories.length > 0 && (
+              <View
+                style={{
+                  width: 1,
+                  alignSelf: 'stretch',
+                  marginVertical: 2,
+                  marginRight: 16,
+                  backgroundColor: '#d8cdbd',
+                }}
+              />
+            )}
             {presentCategories.map((c) => (
               <View key={c} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
                 <View

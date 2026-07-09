@@ -181,6 +181,11 @@ export default function MapScreen() {
             position: 'absolute',
             bottom: 12,
             left: 12,
+            // Cap the width so a long coverage string ("N sulla mappa · N
+            // pratiche senza posizione · casa 2 km") wraps to two lines instead
+            // of running off a narrow phone. Short strings still shrink the pill
+            // to content — only the worst case grows and wraps.
+            maxWidth: '86%',
             backgroundColor: 'rgba(255,255,255,0.92)',
             borderRadius: 999,
             paddingVertical: 6,

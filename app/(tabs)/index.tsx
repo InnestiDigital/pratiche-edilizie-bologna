@@ -688,6 +688,12 @@ function FilterPanel({
   // vocabulary mixed) — the heaviest block on the sheet. Collapse it behind a
   // disclosure, default closed, so the common unscoped view stays scannable.
   const [statusExpanded, setStatusExpanded] = useState(false);
+  // Under "Tutte" the Etichette section is the other long mixed wall (every
+  // category's 12 tags, most dead for any single row — Telefonia=cantieri,
+  // Sanatoria/In deroga=edilizia, …). Collapse it behind the same disclosure as
+  // Stato, default closed; a single active category expands it (its tags are all
+  // relevant then). The header count keeps active tag filters visible when closed.
+  const [tagsExpanded, setTagsExpanded] = useState(false);
   return (
     <View className="border-b border-stone-200 bg-white px-4 pb-3">
       {/* Panel header: title + an in-panel "Azzera" reset. The collapsed
@@ -936,29 +942,68 @@ function FilterPanel({
         );
       })()}
 
-      {/* Tag chips */}
-      <Text className="mb-1.5 mt-3 text-xs font-semibold text-stone-600">Etichette</Text>
-      <View className="flex-row flex-wrap">
-        {TAG_KEYS.map((t) => {
-          const active = activeTags.has(t);
-          return (
-            <Pressable
-              key={t}
-              onPress={() => toggleTag(t)}
-              accessibilityRole="button"
-              accessibilityLabel={`Etichetta ${TAG_LABELS[t]}`}
-              accessibilityState={{ selected: active }}
-              className={`mb-1.5 mr-1.5 rounded-full border px-3 py-1.5 ${
-                active ? 'border-brick-600 bg-brick-50' : 'border-transparent bg-parchment-100'
-              }`}>
-              <Text
-                className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
-                {TAG_LABELS[t]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* Tag chips — same disclosure as Stato: collapsed under "Tutte" (the tag
+          list is category-mixed there, most chips dead for most rows), expanded
+          when a single category is active. The header count keeps an active tag
+          filter visible while the section is closed. */}
+      {(() => {
+        const collapsible = activeCategory === null;
+        const activeInSection = activeTags.size;
+        const showChips = !collapsible || tagsExpanded;
+        return (
+          <>
+            {collapsible ? (
+              <Pressable
+                onPress={() => setTagsExpanded((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel="Etichette"
+                accessibilityState={{ expanded: tagsExpanded }}
+                hitSlop={8}
+                className="mb-1.5 mt-3 flex-row items-center">
+                <Text className="text-xs font-semibold text-stone-600">Etichette</Text>
+                {activeInSection > 0 && (
+                  <View className="ml-1.5 rounded-full bg-brick-50 px-1.5 py-0.5">
+                    <Text className="text-[10px] font-bold text-brick-600">{activeInSection}</Text>
+                  </View>
+                )}
+                <Ionicons
+                  name={tagsExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color="#78716c"
+                  style={{ marginLeft: 4 }}
+                />
+              </Pressable>
+            ) : (
+              <Text className="mb-1.5 mt-3 text-xs font-semibold text-stone-600">Etichette</Text>
+            )}
+            {showChips && (
+              <View className="flex-row flex-wrap">
+                {TAG_KEYS.map((t) => {
+                  const active = activeTags.has(t);
+                  return (
+                    <Pressable
+                      key={t}
+                      onPress={() => toggleTag(t)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Etichetta ${TAG_LABELS[t]}`}
+                      accessibilityState={{ selected: active }}
+                      className={`mb-1.5 mr-1.5 rounded-full border px-3 py-1.5 ${
+                        active
+                          ? 'border-brick-600 bg-brick-50'
+                          : 'border-transparent bg-parchment-100'
+                      }`}>
+                      <Text
+                        className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
+                        {TAG_LABELS[t]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        );
+      })()}
     </View>
   );
 }

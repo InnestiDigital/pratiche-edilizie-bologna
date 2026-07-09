@@ -65,6 +65,37 @@ describe('buildActiveFilterChips', () => {
     expect(chips).toContainEqual({ key: `${STATUS_CHIP_PREFIX}xyz_unknown`, label: 'xyz_unknown' });
   });
 
+  it('gender-agrees the concluso chip with a single feminine-noun category', () => {
+    for (const category of ['edilizia', 'commercio'] as const) {
+      const chips = buildActiveFilterChips({
+        ...base,
+        statuses: ['concluso'],
+        activeCategory: category,
+      });
+      expect(chips).toContainEqual({ key: `${STATUS_CHIP_PREFIX}concluso`, label: 'Conclusa' });
+    }
+  });
+
+  it('keeps the shared masculine concluso label for a masculine-noun category (cantieri)', () => {
+    const chips = buildActiveFilterChips({
+      ...base,
+      statuses: ['concluso'],
+      activeCategory: 'cantieri',
+    });
+    expect(chips).toContainEqual({
+      key: `${STATUS_CHIP_PREFIX}concluso`,
+      label: STATUS_LABELS.concluso,
+    });
+  });
+
+  it('keeps the shared generic status label under "Tutte" (no active category)', () => {
+    const chips = buildActiveFilterChips({ ...base, statuses: ['concluso'], activeCategory: null });
+    expect(chips).toContainEqual({
+      key: `${STATUS_CHIP_PREFIX}concluso`,
+      label: STATUS_LABELS.concluso,
+    });
+  });
+
   it('maps each tag to its label with the tag prefix', () => {
     const t = Object.keys(TAG_LABELS)[0];
     const chips = buildActiveFilterChips({ ...base, tags: [t] });

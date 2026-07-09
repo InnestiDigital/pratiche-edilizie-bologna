@@ -1,6 +1,8 @@
 import { STATUS_LABELS, TAG_LABELS } from './constants';
 import { SORT_LABELS, type SortOption } from './build-feed-query';
 import { PERIOD_LABELS, type FeedPeriod } from './feed-period';
+import { statusLabelFor } from './status-label';
+import type { Category } from './sources';
 
 /**
  * One dismissible summary chip for the feed's active-filter row.
@@ -22,6 +24,13 @@ export interface ActiveFilterState {
   /** The default period (`'all'`); any other value surfaces a removable chip. */
   defaultPeriod: FeedPeriod;
   statuses: string[];
+  /**
+   * The single category the feed is scoped to, or null under "Tutte". When set,
+   * status chip labels agree in gender with that category's domain noun (so an
+   * edilizia/commercio `concluso` chip reads "Conclusa", matching the cards +
+   * detail pills + the Stato filter list); null keeps the shared generic label.
+   */
+  activeCategory?: Category | null;
   tags: string[];
   onlyNew: boolean;
   onlyFavorites: boolean;
@@ -67,7 +76,10 @@ export function buildActiveFilterChips(state: ActiveFilterState): ActiveFilterCh
   }
 
   for (const s of state.statuses) {
-    chips.push({ key: `${STATUS_CHIP_PREFIX}${s}`, label: STATUS_LABELS[s] ?? s });
+    const label = state.activeCategory
+      ? statusLabelFor(s, state.activeCategory, STATUS_LABELS[s] ?? s)
+      : (STATUS_LABELS[s] ?? s);
+    chips.push({ key: `${STATUS_CHIP_PREFIX}${s}`, label });
   }
 
   for (const t of state.tags) {

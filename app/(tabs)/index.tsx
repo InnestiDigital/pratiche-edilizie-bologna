@@ -1441,6 +1441,7 @@ export default function FeedScreen() {
     period,
     defaultPeriod: 'all',
     statuses: [...activeStatuses],
+    activeCategory,
     tags: [...activeTags],
     onlyNew,
     onlyFavorites,

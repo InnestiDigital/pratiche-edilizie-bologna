@@ -50,13 +50,13 @@ import { getCoords } from '../../lib/permit-extra';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { isSameLocation, type HomeLocation } from '../../lib/home-location';
 import { STATUS_COLORS } from '../../lib/status-breakdown';
+import { statusLabelFor } from '../../lib/status-label';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
   FILING_TYPE_LABELS,
   FILING_TYPE_FULL_NAMES,
   FILING_TYPE_DESCRIPTIONS,
   FILING_COLORS,
-  STATUS_LABELS,
   STATUS_DESCRIPTIONS,
   TAG_LABELS,
   type FilingType,
@@ -192,7 +192,7 @@ function RelatedRow({
 }) {
   const filingType = permit.filing_type as FilingType;
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
-  const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
+  const statusLabel = statusLabelFor(permit.status, permit.category, permit.status_raw);
   const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
 
   return (
@@ -520,7 +520,7 @@ export default function PermitDetail() {
   const tags = parsePermitTags(permit.tags);
   const filingType = permit.filing_type as FilingType;
   const filingLabel = FILING_TYPE_LABELS[filingType] ?? permit.filing_type;
-  const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
+  const statusLabel = statusLabelFor(permit.status, permit.category, permit.status_raw);
   const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
 

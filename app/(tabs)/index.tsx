@@ -43,6 +43,7 @@ import { sectionCountLabel } from '../../lib/section-count-label';
 import { buildResultCount } from '../../lib/result-count-label';
 import { recordNoun } from '../../lib/record-noun';
 import { STATUS_COLORS } from '../../lib/status-breakdown';
+import { statusLabelFor } from '../../lib/status-label';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import { formatItDate } from '../../lib/format-date';
@@ -389,7 +390,7 @@ function PermitCard({
   // Categories whose stored `status` carries real signal (edilizia/cantieri/
   // commercio); eventi/segnalazioni statuses are constants — no dot/label.
   const showStatus = CATEGORY_HAS_STATUS_SIGNAL[permit.category];
-  const statusLabel = STATUS_LABELS[permit.status] ?? permit.status_raw;
+  const statusLabel = statusLabelFor(permit.status, permit.category, permit.status_raw);
   const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
   // The top-left badge: the filing-type acronym for edilizia (its own color), the
   // category label for every other source (its category color).

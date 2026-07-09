@@ -89,7 +89,15 @@ function filterFixtures(filters: FeedFilters): Permit[] {
   if (filters.zones?.length)
     rows = rows.filter((p) => p.zone !== null && filters.zones.includes(p.zone as never));
   if (filters.filingTypes?.length)
-    rows = rows.filter((p) => filters.filingTypes.includes(p.filing_type));
+    // The filing-type chips (PDC/SCIA/CILA) are edilizia-only sub-filters. Mirror
+    // build-feed-query's edilizia-scoped IN (`category <> 'edilizia' OR filing_type
+    // IN (...)`) so a cantiere/event/… row is kept regardless of its filing_type
+    // token — else the default "Tutte" feed (prefs seed all 3 edilizia types) drops
+    // every non-edilizia row and the fixture feed shows ONLY edilizia, never the
+    // other 4 categories.
+    rows = rows.filter(
+      (p) => p.category !== 'edilizia' || filters.filingTypes.includes(p.filing_type)
+    );
   if (filters.categories?.length)
     rows = rows.filter((p) => filters.categories!.includes(p.category));
   if (filters.statuses?.length) rows = rows.filter((p) => filters.statuses!.includes(p.status));

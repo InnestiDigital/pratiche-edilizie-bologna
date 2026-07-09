@@ -17,6 +17,7 @@ export interface UserPreferences {
   onboardingDone: boolean;
   home: HomeLocation | null;
   homeRadiusMeters: number;
+  homeHintDismissed: boolean;
 }
 
 const FIXTURE: UserPreferences = {
@@ -30,6 +31,9 @@ const FIXTURE: UserPreferences = {
   // real neighbourhood to narrow to in the web screenshot build.
   home: { coords: { lat: 44.5236, lon: 11.361 }, label: 'Via Stalingrado 45' },
   homeRadiusMeters: DEFAULT_HOME_RADIUS_M,
+  // Home is set in the fixture, so the feed hint is (correctly) suppressed in the
+  // default screenshot; the value only matters when the fixture home is null.
+  homeHintDismissed: false,
 };
 
 export async function loadPreferences(): Promise<UserPreferences> {

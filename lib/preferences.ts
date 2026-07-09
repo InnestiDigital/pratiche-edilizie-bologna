@@ -20,6 +20,8 @@ export interface UserPreferences {
   home: HomeLocation | null;
   /** Chosen radius (metres) for that filter; snapped to a valid option on read. */
   homeRadiusMeters: number;
+  /** Whether the user dismissed the feed's one-time "Vicino a casa" teaching hint. */
+  homeHintDismissed: boolean;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -40,6 +42,7 @@ const DEFAULTS: UserPreferences = {
   onboardingDone: false,
   home: null,
   homeRadiusMeters: DEFAULT_HOME_RADIUS_M,
+  homeHintDismissed: false,
 };
 
 export async function loadPreferences(): Promise<UserPreferences> {
@@ -51,6 +54,7 @@ export async function loadPreferences(): Promise<UserPreferences> {
   const onboarding = await getPreference(db, 'onboarding_done', 'false');
   const home = await getPreference(db, 'home', 'null');
   const homeRadius = await getPreference(db, 'home_radius_m', String(DEFAULTS.homeRadiusMeters));
+  const homeHintDismissed = await getPreference(db, 'home_hint_dismissed', 'false');
 
   return {
     zones: decodeEnumArray(zones, QUARTIERI, DEFAULTS.zones),
@@ -62,6 +66,7 @@ export async function loadPreferences(): Promise<UserPreferences> {
     // is snapped to a valid option so a stale/garbage number can't skew the filter.
     home: parseStoredHome(home),
     homeRadiusMeters: sanitizeHomeRadius(Number(homeRadius)),
+    homeHintDismissed: homeHintDismissed === 'true',
   };
 }
 
@@ -112,5 +117,8 @@ export async function savePreferences(prefs: Partial<UserPreferences>): Promise<
   }
   if (prefs.homeRadiusMeters !== undefined) {
     await setPreference(db, 'home_radius_m', String(sanitizeHomeRadius(prefs.homeRadiusMeters)));
+  }
+  if (prefs.homeHintDismissed !== undefined) {
+    await setPreference(db, 'home_hint_dismissed', String(prefs.homeHintDismissed));
   }
 }

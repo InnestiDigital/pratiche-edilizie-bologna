@@ -25,7 +25,8 @@ import {
   type FeedFilters,
   type SortOption,
 } from '../../lib/queries';
-import { loadPreferences } from '../../lib/preferences';
+import { loadPreferences, savePreferences } from '../../lib/preferences';
+import { shouldShowHomeHint } from '../../lib/home-hint';
 import { listFavoriteIds, toggleFavorite } from '../../lib/favorites';
 import { listNotePreviews } from '../../lib/notes';
 import { applyFavoriteToggle } from '../../lib/favorite-set';
@@ -972,6 +973,39 @@ function ActiveFilterChips({
   );
 }
 
+/* ── Home discoverability hint ──────────────────── */
+
+/** One-time dismissible banner teaching the "Vicino a casa" capability. The
+ *  radius filter only appears in the FilterPanel once a home is anchored, and a
+ *  home is set from a permit detail — so without this a first-time feed browser
+ *  never learns the place-aware feature exists. Shown only while no home is set
+ *  (see shouldShowHomeHint); setting one retires it, an explicit dismiss persists.
+ *  Brick home-glyph on a parchment card ties it to the same home identity as the
+ *  filter toggle + Settings "Casa" card. */
+function HomeHintBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <View className="mx-4 mb-2 mt-1 flex-row items-center rounded-xl border border-brick-100 bg-brick-50 py-2.5 pl-3 pr-2">
+      <View className="mr-2.5 h-8 w-8 items-center justify-center rounded-full bg-white">
+        <Ionicons name="home" size={16} color="#9B2335" />
+      </View>
+      <View className="flex-1 pr-1">
+        <Text className="text-[13px] font-bold text-ink-800">Cosa si costruisce vicino a te?</Text>
+        <Text className="mt-0.5 text-xs leading-4 text-stone-600">
+          Apri una voce e tocca «Imposta come casa» per filtrare il feed sulle voci vicine.
+        </Text>
+      </View>
+      <Pressable
+        onPress={onDismiss}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Nascondi il suggerimento «Vicino a casa»"
+        className="h-7 w-7 items-center justify-center rounded-full">
+        <Ionicons name="close" size={16} color="#9B2335" />
+      </Pressable>
+    </View>
+  );
+}
+
 /* ── Date Section Header ────────────────────────── */
 
 /** Sticky month header ("Novembre 2024") over a run of same-month cards. */
@@ -1054,6 +1088,9 @@ export default function FeedScreen() {
   const [onlyNearHome, setOnlyNearHome] = useState(false);
   const [home, setHome] = useState<HomeLocation | null>(null);
   const [homeRadiusMeters, setHomeRadiusMeters] = useState<number>(DEFAULT_HOME_RADIUS_M);
+  // Whether the one-time "Vicino a casa" discoverability hint has been dismissed.
+  // Defaults true so it never flashes before the first prefs read resolves it.
+  const [homeHintDismissed, setHomeHintDismissed] = useState(true);
   const [period, setPeriod] = useState<FeedPeriod>('all');
   const [sort, setSort] = useState<SortOption>('request_newest');
   // `searchInput` drives the text box (updates on every keystroke so typing
@@ -1131,6 +1168,9 @@ export default function FeedScreen() {
         // Mirror the home anchor + radius so the FilterPanel toggle and chip render.
         setHome(prefs.home);
         setHomeRadiusMeters(prefs.homeRadiusMeters);
+        // Mirror the hint-dismissed flag so the discoverability banner can decide
+        // to render (only when no home is set and the user hasn't dismissed it).
+        setHomeHintDismissed(prefs.homeHintDismissed);
         const allFilters: FeedFilters = {
           zones: prefs.zones,
           filingTypes: prefs.filingTypes,
@@ -1334,6 +1374,14 @@ export default function FeedScreen() {
     const db = await getDb();
     const nowSaved = await toggleFavorite(db, sourceId, new Date().toISOString());
     setFavoriteIds((prev) => applyFavoriteToggle(prev, sourceId, nowSaved));
+  }, []);
+
+  // Permanently dismiss the "Vicino a casa" hint: flip local state at once (banner
+  // vanishes) and persist so it never returns. Setting a home also retires it (the
+  // banner is gated on home === null), so this only matters for a decline.
+  const dismissHomeHint = useCallback(async () => {
+    setHomeHintDismissed(true);
+    await savePreferences({ homeHintDismissed: true });
   }, []);
 
   const toggleType = (type: FilingType) => {
@@ -1630,6 +1678,13 @@ export default function FeedScreen() {
             </Pressable>
           )}
         </View>
+      )}
+
+      {/* "Vicino a casa" discoverability hint — one-time, only before a home is
+          set (see shouldShowHomeHint); teaches the place-aware filter a first-time
+          browser would otherwise never find. */}
+      {!loading && shouldShowHomeHint({ home, dismissed: homeHintDismissed, hasData }) && (
+        <HomeHintBanner onDismiss={dismissHomeHint} />
       )}
 
       <SectionList

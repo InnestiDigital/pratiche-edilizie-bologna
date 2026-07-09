@@ -11,6 +11,8 @@ import {
   type NearbyResult,
 } from './nearby-permits';
 import type { ProcessingDatePair } from './processing-stats';
+import { streetDisplayName } from './home-address';
+import type { StreetEntry } from './street-index';
 
 // The feed-query primitives live in the pure, db-free `build-feed-query` module
 // so the SQL construction is unit-testable in isolation. Re-exported here so the
@@ -268,4 +270,20 @@ export async function getNewSourceIds(db: SQLite.SQLiteDatabase): Promise<Set<st
     'SELECT source_id FROM permits WHERE is_new = 1'
   );
   return new Set(rows.map((r) => r.source_id));
+}
+
+/**
+ * The distinct streets carried by local edilizia rows, as `{ via, codvia }` pairs
+ * ready for `buildStreetIndex`. Powers the Settings "Imposta indirizzo" street
+ * picker: every edilizia row carries both a street `address` and its `codvia`
+ * join key, so the local data already knows which streets the user can anchor to
+ * — no network. The `address` is cleaned to a display name (`streetDisplayName`,
+ * trailing civic stripped); `buildStreetIndex` de-dupes by normalized name.
+ */
+export async function getEdiliziaStreets(db: SQLite.SQLiteDatabase): Promise<StreetEntry[]> {
+  const rows = await db.getAllAsync<{ via: string; codvia: number }>(
+    `SELECT DISTINCT address AS via, codvia FROM permits
+     WHERE category = 'edilizia' AND codvia IS NOT NULL AND address IS NOT NULL`
+  );
+  return rows.map((r) => ({ via: streetDisplayName(r.via), codvia: r.codvia }));
 }

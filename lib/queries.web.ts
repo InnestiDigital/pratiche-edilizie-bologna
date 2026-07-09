@@ -17,6 +17,8 @@ import type { Category } from './sources';
 import type { FeedFilters } from './build-feed-query';
 import type { ProcessingDatePair } from './processing-stats';
 import { getCoords } from './permit-extra';
+import { streetDisplayName } from './home-address';
+import type { StreetEntry } from './street-index';
 import {
   rankNearby,
   NEARBY_DEFAULT_RADIUS_M,
@@ -211,4 +213,10 @@ export async function markPermitSeen(_db: SQLite.SQLiteDatabase, _id: number): P
 
 export async function getNewSourceIds(_db: SQLite.SQLiteDatabase): Promise<Set<string>> {
   return new Set(FIXTURES.filter((p) => p.is_new === 1).map((p) => p.source_id));
+}
+
+export async function getEdiliziaStreets(_db: SQLite.SQLiteDatabase): Promise<StreetEntry[]> {
+  return FIXTURES.filter(
+    (p) => p.category === 'edilizia' && p.codvia !== null && p.address !== null
+  ).map((p) => ({ via: streetDisplayName(p.address as string), codvia: p.codvia as number }));
 }

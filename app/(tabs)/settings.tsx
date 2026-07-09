@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Switch, Alert, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  Switch,
+  Alert,
+  Linking,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+} from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { CivicoMark } from '../../components/CivicoMark';
@@ -32,7 +43,10 @@ import { registerBackgroundSync, unregisterBackgroundSync } from '../../lib/back
 import { getDb } from '../../lib/db';
 import { CITY } from '../../lib/city';
 import { APP_NAME } from '../../lib/brand';
-import { countPermits, getStats } from '../../lib/queries';
+import { countPermits, getStats, getEdiliziaStreets } from '../../lib/queries';
+import { buildStreetIndex, type StreetIndex } from '../../lib/street-index';
+import { resolveAddressToHome } from '../../lib/home-geocode';
+import type { HomeAddressResolution } from '../../lib/home-address';
 import { buildMatchSummary } from '../../lib/settings-match-summary';
 import { recordNoun } from '../../lib/record-noun';
 import {
@@ -146,6 +160,220 @@ function ToggleRow({
   );
 }
 
+/** Italian message for each non-`ok` resolution outcome, shown inline in the modal. */
+const RESOLUTION_MESSAGE: Record<Exclude<HomeAddressResolution['kind'], 'ok'>, string> = {
+  'empty-index': 'Sincronizza prima la tua zona per poter cercare una via.',
+  'unknown-street': 'Via non trovata tra i dati scaricati. Scegline una dall’elenco.',
+  'no-coordinate': 'Non è stato possibile posizionare questo indirizzo. Prova un civico diverso.',
+  'fetch-failed': 'Impossibile raggiungere i dati civici. Controlla la connessione e riprova.',
+};
+
+/** How many matching streets to render in the picker (bounded for performance). */
+const STREET_PICKER_LIMIT = 40;
+
+/**
+ * "Imposta indirizzo" — the second way to set the home anchor (the first is a
+ * permit detail's "Imposta come casa"). The user filters the LOCAL street list
+ * (built from synced edilizia rows), picks a via, optionally types a civico, and
+ * the resolver geocodes it against the Bologna civici gazetteer. Every failure is
+ * surfaced explicitly — never a silent wrong pin. No external geocoder.
+ */
+function AddressModal({
+  visible,
+  onClose,
+  onSet,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSet: (home: HomeLocation) => void;
+}) {
+  const [streetIndex, setStreetIndex] = useState<StreetIndex | null>(null);
+  const [search, setSearch] = useState('');
+  const [selectedVia, setSelectedVia] = useState<string | null>(null);
+  const [civico, setCivico] = useState('');
+  const [resolving, setResolving] = useState(false);
+  const [errorKind, setErrorKind] = useState<Exclude<HomeAddressResolution['kind'], 'ok'> | null>(
+    null
+  );
+
+  // Load the local street list each time the modal opens; reset transient state.
+  useEffect(() => {
+    if (!visible) return;
+    setStreetIndex(null);
+    setSearch('');
+    setSelectedVia(null);
+    setCivico('');
+    setErrorKind(null);
+    let cancelled = false;
+    getDb()
+      .then((db) => getEdiliziaStreets(db))
+      .then((entries) => {
+        if (!cancelled) setStreetIndex(buildStreetIndex(entries));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
+  const names = streetIndex?.names ?? [];
+  const query = search.trim().toLowerCase();
+  const matches = (query ? names.filter((n) => n.toLowerCase().includes(query)) : names).slice(
+    0,
+    STREET_PICKER_LIMIT
+  );
+
+  const handleSet = async () => {
+    if (!streetIndex || !selectedVia || resolving) return;
+    setResolving(true);
+    setErrorKind(null);
+    try {
+      const res = await resolveAddressToHome(streetIndex, selectedVia, civico);
+      if (res.kind === 'ok') {
+        onSet(res.home);
+        onClose();
+      } else {
+        setErrorKind(res.kind);
+      }
+    } catch {
+      setErrorKind('fetch-failed');
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View className="flex-1 justify-end bg-black/40">
+        <View className="max-h-[86%] rounded-t-3xl bg-parchment-100 pb-8">
+          <View className="flex-row items-center justify-between px-5 pb-1 pt-5">
+            <Text className="text-lg font-bold text-ink-800">Imposta indirizzo</Text>
+            <Pressable
+              onPress={onClose}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Chiudi">
+              <Ionicons name="close" size={22} color="#8B7355" />
+            </Pressable>
+          </View>
+          <Text className="px-5 pb-3 text-xs leading-5 text-stone-600">
+            Scegli la via e il civico per posizionare la tua casa e filtrare il feed sulle voci
+            vicine.
+          </Text>
+
+          {streetIndex === null ? (
+            <View className="items-center py-12">
+              <ActivityIndicator color="#9B2335" />
+            </View>
+          ) : names.length === 0 ? (
+            <View className="mx-5 mb-4 flex-row items-start rounded-xl bg-white p-4">
+              <Ionicons name="cloud-download-outline" size={18} color="#8B7355" />
+              <Text className="ml-3 flex-1 text-sm leading-5 text-stone-600">
+                {RESOLUTION_MESSAGE['empty-index']}
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Street search */}
+              <View className="mx-5 mb-2 flex-row items-center rounded-xl bg-white px-3">
+                <Ionicons name="search" size={16} color="#a89888" />
+                <TextInput
+                  value={search}
+                  onChangeText={(t) => {
+                    setSearch(t);
+                    setSelectedVia(null);
+                  }}
+                  placeholder="Cerca una via…"
+                  placeholderTextColor="#a89888"
+                  className="ml-2 flex-1 py-2.5 text-[15px] text-ink-800"
+                  accessibilityLabel="Cerca una via"
+                />
+              </View>
+
+              {/* Matching streets */}
+              <ScrollView
+                className="mx-5 mb-3 max-h-56 rounded-xl bg-white"
+                keyboardShouldPersistTaps="handled">
+                {matches.length === 0 ? (
+                  <Text className="px-4 py-4 text-sm text-stone-500">Nessuna via trovata.</Text>
+                ) : (
+                  matches.map((name, i) => {
+                    const active = name === selectedVia;
+                    return (
+                      <Pressable
+                        key={name}
+                        onPress={() => setSelectedVia(name)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        className={`flex-row items-center justify-between px-4 py-3 ${
+                          i !== matches.length - 1 ? 'border-b border-parchment-200' : ''
+                        } ${active ? 'bg-brick-50' : ''}`}>
+                        <Text
+                          className={`flex-1 text-[15px] ${active ? 'font-semibold text-brick-700' : 'text-ink-800'}`}
+                          numberOfLines={1}>
+                          {name}
+                        </Text>
+                        {active && <Ionicons name="checkmark" size={18} color="#9B2335" />}
+                      </Pressable>
+                    );
+                  })
+                )}
+              </ScrollView>
+
+              {/* Civic number */}
+              <View className="mx-5 mb-3">
+                <Text className="mb-1.5 text-xs font-semibold text-stone-600">
+                  Civico (facoltativo)
+                </Text>
+                <TextInput
+                  value={civico}
+                  onChangeText={setCivico}
+                  keyboardType="number-pad"
+                  placeholder="es. 24"
+                  placeholderTextColor="#a89888"
+                  className="rounded-xl bg-white px-4 py-2.5 text-[15px] text-ink-800"
+                  accessibilityLabel="Numero civico"
+                />
+              </View>
+
+              {errorKind && (
+                <View className="mx-5 mb-3 flex-row items-start rounded-xl bg-brick-50 p-3">
+                  <Ionicons name="alert-circle" size={16} color="#9B2335" />
+                  <Text className="ml-2 flex-1 text-xs leading-5 text-brick-700">
+                    {RESOLUTION_MESSAGE[errorKind]}
+                  </Text>
+                </View>
+              )}
+
+              {/* Confirm */}
+              <Pressable
+                onPress={handleSet}
+                disabled={!selectedVia || resolving}
+                accessibilityRole="button"
+                accessibilityLabel="Imposta come casa"
+                accessibilityState={{ disabled: !selectedVia || resolving }}
+                className={`mx-5 flex-row items-center justify-center rounded-xl py-3.5 ${
+                  !selectedVia || resolving ? 'bg-parchment-200' : 'bg-brick-600'
+                }`}>
+                {resolving ? (
+                  <ActivityIndicator color="#fdfcfa" />
+                ) : (
+                  <>
+                    <Ionicons name="home" size={16} color={!selectedVia ? '#a89888' : '#fdfcfa'} />
+                    <Text
+                      className={`ml-2 text-[15px] font-semibold ${!selectedVia ? 'text-stone-400' : 'text-white'}`}>
+                      Imposta come casa
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function SettingsScreen() {
   const [zones, setZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
   const [interests, setInterests] = useState<Set<Category>>(new Set(CATEGORIES));
@@ -157,6 +385,8 @@ export default function SettingsScreen() {
   // its radius chosen, and it can be cleared.
   const [home, setHome] = useState<HomeLocation | null>(null);
   const [homeRadius, setHomeRadius] = useState<number>(DEFAULT_HOME_RADIUS_M);
+  // "Imposta indirizzo" modal — the type-your-address way to set the home anchor.
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // Live "how many permits match these filters" preview + the DB total. Either is
   // null while its count is loading. `matchCount` recomputes whenever a filter set
@@ -295,6 +525,14 @@ export default function SettingsScreen() {
   const chooseHomeRadius = (meters: number) => {
     setHomeRadius(meters);
     savePreferences({ homeRadiusMeters: meters });
+  };
+
+  // Persist a home resolved from the "Imposta indirizzo" flow. Same write path as
+  // the permit-detail "Imposta come casa" anchor — this is an additive second way
+  // in, not a replacement.
+  const applyAddressHome = (next: HomeLocation) => {
+    setHome(next);
+    savePreferences({ home: next });
   };
 
   const clearHome = () => {
@@ -475,8 +713,8 @@ export default function SettingsScreen() {
             </View>
           </>
         ) : (
-          // No anchor yet: teach the set gesture (the anchor is captured from a
-          // permit that carries a coordinate, via the detail "Imposta come casa").
+          // No anchor yet: teach the two ways to set it — type an address here, or
+          // tap "Imposta come casa" on any permit that carries a coordinate.
           <View className="flex-row items-start px-4 py-4">
             <View className="mr-3 mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-parchment-100">
               <Ionicons name="home-outline" size={17} color="#8B7355" />
@@ -484,12 +722,36 @@ export default function SettingsScreen() {
             <View className="flex-1">
               <Text className="text-[15px] font-semibold text-ink-800">Nessuna casa impostata</Text>
               <Text className="mt-0.5 text-xs leading-5 text-stone-500">
-                Apri una voce e tocca «Imposta come casa» per filtrare il feed sulle voci vicine.
+                Imposta il tuo indirizzo qui sotto, oppure apri una voce e tocca «Imposta come
+                casa».
               </Text>
             </View>
           </View>
         )}
+        {/* "Imposta indirizzo" — the type-an-address entry (second way to set the
+            anchor). Always available: sets a first home, or changes an existing one. */}
+        <Pressable
+          onPress={() => setAddressModalOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Imposta indirizzo"
+          className="flex-row items-center border-t border-parchment-200 px-4 py-3">
+          <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
+            <Ionicons name="location" size={17} color="#9B2335" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[15px] font-semibold text-ink-800">
+              {home ? 'Cambia indirizzo' : 'Imposta indirizzo'}
+            </Text>
+            <Text className="mt-0.5 text-xs text-stone-500">Cerca la tua via e il civico</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#a89888" />
+        </Pressable>
       </View>
+      <AddressModal
+        visible={addressModalOpen}
+        onClose={() => setAddressModalOpen(false)}
+        onSet={applyAddressHome}
+      />
 
       <SectionHeader title="Quartieri" hint={`${zones.size} di ${QUARTIERI.length} attivi`} />
       <View

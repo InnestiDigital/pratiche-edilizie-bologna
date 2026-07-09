@@ -4,7 +4,13 @@ import { useRouter } from 'expo-router';
 import { syncRecent, syncFull, getLastSyncTime, type SyncResult } from '../../lib/sync';
 import { backfillEdiliziaCoords } from '../../lib/civici-sync';
 import { loadPreferences } from '../../lib/preferences';
-import { SOURCES, CATEGORY_COLORS, type SourceKey } from '../../lib/sources';
+import {
+  SOURCES,
+  CATEGORIES,
+  CATEGORY_LABELS,
+  CATEGORY_COLORS,
+  type SourceKey,
+} from '../../lib/sources';
 import { getDb } from '../../lib/db';
 import { CITY } from '../../lib/city';
 import { getStats, getReleasedDatePairs } from '../../lib/queries';
@@ -358,22 +364,65 @@ export default function SyncScreen() {
                     )}
                   </View>
 
-                  {/* Legend */}
-                  <View className="mt-3 flex-row flex-wrap">
-                    {segments.map((s) => (
-                      <View key={s.key} className="mr-4 mt-1 flex-row items-center">
-                        <View
-                          className="mr-1.5 h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: s.color }}
-                        />
-                        <Text className="text-xs text-stone-600">
-                          <Text className="font-bold text-ink-800">
-                            {s.value.toLocaleString('it-IT')}
-                          </Text>{' '}
-                          {s.label}
-                        </Text>
-                      </View>
-                    ))}
+                  {/* Legend — grouped by the 5-category taxonomy the feed chips +
+                      settings use, so color = category stays 1:1. Edilizia's three
+                      filing types are nested beneath its header (their per-filing
+                      colors, esp. SCIA green, can't be misread as a top-level
+                      category next to Commercio green). */}
+                  <View className="mt-3">
+                    {CATEGORIES.map((cat) => {
+                      const catSources = (Object.keys(SOURCES) as SourceKey[]).filter(
+                        (k) => SOURCES[k].category === cat
+                      );
+                      const catTotal = catSources.reduce(
+                        (n, k) => n + (stats.byDataset[k] ?? 0),
+                        0
+                      );
+                      if (catTotal === 0) return null;
+                      const filings = catSources
+                        .map((k) => {
+                          const bar = EDILIZIA_BAR[k];
+                          return bar ? { ...bar, value: stats.byDataset[k] ?? 0 } : null;
+                        })
+                        .filter(
+                          (f): f is { label: string; color: string; value: number } =>
+                            f !== null && f.value > 0
+                        );
+                      return (
+                        <View key={cat} className="mt-1.5">
+                          <View className="flex-row items-center">
+                            <View
+                              className="mr-1.5 h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: CATEGORY_COLORS[cat].text }}
+                            />
+                            <Text className="text-xs text-stone-600">
+                              <Text className="font-bold text-ink-800">
+                                {catTotal.toLocaleString('it-IT')}
+                              </Text>{' '}
+                              {CATEGORY_LABELS[cat]}
+                            </Text>
+                          </View>
+                          {filings.length > 1 && (
+                            <View className="ml-4 mt-0.5 flex-row flex-wrap">
+                              {filings.map((f) => (
+                                <View key={f.label} className="mr-3 mt-0.5 flex-row items-center">
+                                  <View
+                                    className="mr-1 h-2 w-2 rounded-full"
+                                    style={{ backgroundColor: f.color }}
+                                  />
+                                  <Text className="text-[11px] text-stone-500">
+                                    <Text className="font-semibold text-ink-700">
+                                      {f.value.toLocaleString('it-IT')}
+                                    </Text>{' '}
+                                    {f.label}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
               );

@@ -866,12 +866,19 @@ function FilterPanel({
               {keys.map((s) => {
                 const active = activeStatuses.has(s);
                 const dot = STATUS_COLORS[s] ?? '#9ca3af';
+                // Under a single signal-category the chip agrees in gender with that
+                // category's noun (edilizia/commercio `concluso` → "Conclusa"), so the
+                // filter matches the pills the cards now show. Under "Tutte" the list is
+                // category-mixed → keep the shared generic label.
+                const label = activeCategory
+                  ? statusLabelFor(s, activeCategory, STATUS_LABELS[s] ?? s)
+                  : (STATUS_LABELS[s] ?? s);
                 return (
                   <Pressable
                     key={s}
                     onPress={() => toggleStatus(s)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Stato ${STATUS_LABELS[s]}`}
+                    accessibilityLabel={`Stato ${label}`}
                     accessibilityState={{ selected: active }}
                     className={`mb-1.5 mr-1.5 flex-row items-center rounded-full border px-3 py-1.5 ${
                       active
@@ -884,7 +891,7 @@ function FilterPanel({
                     />
                     <Text
                       className={`text-xs font-semibold ${active ? 'text-brick-700' : 'text-stone-500'}`}>
-                      {STATUS_LABELS[s]}
+                      {label}
                     </Text>
                   </Pressable>
                 );

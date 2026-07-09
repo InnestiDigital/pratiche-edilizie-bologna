@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { getDb } from '../../lib/db';
 import { getPermits, type FeedFilters } from '../../lib/queries';
@@ -14,6 +14,7 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORIES, type Category } from '../
 import { loadPreferences } from '../../lib/preferences';
 import { formatRadiusLabel } from '../../lib/home-location';
 import { PermitMap } from '../../components/PermitMap';
+import { FadeScrollRow } from '../../components/FadeScrollRow';
 
 /** Brand wine-red — matches the home marker/ring drawn in PermitMap. */
 const HOME_COLOR = '#9B2335';
@@ -137,7 +138,7 @@ export default function MapScreen() {
             borderWidth: 1,
             borderColor: '#e2d9cd',
           }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <FadeScrollRow>
             {data.home !== null && (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
                 <View
@@ -168,7 +169,7 @@ export default function MapScreen() {
                 </Text>
               </View>
             ))}
-          </ScrollView>
+          </FadeScrollRow>
         </View>
       )}
 

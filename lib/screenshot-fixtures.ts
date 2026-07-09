@@ -73,7 +73,11 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('pdc-2024-000481'),
     is_new: 1,
     title: null,
-    extra: '{}',
+    // On device `backfillEdiliziaCoords` geocodes edilizia rows by codvia+civico
+    // and writes extra.lat/lon (string form, like coordsToExtra); the fixtures
+    // carry plausible Via-matched coords so the map screenshot shows the edilizia
+    // layer — the densest — instead of an empty flagship category.
+    extra: JSON.stringify({ lat: '44.4975', lon: '11.3410' }),
   },
   {
     id: 2,
@@ -94,7 +98,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('scia-2024-002210'),
     is_new: 1,
     title: null,
-    extra: '{}',
+    extra: JSON.stringify({ lat: '44.4965', lon: '11.3530' }),
   },
   {
     id: 3,
@@ -115,7 +119,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('cila-2024-005567'),
     is_new: 0,
     title: null,
-    extra: '{}',
+    extra: JSON.stringify({ lat: '44.4890', lon: '11.3255' }),
   },
   {
     id: 4,
@@ -136,7 +140,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('pdc-2024-000390'),
     is_new: 0,
     title: null,
-    extra: '{}',
+    extra: JSON.stringify({ lat: '44.4995', lon: '11.2960' }),
   },
   {
     id: 5,
@@ -157,7 +161,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('scia-2024-001988'),
     is_new: 0,
     title: null,
-    extra: '{}',
+    extra: JSON.stringify({ lat: '44.4720', lon: '11.3640' }),
   },
   {
     id: 6,
@@ -178,7 +182,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('cila-2024-004120'),
     is_new: 0,
     title: null,
-    extra: '{}',
+    extra: JSON.stringify({ lat: '44.4985', lon: '11.3520' }),
   },
   {
     id: 7,
@@ -199,7 +203,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('pdc-2023-000902'),
     is_new: 0,
     title: null,
-    extra: '{}',
+    extra: JSON.stringify({ lat: '44.5170', lon: '11.3620' }),
   },
   {
     id: 8,
@@ -220,7 +224,7 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     source_link: portal('scia-2023-003011'),
     is_new: 0,
     title: null,
-    extra: '{}',
+    extra: JSON.stringify({ lat: '44.4915', lon: '11.3130' }),
   },
   // ── Non-edilizia categories ───────────────────────────────────────────────
   {

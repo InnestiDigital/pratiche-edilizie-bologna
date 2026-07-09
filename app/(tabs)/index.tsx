@@ -877,25 +877,35 @@ function FilterPanel({
         const showChips = !collapsible || statusExpanded;
         return (
           <>
+            {/* Hairline above the two collapsed disclosures so Stato + Etichette read
+                as one "advanced filters" group rather than two lone rows tacked under
+                the Quartiere chips. */}
+            <View className="mb-3 border-t border-parchment-200" />
             {collapsible ? (
+              // Full-width row (justify-between) with the chevron trailing at the right
+              // edge — the platform-native disclosure affordance, and a full-width tap
+              // target instead of a text-width one.
               <Pressable
                 onPress={() => setStatusExpanded((v) => !v)}
                 accessibilityRole="button"
                 accessibilityLabel="Stato"
                 accessibilityState={{ expanded: statusExpanded }}
                 hitSlop={8}
-                className="mb-1.5 flex-row items-center">
-                <Text className="text-xs font-semibold text-stone-600">Stato</Text>
-                {activeInSection > 0 && (
-                  <View className="ml-1.5 rounded-full bg-brick-50 px-1.5 py-0.5">
-                    <Text className="text-[10px] font-bold text-brick-600">{activeInSection}</Text>
-                  </View>
-                )}
+                className="mb-1.5 flex-row items-center justify-between">
+                <View className="flex-row items-center">
+                  <Text className="text-xs font-semibold text-stone-600">Stato</Text>
+                  {activeInSection > 0 && (
+                    <View className="ml-1.5 rounded-full bg-brick-50 px-1.5 py-0.5">
+                      <Text className="text-[10px] font-bold text-brick-600">
+                        {activeInSection}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <Ionicons
                   name={statusExpanded ? 'chevron-up' : 'chevron-down'}
                   size={14}
                   color="#78716c"
-                  style={{ marginLeft: 4 }}
                 />
               </Pressable>
             ) : (
@@ -959,18 +969,21 @@ function FilterPanel({
                 accessibilityLabel="Etichette"
                 accessibilityState={{ expanded: tagsExpanded }}
                 hitSlop={8}
-                className="mb-1.5 mt-3 flex-row items-center">
-                <Text className="text-xs font-semibold text-stone-600">Etichette</Text>
-                {activeInSection > 0 && (
-                  <View className="ml-1.5 rounded-full bg-brick-50 px-1.5 py-0.5">
-                    <Text className="text-[10px] font-bold text-brick-600">{activeInSection}</Text>
-                  </View>
-                )}
+                className="mb-1.5 mt-3 flex-row items-center justify-between">
+                <View className="flex-row items-center">
+                  <Text className="text-xs font-semibold text-stone-600">Etichette</Text>
+                  {activeInSection > 0 && (
+                    <View className="ml-1.5 rounded-full bg-brick-50 px-1.5 py-0.5">
+                      <Text className="text-[10px] font-bold text-brick-600">
+                        {activeInSection}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <Ionicons
                   name={tagsExpanded ? 'chevron-up' : 'chevron-down'}
                   size={14}
                   color="#78716c"
-                  style={{ marginLeft: 4 }}
                 />
               </Pressable>
             ) : (

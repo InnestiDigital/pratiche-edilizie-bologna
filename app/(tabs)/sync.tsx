@@ -468,14 +468,17 @@ export default function SyncScreen() {
                                 their number floating — every column reads as one
                                 connected unit. justify-end keeps the shared baseline;
                                 the +20 headroom fits the caption above a full-height
-                                peak bar. Empty months keep a transparent caption so
-                                columns stay the same height. */}
+                                peak bar. An empty month shows a faint, lighter-weight
+                                "0" (not a transparent caption) so its flat baseline
+                                reads as a measured zero, not missing data. */}
                             <View
                               style={{ height: BAR_MAX + 20 }}
                               className="w-full items-center justify-end">
                               <Text
-                                className={`mb-1 text-[11px] font-bold ${
-                                  m.count === 0 ? 'text-transparent' : 'text-ink-700'
+                                className={`mb-1 text-[11px] ${
+                                  m.count === 0
+                                    ? 'font-medium text-stone-400'
+                                    : 'font-bold text-ink-700'
                                 }`}>
                                 {m.count}
                               </Text>

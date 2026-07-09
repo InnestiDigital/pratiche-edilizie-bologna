@@ -82,13 +82,17 @@ export function rankNearby<T>(
  * nearest 10 m below 1 km (`"~310 m"`), or one decimal km with an Italian decimal
  * comma at/above 1 km (`"~1,2 km"`). A non-finite or negative input clamps to
  * `0` so a junk distance can never render as `NaN`/`-` on screen.
+ *
+ * The m-vs-km branch is decided on the ROUNDED metres, not the raw input, so a
+ * value in `[995, 1000)` — which rounds up to `1000` — reads as `"~1,0 km"`
+ * rather than the contradictory `"~1000 m"` (a metre label at/over 1 km).
  */
 export function formatNearbyDistance(meters: number): string {
   const m = Number.isFinite(meters) && meters > 0 ? meters : 0;
-  if (m < 1000) {
-    const rounded = Math.round(m / 10) * 10;
+  const rounded = Math.round(m / 10) * 10;
+  if (rounded < 1000) {
     return `~${rounded} m`;
   }
-  const km = (m / 1000).toFixed(1).replace('.', ',');
+  const km = (rounded / 1000).toFixed(1).replace('.', ',');
   return `~${km} km`;
 }

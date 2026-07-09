@@ -97,6 +97,15 @@ describe('formatNearbyDistance', () => {
     expect(formatNearbyDistance(2950)).toBe('~3,0 km');
   });
 
+  it('promotes a sub-km value that rounds up to 1000 into the km label', () => {
+    // [995, 1000) rounds to 1000 m; it must read "~1,0 km", not "~1000 m".
+    expect(formatNearbyDistance(995)).toBe('~1,0 km');
+    expect(formatNearbyDistance(997)).toBe('~1,0 km');
+    expect(formatNearbyDistance(999.9)).toBe('~1,0 km');
+    // Just below the round-up threshold stays a metre label.
+    expect(formatNearbyDistance(994)).toBe('~990 m');
+  });
+
   it('clamps a junk distance to 0 m instead of rendering NaN', () => {
     expect(formatNearbyDistance(NaN)).toBe('~0 m');
     expect(formatNearbyDistance(-50)).toBe('~0 m');

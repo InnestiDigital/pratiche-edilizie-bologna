@@ -172,15 +172,46 @@ export const CATEGORY_COLORS: Record<Category, { bg: string; text: string }> = {
  * the leading count. `notification-message.ts` renders `${count} ${singularNew}`
  * ("1 nuova pratica", "1 nuovo cantiere") or `${count} ${pluralNew}` ("3 nuove
  * pratiche", "3 nuovi cantieri"), so every entry omits the count and lets the
- * builder prepend it uniformly. Exhaustive `Record<Category, …>`: adding a category
- * without a noun fails the build.
+ * builder prepend it uniformly. `singularNoun`/`pluralNoun` are the bare nouns
+ * WITHOUT the "nuova/nuove/nuovi" adjective ("pratica"/"pratiche", "cantiere"/
+ * "cantieri") — used where a count qualifies the record type without the "new"
+ * framing, e.g. the map coverage chip's "8 pratiche senza posizione". Exhaustive
+ * `Record<Category, …>`: adding a category without these nouns fails the build.
  */
-export const CATEGORY_NOUNS: Record<Category, { singularNew: string; pluralNew: string }> = {
-  edilizia: { singularNew: 'nuova pratica', pluralNew: 'nuove pratiche' },
-  cantieri: { singularNew: 'nuovo cantiere', pluralNew: 'nuovi cantieri' },
-  commercio: { singularNew: 'nuova attività', pluralNew: 'nuove attività' },
-  eventi: { singularNew: 'nuovo evento', pluralNew: 'nuovi eventi' },
-  segnalazioni: { singularNew: 'nuova segnalazione', pluralNew: 'nuove segnalazioni' },
+export const CATEGORY_NOUNS: Record<
+  Category,
+  { singularNew: string; pluralNew: string; singularNoun: string; pluralNoun: string }
+> = {
+  edilizia: {
+    singularNew: 'nuova pratica',
+    pluralNew: 'nuove pratiche',
+    singularNoun: 'pratica',
+    pluralNoun: 'pratiche',
+  },
+  cantieri: {
+    singularNew: 'nuovo cantiere',
+    pluralNew: 'nuovi cantieri',
+    singularNoun: 'cantiere',
+    pluralNoun: 'cantieri',
+  },
+  commercio: {
+    singularNew: 'nuova attività',
+    pluralNew: 'nuove attività',
+    singularNoun: 'attività',
+    pluralNoun: 'attività',
+  },
+  eventi: {
+    singularNew: 'nuovo evento',
+    pluralNew: 'nuovi eventi',
+    singularNoun: 'evento',
+    pluralNoun: 'eventi',
+  },
+  segnalazioni: {
+    singularNew: 'nuova segnalazione',
+    pluralNew: 'nuove segnalazioni',
+    singularNoun: 'segnalazione',
+    pluralNoun: 'segnalazioni',
+  },
 };
 
 /**

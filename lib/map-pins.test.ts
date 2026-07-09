@@ -3,6 +3,7 @@ import {
   toMapPins,
   pinsRegion,
   mapViewport,
+  describeWithoutCoords,
   metersToLatDelta,
   metersToLonDelta,
   homeCircleFraction,
@@ -47,14 +48,16 @@ const withCoords = (
 
 describe('toMapPins', () => {
   it('keeps rows with valid coords and counts the coordinate-less ones', () => {
-    const { pins, withoutCoords } = toMapPins([
+    const { pins, withoutCoords, withoutByCategory } = toMapPins([
       withCoords(1, '44.50', '11.34'),
-      permit({ id: 2, extra: '{}' }), // no coords
+      permit({ id: 2, extra: '{}' }), // no coords (default category = edilizia)
       withCoords(3, '44.51', '11.35', 'commercio'),
-      permit({ id: 4, extra: JSON.stringify({ lat: '', lon: '11.3' }) }), // blank → dropped
+      permit({ id: 4, category: 'cantieri', extra: JSON.stringify({ lat: '', lon: '11.3' }) }), // blank → dropped
     ]);
     expect(pins.map((p) => p.id)).toEqual([1, 3]);
     expect(withoutCoords).toBe(2);
+    // the two dropped rows are broken down by their category
+    expect(withoutByCategory).toEqual({ edilizia: 1, cantieri: 1 });
   });
 
   it('preserves input order', () => {
@@ -89,6 +92,27 @@ describe('toMapPins', () => {
     const { pins } = toMapPins([withCoords(1, '44.5', '11.3', 'segnalazioni')]);
     expect(pins[0].title).toBe('Voce senza titolo');
     expect(pins[0].subtitle).toBeNull();
+  });
+});
+
+describe('describeWithoutCoords', () => {
+  it('returns null when nothing is missing', () => {
+    expect(describeWithoutCoords({})).toBeNull();
+    expect(describeWithoutCoords({ edilizia: 0 })).toBeNull();
+  });
+
+  it('names the single missing category with a plural noun', () => {
+    expect(describeWithoutCoords({ edilizia: 8 })).toBe('8 pratiche senza posizione');
+    expect(describeWithoutCoords({ cantieri: 3 })).toBe('3 cantieri senza posizione');
+  });
+
+  it('uses the singular noun when exactly one row of one category is missing', () => {
+    expect(describeWithoutCoords({ edilizia: 1 })).toBe('1 pratica senza posizione');
+    expect(describeWithoutCoords({ commercio: 1 })).toBe('1 attività senza posizione');
+  });
+
+  it('falls back to a generic "voci" count when the missing rows are mixed', () => {
+    expect(describeWithoutCoords({ edilizia: 6, cantieri: 2 })).toBe('8 voci senza posizione');
   });
 });
 

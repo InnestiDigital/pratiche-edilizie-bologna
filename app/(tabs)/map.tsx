@@ -6,6 +6,7 @@ import { getPermits, type FeedFilters } from '../../lib/queries';
 import {
   toMapPins,
   mapViewport,
+  describeWithoutCoords,
   type MapPin,
   type MapRegion,
   type HomeMarker,
@@ -30,7 +31,8 @@ interface MapData {
   pins: MapPin[];
   region: MapRegion;
   home: HomeMarker | null;
-  withoutCoords: number;
+  /** Coverage-chip clause naming the coordinate-less rows, or `null` when none. */
+  withoutLabel: string | null;
   total: number;
 }
 
@@ -46,7 +48,7 @@ export default function MapScreen() {
           getPermits(db, ALL_FILTERS, MAP_CAP, 0),
           loadPreferences(),
         ]);
-        const { pins, withoutCoords } = toMapPins(permits);
+        const { pins, withoutByCategory } = toMapPins(permits);
         const home: HomeMarker | null = prefs.home
           ? {
               lat: prefs.home.coords.lat,
@@ -60,7 +62,7 @@ export default function MapScreen() {
           pins,
           region: mapViewport(pins, home),
           home,
-          withoutCoords,
+          withoutLabel: describeWithoutCoords(withoutByCategory),
           total: permits.length,
         });
       })();
@@ -188,7 +190,7 @@ export default function MapScreen() {
           }}>
           <Text style={{ color: '#6b5f52', fontSize: 12 }}>
             {data.pins.length} sulla mappa
-            {data.withoutCoords > 0 ? ` · ${data.withoutCoords} senza posizione` : ''}
+            {data.withoutLabel !== null ? ` · ${data.withoutLabel}` : ''}
             {data.home !== null ? ` · casa ${formatRadiusLabel(data.home.radiusMeters)}` : ''}
           </Text>
         </View>

@@ -1,6 +1,5 @@
 import type { Permit } from './queries';
-import type { Category } from './sources';
-import { CATEGORY_COLORS } from './sources';
+import { CATEGORIES, CATEGORY_COLORS, CATEGORY_NOUNS, type Category } from './sources';
 import { getCoords } from './permit-extra';
 
 /**
@@ -41,6 +40,13 @@ export interface MapPinsResult {
   pins: MapPin[];
   /** Count of permits with no/invalid coordinate — excluded from `pins`. */
   withoutCoords: number;
+  /**
+   * The `withoutCoords` count broken down by category (only categories with at
+   * least one coordinate-less row appear). Lets the UI name *what* is missing —
+   * "8 pratiche senza posizione" instead of an opaque "8 senza posizione" — and
+   * stays correct as device geocoding fills a category in (its entry drops out).
+   */
+  withoutByCategory: Partial<Record<Category, number>>;
 }
 
 /** Piazza Maggiore, Bologna — the fallback center when no pin has a coordinate. */
@@ -109,10 +115,12 @@ const cardSubtitle = (p: Permit): string | null => {
 export function toMapPins(permits: readonly Permit[]): MapPinsResult {
   const pins: MapPin[] = [];
   let withoutCoords = 0;
+  const withoutByCategory: Partial<Record<Category, number>> = {};
   for (const p of permits) {
     const coords = getCoords(p.extra);
     if (!coords) {
       withoutCoords += 1;
+      withoutByCategory[p.category] = (withoutByCategory[p.category] ?? 0) + 1;
       continue;
     }
     pins.push({
@@ -125,7 +133,31 @@ export function toMapPins(permits: readonly Permit[]): MapPinsResult {
       subtitle: cardSubtitle(p),
     });
   }
-  return { pins, withoutCoords };
+  return { pins, withoutCoords, withoutByCategory };
+}
+
+/**
+ * Human phrase for the map's coverage chip describing the coordinate-less rows —
+ * "8 pratiche senza posizione" when they are all one category (the common case:
+ * not-yet-geocoded edilizia), "12 voci senza posizione" when mixed. Returns `null`
+ * when nothing is missing so the caller omits the clause. The category noun comes
+ * from {@link CATEGORY_NOUNS}, the single source of truth, so it stays consistent
+ * with the notification copy. Pure.
+ */
+export function describeWithoutCoords(
+  withoutByCategory: Partial<Record<Category, number>>
+): string | null {
+  const present = CATEGORIES.filter((c) => (withoutByCategory[c] ?? 0) > 0);
+  if (present.length === 0) return null;
+  const total = present.reduce((sum, c) => sum + (withoutByCategory[c] ?? 0), 0);
+  let noun: string;
+  if (present.length === 1) {
+    const n = CATEGORY_NOUNS[present[0]];
+    noun = total === 1 ? n.singularNoun : n.pluralNoun;
+  } else {
+    noun = total === 1 ? 'voce' : 'voci';
+  }
+  return `${total} ${noun} senza posizione`;
 }
 
 /**

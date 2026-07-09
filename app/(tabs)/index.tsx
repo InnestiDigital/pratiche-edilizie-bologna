@@ -59,6 +59,7 @@ import {
   DEFAULT_HOME_RADIUS_M,
   type HomeLocation,
 } from '../../lib/home-location';
+import { distanceLabelFromHome } from '../../lib/home-distance';
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
@@ -128,6 +129,10 @@ const TAG_KEYS = Object.keys(TAG_LABELS);
 // but if a dense DB ever exceeds it the feed shows the nearest `HOME_SCAN_CAP`
 // matches (never a silent wrong page) — pagination is disabled while active.
 const HOME_SCAN_CAP = 2000;
+
+// Stable empty distance map for the non-radius feed, so leaving radius mode
+// doesn't allocate a fresh Map on every reset. Never mutated.
+const EMPTY_DISTANCE_MAP: ReadonlyMap<string, string> = new Map();
 
 /* ── Tag Badge ──────────────────────────────────── */
 
@@ -376,6 +381,7 @@ function PermitCard({
   permit,
   isSaved,
   notePreview,
+  distanceLabel,
   sort,
   onPress,
   onToggleSave,
@@ -384,6 +390,9 @@ function PermitCard({
   isSaved: boolean;
   /** One-line preview of this permit's personal note, or null when it has none. */
   notePreview: string | null;
+  /** Approx distance from home ("~350 m") when the "Vicino a casa" filter is
+   *  active, else null — the card shows a proximity chip only in radius mode. */
+  distanceLabel: string | null;
   sort: SortOption;
   onPress: () => void;
   onToggleSave: () => void;
@@ -417,6 +426,7 @@ function PermitCard({
     hasNote ? 'con nota' : null,
     permit.title ?? permit.address ?? null,
     permit.zone,
+    distanceLabel ? `a ${distanceLabel} da casa` : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -474,6 +484,17 @@ function PermitCard({
 
       {/* Category-specific body (exhaustive switch over Category) */}
       <CardBody permit={permit} sort={sort} />
+
+      {/* Proximity chip — only in "Vicino a casa" radius mode. Answers "how far
+          is this from MY home?" right on the card (the radius filter already
+          narrowed the feed; this quantifies each hit). Home glyph + brick accent
+          ties it to the same home identity as the filter toggle. */}
+      {distanceLabel && (
+        <View className="mt-2 flex-row items-center self-start rounded-full bg-parchment-200 px-2.5 py-0.5">
+          <Ionicons name="home" size={11} color="#9B2335" />
+          <Text className="ml-1 text-xs font-semibold text-stone-600">{distanceLabel} da casa</Text>
+        </View>
+      )}
 
       {/* Personal note — the resident's own tracking note on this permit (see the
           detail "Le mie note"), surfaced right in the feed so they can read WHAT
@@ -1006,6 +1027,11 @@ export default function FeedScreen() {
   const [newCount, setNewCount] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [notePreviews, setNotePreviews] = useState<Map<string, string>>(new Map());
+  // Per-card distance-from-home labels ("~350 m"), keyed by source_id. Populated
+  // only while the "Vicino a casa" radius filter is active (the scan holds every
+  // near-home row), empty otherwise so no chip renders off radius mode.
+  const [nearHomeDistances, setNearHomeDistances] =
+    useState<ReadonlyMap<string, string>>(EMPTY_DISTANCE_MAP);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Session-local category quick-filter: `null` = show all followed categories,
@@ -1136,12 +1162,22 @@ export default function FeedScreen() {
         // the home radius in JS — coords live in the `extra` JSON, so no SQL WHERE
         // can express proximity. Rows without a coordinate (not-yet-geocoded
         // edilizia) are dropped by filterPermitsNearHome.
+        const home = prefs.home;
         const scan = await getPermits(db, filters, HOME_SCAN_CAP, 0);
-        rows = filterPermitsNearHome(prefs.home, prefs.homeRadiusMeters, scan, (p) =>
-          getCoords(p.extra)
-        );
+        rows = filterPermitsNearHome(home, prefs.homeRadiusMeters, scan, (p) => getCoords(p.extra));
+        // Label each kept card with its distance from home ("~350 m"). The rows
+        // are already in memory and all carry a coord (null-coord rows were just
+        // dropped), so this is a pure map — no extra query.
+        const distances = new Map<string, string>();
+        for (const p of rows) {
+          const label = distanceLabelFromHome(home, getCoords(p.extra));
+          if (label) distances.set(p.source_id, label);
+        }
+        setNearHomeDistances(distances);
       } else {
         rows = await getPermits(db, filters, 50, newOffset);
+        // Leaving / not in radius mode: drop any stale distance labels on reset.
+        if (reset) setNearHomeDistances(EMPTY_DISTANCE_MAP);
       }
 
       if (reset) {
@@ -1607,6 +1643,7 @@ export default function FeedScreen() {
             permit={item}
             isSaved={favoriteIds.has(item.source_id)}
             notePreview={notePreviews.get(item.source_id) ?? null}
+            distanceLabel={nearHomeDistances.get(item.source_id) ?? null}
             sort={sort}
             onPress={() => router.push(`/permit/${item.id}`)}
             onToggleSave={() => handleToggleSave(item.source_id)}

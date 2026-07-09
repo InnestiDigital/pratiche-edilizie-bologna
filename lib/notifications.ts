@@ -29,8 +29,17 @@ export async function hasNotificationPermissions(): Promise<boolean> {
   return status === 'granted';
 }
 
-export async function sendNewPermitsNotification(summary: BackgroundSyncSummary): Promise<void> {
-  const body = buildNotificationMessage(summary);
+/**
+ * Fire the "new permits" local notification. `body` defaults to the generic
+ * per-category message; the background task passes the place-aware "N pratiche
+ * vicino a casa" body when the user has a home set (see `home-alert.ts`). A
+ * `null` body (nothing worth notifying) skips the send. `summary` still drives
+ * the title + deep-link data regardless of which body is shown.
+ */
+export async function sendNewPermitsNotification(
+  summary: BackgroundSyncSummary,
+  body: string | null = buildNotificationMessage(summary)
+): Promise<void> {
   if (body === null) return;
 
   await Notifications.scheduleNotificationAsync({

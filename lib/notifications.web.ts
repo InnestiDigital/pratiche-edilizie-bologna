@@ -15,6 +15,9 @@ export async function hasNotificationPermissions(): Promise<boolean> {
   return false;
 }
 
-export async function sendNewPermitsNotification(_summary: BackgroundSyncSummary): Promise<void> {
+export async function sendNewPermitsNotification(
+  _summary: BackgroundSyncSummary,
+  _body?: string | null
+): Promise<void> {
   // no-op on web
 }

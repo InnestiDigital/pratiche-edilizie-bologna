@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseApiResponse, rawRecordSchema, SyncIngressError } from './schemas';
+import { parseApiResponse, parseCountEnvelope, rawRecordSchema, SyncIngressError } from './schemas';
 
 function rawRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -134,6 +134,34 @@ describe('parseApiResponse — total row-drop = shape drift throws', () => {
     // total_count still reports the dataset size — must not read as drift.
     const page = parseApiResponse({ total_count: 5000, results: [] });
     expect(page.results).toEqual([]);
+  });
+});
+
+describe('parseCountEnvelope — count probe tolerates a malformed row', () => {
+  it('reads total_count and does NOT run the per-row schema (bad row survives)', () => {
+    // A count probe fetches one record only to read total_count and discards the
+    // row. The shape-drift guard that fires on a full-page "records present but
+    // none survived" must NOT apply here: a single bad record at the front of a
+    // probe window would otherwise abort the whole source sweep — a failure the
+    // page walk that follows deliberately tolerates (it skips the row).
+    const page = parseCountEnvelope({
+      total_count: 4200,
+      results: [{ this: 'is', not: 'a valid row' }],
+    });
+    expect(page.totalCount).toBe(4200);
+    expect(page.results).toEqual([]);
+    expect(page.skipped).toBe(0);
+  });
+
+  it('defaults total_count to 0 when the envelope omits it', () => {
+    expect(parseCountEnvelope({ results: [] }).totalCount).toBe(0);
+  });
+
+  it('still throws on genuine envelope drift (results not an array)', () => {
+    // Envelope-level drift (an HTML error page, a renamed envelope) is a real
+    // failure the probe must surface, unlike a single unusable row.
+    expect(() => parseCountEnvelope('<html>error</html>')).toThrow(SyncIngressError);
+    expect(() => parseCountEnvelope({ total_count: 3, results: 'nope' })).toThrow(SyncIngressError);
   });
 });
 

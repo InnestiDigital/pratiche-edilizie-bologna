@@ -52,7 +52,7 @@ export const rawRecordSchema = z
   .passthrough();
 
 /** The paged-results envelope returned by the ODS records endpoint. */
-export const apiResponseSchema = z.object({
+const apiResponseSchema = z.object({
   total_count: z
     .number()
     .nullish()
@@ -98,17 +98,11 @@ export function makePageParser<S extends z.ZodTypeAny>(
   rowSchema: S
 ): (payload: unknown) => ParsedPage<z.output<S>> {
   return (payload: unknown): ParsedPage<z.output<S>> => {
-    const envelope = apiResponseSchema.safeParse(payload);
-    if (!envelope.success) {
-      const detail = envelope.error.issues
-        .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
-        .join('; ');
-      throw new SyncIngressError(`Risposta open-data non valida: ${detail}`, envelope.error.issues);
-    }
+    const envelope = validateEnvelope(payload);
 
     const results: z.output<S>[] = [];
     let skipped = 0;
-    for (const row of envelope.data.results) {
+    for (const row of envelope.results) {
       const record = rowSchema.safeParse(row);
       if (record.success) {
         results.push(record.data);
@@ -126,16 +120,53 @@ export function makePageParser<S extends z.ZodTypeAny>(
     // retry.ts (which treats SyncIngressError as permanent) surfaces it on the
     // dataset's SyncResult. A truly-empty page (`results.length === 0`) is the
     // normal end-of-data signal and is left untouched.
-    if (envelope.data.results.length > 0 && results.length === 0) {
+    if (envelope.results.length > 0 && results.length === 0) {
       throw new SyncIngressError(
         `Risposta open-data non valida: ${skipped} record presenti ma nessuno con la forma attesa ` +
           `(possibile cambio di schema dell'endpoint)`
       );
     }
 
-    return { results, totalCount: envelope.data.total_count, skipped };
+    return { results, totalCount: envelope.total_count, skipped };
   };
 }
+
+/**
+ * Validate ONLY the top-level ODS envelope (never the per-row schema), throwing a
+ * {@link SyncIngressError} on a shape mismatch. Shared by {@link makePageParser}
+ * and {@link parseCountEnvelope} so the envelope-error wording lives in one place.
+ */
+function validateEnvelope(payload: unknown): { total_count: number; results: unknown[] } {
+  const envelope = apiResponseSchema.safeParse(payload);
+  if (!envelope.success) {
+    const detail = envelope.error.issues
+      .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+      .join('; ');
+    throw new SyncIngressError(`Risposta open-data non valida: ${detail}`, envelope.error.issues);
+  }
+  return envelope.data;
+}
+
+/**
+ * A count-only page parser for `total_count` probes. Validates ONLY the ODS
+ * envelope and returns an empty `results` — it never runs a per-row schema.
+ *
+ * `probeCount` (sync.ts) fetches a single record purely to read `total_count`,
+ * then discards the row. Running that 1-record probe through a per-source
+ * {@link makePageParser} applies the "records present but none survived"
+ * shape-drift guard (above) to a page of one: a single malformed record at the
+ * front of a probe window would throw `SyncIngressError` and — since that error
+ * is non-retryable and a probe sits outside the per-page skip logic — abort the
+ * ENTIRE source sweep (every year window), the exact "silently dead feed" the
+ * guard exists to prevent, reintroduced one layer up. The page walk itself
+ * tolerates a bad row (it is skipped, the rest of the page is kept), so the probe
+ * that precedes it must be at least as tolerant. Genuine envelope/endpoint drift
+ * (not an object, `results` not an array, an HTML error page) still throws here.
+ */
+export const parseCountEnvelope = (payload: unknown): ParsedPage<never> => {
+  const { total_count } = validateEnvelope(payload);
+  return { results: [], totalCount: total_count, skipped: 0 };
+};
 
 /**
  * The edilizia page parser: {@link makePageParser} bound to {@link rawRecordSchema}.

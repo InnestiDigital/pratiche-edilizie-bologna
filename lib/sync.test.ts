@@ -465,6 +465,31 @@ describe('cap-overflow sweeps — no row is silently lost beyond MAX_OFFSET', ()
     }
   });
 
+  it('a malformed record at the front of a count-probe window does NOT abort the source', async () => {
+    // The count probe (limit 1) fetches one record only to read total_count. If
+    // that lone record is malformed, the probe must stay as tolerant as the walk
+    // that follows (which skips a bad row and keeps the rest) — otherwise a single
+    // bad record at the front of a probe window would throw SyncIngressError and
+    // lose the whole source for the run.
+    const fn = vi.fn(async (url: string) => {
+      const info = reqInfo(url);
+      if (info.isProbe) {
+        // Probe row is unusable; total_count still reports the window size.
+        return jsonResponse({ total_count: 1, results: [{ garbage: true }] });
+      }
+      // The walk returns the real, well-formed row.
+      return jsonResponse({ total_count: 1, results: [RAW_ROWS[EVENTI_SLUG]] });
+    });
+    vi.stubGlobal('fetch', fn);
+    useFakeDb();
+
+    const results = await syncRecent(undefined, ['eventi']);
+    expect(results.map((r) => r.dataset)).toEqual(['eventi']);
+    // Source completed cleanly and ingested the good row from the walk.
+    expect(results[0].error).toBeUndefined();
+    expect(results[0].fetched).toBe(1);
+  });
+
   it('future-window over the cap peels a bounded year off the front, then recurses on the remainder', async () => {
     let openEndedProbes = 0;
     const requests: ReturnType<typeof reqInfo>[] = [];

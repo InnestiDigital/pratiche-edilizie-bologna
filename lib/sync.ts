@@ -3,7 +3,7 @@ import { API_LIMIT } from './constants';
 import type { NormalizedPermit } from './normalize';
 import { fetchPage } from './fetch-page';
 import { withRetry } from './retry';
-import type { ParsedPage } from './schemas';
+import { parseCountEnvelope, type ParsedPage } from './schemas';
 import { getDb } from './db';
 import {
   classifyUpsert,
@@ -68,10 +68,16 @@ function walkWindow(
   );
 }
 
-/** Read a query window's `total_count` via a single-record probe (with its where). */
+/**
+ * Read a query window's `total_count` via a single-record probe (with its where).
+ * The probe parses the ODS envelope ONLY (`parseCountEnvelope`), never the source's
+ * per-row schema: it discards the row anyway, and validating it would let a single
+ * malformed record at the front of a probe window abort the whole source sweep — a
+ * failure the page walk that follows deliberately tolerates (see the note on
+ * `parseCountEnvelope`).
+ */
 async function probeCount(
   url: string,
-  parse: (json: unknown) => ParsedPage<NormalizedPermit>,
   where: string | undefined,
   onProgress?: (msg: string) => void
 ): Promise<number> {
@@ -79,7 +85,7 @@ async function probeCount(
   // probe is the identical `{ limit: '1', offset: '0' }` a dedicated probe builder
   // produced — one builder, one code path.
   const params = buildPageParams({ offset: 0, limit: 1, where });
-  const { totalCount } = await fetchPageWithRetry(url, params, parse, onProgress);
+  const { totalCount } = await fetchPageWithRetry(url, params, parseCountEnvelope, onProgress);
   return totalCount;
 }
 
@@ -107,7 +113,7 @@ async function sweepYearRefine(
     return all;
   }
 
-  const totalCount = await probeCount(url, parse, undefined, onProgress);
+  const totalCount = await probeCount(url, undefined, onProgress);
   if (totalCount <= MAX_OFFSET) {
     return walkWindow(url, parse, (offset) => buildPageParams({ offset }), onProgress);
   }
@@ -137,7 +143,7 @@ async function walkRangeUnderCap(
   onProgress?: (msg: string) => void
 ): Promise<NormalizedPermit[]> {
   const where = buildDateRangeWhere(field, range.from, range.toExclusive);
-  const count = await probeCount(url, parse, where, onProgress);
+  const count = await probeCount(url, where, onProgress);
   const halves = count > MAX_OFFSET ? bisectRange(range) : null;
   if (halves === null) {
     return walkWindow(url, parse, (offset) => buildPageParams({ offset, where }), onProgress);
@@ -199,7 +205,7 @@ async function walkSinceUnderCap(
   onProgress?: (msg: string) => void
 ): Promise<NormalizedPermit[]> {
   const where = buildSinceWhere(field, since);
-  const count = await probeCount(url, parse, where, onProgress);
+  const count = await probeCount(url, where, onProgress);
   if (count <= MAX_OFFSET) {
     return walkWindow(url, parse, (offset) => buildPageParams({ offset, where }), onProgress);
   }

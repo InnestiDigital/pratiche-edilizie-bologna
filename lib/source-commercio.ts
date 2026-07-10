@@ -8,6 +8,7 @@ import {
   coordsToExtra,
   geoPointSchema,
   portalTableSearchLink,
+  toIsoDate,
 } from './source-shared';
 
 /**
@@ -102,9 +103,12 @@ export function normalizeCommercio(raw: CommercioRow): NormalizedPermit {
     source_id,
     filing_type: SOURCES.commercio.filingTypeToken, // 'COMMERCIO'
     category: SOURCES.commercio.category, // 'commercio'
-    // Primary date = request date (already YYYY-MM-DD); secondary = procedure close.
-    source_updated_at: raw.data_richiesta,
-    date_issued: raw.data_fine_procedimento,
+    // Primary date = request date; secondary = procedure close. Both pass through
+    // toIsoDate so a full ODS datetime (`2018-11-10T10:30:00+00:00`) is stored as
+    // plain YYYY-MM-DD like every other source — keeping cross-source date sort and
+    // change detection format-consistent (toIsoDate is idempotent on YYYY-MM-DD).
+    source_updated_at: toIsoDate(raw.data_richiesta),
+    date_issued: toIsoDate(raw.data_fine_procedimento),
     address,
     zone: normalizeQuartiere(raw.quartiere),
     codvia: null,

@@ -172,4 +172,15 @@ describe('normalizeCommercio', () => {
     expect(n.date_issued).toBeNull();
     expect(n.zone).toBeNull();
   });
+
+  it('normalizes a full ODS datetime to plain YYYY-MM-DD like the other sources', () => {
+    const n = normalizeCommercio(
+      parse({
+        data_richiesta: '2018-11-10T10:30:00+00:00',
+        data_fine_procedimento: '2018-11-29T23:59:59+00:00',
+      })
+    );
+    expect(n.source_updated_at).toBe('2018-11-10');
+    expect(n.date_issued).toBe('2018-11-29');
+  });
 });

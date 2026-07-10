@@ -1,5 +1,5 @@
 import type { Coords } from './permit-extra';
-import { haversineMeters } from './geo-distance';
+import { haversineMeters, formatApproxDistance } from './geo-distance';
 import type { HomeLocation } from './home-location';
 
 /**
@@ -24,26 +24,13 @@ export function homeDistanceMeters(home: HomeLocation, point: Coords): number {
 }
 
 /**
- * A glanceable approximate distance label: "~350 m" under a kilometre (rounded
- * to the nearest 10 m, never below 10), "~1,2 km" at or above (one decimal,
- * Italian decimal comma, a whole value dropping its ",0" → "~2 km"). Non-finite
- * or non-positive input collapses to the "~10 m" floor so a corrupt coordinate
- * can never render "NaN"/"-5 m" on a card.
- *
- * The m-vs-km branch is decided on the ROUNDED metres, not the raw input, so a
- * value in `[995, 1000)` — which rounds up to `1000` — reads as "~1 km" rather
- * than the contradictory "~1000 m" (a metre label at/over 1 km). Mirrors the
- * same boundary fix in `nearby-permits.ts::formatNearbyDistance`.
+ * A glanceable approximate distance label for the feed's "da casa" chip. A thin
+ * intent-named wrapper over the shared {@link formatApproxDistance} so the feed
+ * and the permit-detail "Nei dintorni" rows render one identical distance format
+ * (single source of truth — see `geo-distance.ts::formatApproxDistance`).
  */
 export function formatDistanceApprox(meters: number): string {
-  const m = Number.isFinite(meters) && meters > 0 ? meters : 0;
-  const roundedM = Math.max(10, Math.round(m / 10) * 10);
-  if (roundedM < 1000) {
-    return `~${roundedM} m`;
-  }
-  const km = Math.round(m / 100) / 10;
-  const label = Number.isInteger(km) ? `${km}` : km.toFixed(1).replace('.', ',');
-  return `~${label} km`;
+  return formatApproxDistance(meters);
 }
 
 /**

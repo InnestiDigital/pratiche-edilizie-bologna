@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { haversineMeters } from './geo-distance';
+import { haversineMeters, formatApproxDistance } from './geo-distance';
 import type { Coords } from './permit-extra';
 
 const BOLOGNA: Coords = { lat: 44.4949, lon: 11.3426 }; // Piazza Maggiore-ish
@@ -54,5 +54,34 @@ describe('haversineMeters', () => {
     // 2° of longitude at the equator ≈ 222 km, NOT 358° worth
     expect(d).toBeGreaterThan(220_000);
     expect(d).toBeLessThan(224_000);
+  });
+});
+
+describe('formatApproxDistance', () => {
+  it('rounds sub-km distances to the nearest 10 m, never below the 10 m floor', () => {
+    expect(formatApproxDistance(347)).toBe('~350 m');
+    expect(formatApproxDistance(344)).toBe('~340 m');
+    expect(formatApproxDistance(4)).toBe('~10 m');
+    expect(formatApproxDistance(0)).toBe('~10 m');
+  });
+
+  it('formats km with an Italian comma, a whole value dropping its ",0"', () => {
+    expect(formatApproxDistance(1234)).toBe('~1,2 km');
+    expect(formatApproxDistance(1500)).toBe('~1,5 km');
+    expect(formatApproxDistance(2000)).toBe('~2 km');
+    expect(formatApproxDistance(1970)).toBe('~2 km');
+  });
+
+  it('promotes a value that rounds up to 1000 m into the km label', () => {
+    // [995, 1000) rounds to 1000 m; must read "~1 km", not "~1000 m".
+    expect(formatApproxDistance(995)).toBe('~1 km');
+    expect(formatApproxDistance(999.9)).toBe('~1 km');
+    expect(formatApproxDistance(994)).toBe('~990 m');
+  });
+
+  it('floors non-finite / non-positive input to "~10 m" instead of NaN', () => {
+    expect(formatApproxDistance(NaN)).toBe('~10 m');
+    expect(formatApproxDistance(Infinity)).toBe('~10 m');
+    expect(formatApproxDistance(-5)).toBe('~10 m');
   });
 });

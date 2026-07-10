@@ -5,6 +5,7 @@ import {
   NEARBY_DEFAULT_RADIUS_M,
   NEARBY_LIMIT,
 } from './nearby-permits';
+import { formatDistanceApprox } from './home-distance';
 import type { Coords } from './permit-extra';
 
 // A small cluster around Via Stalingrado, Bologna (the origin).
@@ -84,31 +85,41 @@ describe('rankNearby', () => {
 });
 
 describe('formatNearbyDistance', () => {
-  it('rounds sub-km distances to the nearest 10 m', () => {
+  it('rounds sub-km distances to the nearest 10 m, never below the 10 m floor', () => {
     expect(formatNearbyDistance(120)).toBe('~120 m');
     expect(formatNearbyDistance(305)).toBe('~310 m');
     expect(formatNearbyDistance(378)).toBe('~380 m');
-    expect(formatNearbyDistance(4)).toBe('~0 m');
+    // A near-zero distance floors to "~10 m", not the contradictory "~0 m".
+    expect(formatNearbyDistance(4)).toBe('~10 m');
   });
 
-  it('formats km with an Italian decimal comma at/above 1 km', () => {
-    expect(formatNearbyDistance(1000)).toBe('~1,0 km');
+  it('formats km with an Italian decimal comma, a whole value dropping its ",0"', () => {
+    expect(formatNearbyDistance(1000)).toBe('~1 km');
     expect(formatNearbyDistance(1234)).toBe('~1,2 km');
-    expect(formatNearbyDistance(2950)).toBe('~3,0 km');
+    expect(formatNearbyDistance(2950)).toBe('~3 km');
   });
 
   it('promotes a sub-km value that rounds up to 1000 into the km label', () => {
-    // [995, 1000) rounds to 1000 m; it must read "~1,0 km", not "~1000 m".
-    expect(formatNearbyDistance(995)).toBe('~1,0 km');
-    expect(formatNearbyDistance(997)).toBe('~1,0 km');
-    expect(formatNearbyDistance(999.9)).toBe('~1,0 km');
+    // [995, 1000) rounds to 1000 m; it must read "~1 km", not "~1000 m".
+    expect(formatNearbyDistance(995)).toBe('~1 km');
+    expect(formatNearbyDistance(997)).toBe('~1 km');
+    expect(formatNearbyDistance(999.9)).toBe('~1 km');
     // Just below the round-up threshold stays a metre label.
     expect(formatNearbyDistance(994)).toBe('~990 m');
   });
 
-  it('clamps a junk distance to 0 m instead of rendering NaN', () => {
-    expect(formatNearbyDistance(NaN)).toBe('~0 m');
-    expect(formatNearbyDistance(-50)).toBe('~0 m');
-    expect(formatNearbyDistance(Infinity)).toBe('~0 m');
+  it('floors a junk distance to the 10 m floor instead of rendering NaN', () => {
+    expect(formatNearbyDistance(NaN)).toBe('~10 m');
+    expect(formatNearbyDistance(-50)).toBe('~10 m');
+    expect(formatNearbyDistance(Infinity)).toBe('~10 m');
+  });
+
+  it('renders identically to the feed "da casa" formatter (single source of truth)', () => {
+    // The permit-detail "Nei dintorni" rows and the feed's "da casa" chip must
+    // show the SAME distance the SAME way — both delegate to formatApproxDistance,
+    // so any input renders byte-identical across the two surfaces.
+    for (const m of [4, 120, 305, 994, 999.9, 1000, 1234, 2950, NaN, -50, Infinity]) {
+      expect(formatNearbyDistance(m)).toBe(formatDistanceApprox(m));
+    }
   });
 });

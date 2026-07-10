@@ -35,3 +35,27 @@ export function haversineMeters(a: Coords, b: Coords): number {
   const c = 2 * Math.atan2(Math.sqrt(clamped), Math.sqrt(1 - clamped));
   return EARTH_RADIUS_M * c;
 }
+
+/**
+ * The single canonical "~distance" label used everywhere the app shows how far a
+ * coordinate is (the feed's "da casa" chip AND the permit-detail "Nei dintorni"
+ * rows). ONE source of truth so the two surfaces cannot drift: rounded to the
+ * nearest 10 m below a kilometre and never below 10 (`"~350 m"`), or one-decimal
+ * km with an Italian decimal comma at/above a kilometre, a whole value dropping
+ * its ",0" (`"~1,2 km"`, `"~2 km"`). Non-finite / non-positive input collapses to
+ * the "~10 m" floor so a corrupt coordinate can never render "NaN"/"-5 m".
+ *
+ * The m-vs-km branch is decided on the ROUNDED metres, not the raw input, so a
+ * value in `[995, 1000)` — which rounds up to `1000` — reads as "~1 km" rather
+ * than the contradictory "~1000 m" (a metre label at/over a kilometre).
+ */
+export function formatApproxDistance(meters: number): string {
+  const m = Number.isFinite(meters) && meters > 0 ? meters : 0;
+  const roundedM = Math.max(10, Math.round(m / 10) * 10);
+  if (roundedM < 1000) {
+    return `~${roundedM} m`;
+  }
+  const km = Math.round(m / 100) / 10;
+  const label = Number.isInteger(km) ? `${km}` : km.toFixed(1).replace('.', ',');
+  return `~${label} km`;
+}

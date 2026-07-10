@@ -17,6 +17,7 @@ import {
   getPermits,
   countPermits,
   countNewPermits,
+  countActivityPermits,
   getNewSourceIds,
   markAllSeen,
   parsePermitTags,
@@ -1204,6 +1205,10 @@ export default function FeedScreen() {
   // when the view is narrowed, so the count reads as a slice not the whole set.
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [newCount, setNewCount] = useState(0);
+  // Activity count (new arrivals + status transitions) — badges the "Novità" entry
+  // that opens the activity destination. Superset of newCount (also counts moved,
+  // already-seen voci), so it survives "Segna lette" when a transition remains.
+  const [activityCount, setActivityCount] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [notePreviews, setNotePreviews] = useState<Map<string, string>>(new Map());
   // Per-card distance-from-home labels ("~350 m"), keyed by source_id. Populated
@@ -1343,6 +1348,8 @@ export default function FeedScreen() {
         // New (unseen) permits across the whole DB — drives the "mark all seen"
         // action; global, matching markAllSeen's global UPDATE.
         setNewCount(await countNewPermits(db));
+        // Activity total (arrivals + transitions) — badges the "Novità" entry.
+        setActivityCount(await countActivityPermits(db));
         // Saved-permit ids, so each card can render its bookmark from one query
         // instead of an isFavorite call per visible row.
         setFavoriteIds(await listFavoriteIds(db));
@@ -1708,6 +1715,36 @@ export default function FeedScreen() {
           )}
         </Pressable>
       </View>
+
+      {/* "Novità" entry — a first-class destination for the two persisted "why
+          revisit" signals (new arrivals + status transitions), so they are a place
+          to go, not just pills scattered through the feed. Shown only when there is
+          activity; badged with the live count. Opens the /novita activity list. */}
+      {activityCount > 0 && (
+        <Pressable
+          onPress={() => router.push('/novita')}
+          accessibilityRole="button"
+          accessibilityLabel={`Novità, ${activityCount} ${activityCount === 1 ? 'aggiornamento' : 'aggiornamenti'} sulle voci che segui`}
+          accessibilityHint="Apri l'elenco delle novità"
+          className="mx-4 mt-2 flex-row items-center rounded-xl border border-brick-100 bg-brick-50 px-3.5 py-2.5">
+          <View className="mr-3 h-8 w-8 items-center justify-center rounded-full bg-brick-600">
+            <Ionicons name="sparkles" size={16} color="#ffffff" />
+            <View className="absolute -right-1.5 -top-1.5 h-4 min-w-4 items-center justify-center rounded-full border border-brick-50 bg-brick-700 px-1">
+              <Text className="text-[10px] font-bold text-white">
+                {activityCount > 99 ? '99+' : activityCount}
+              </Text>
+            </View>
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-brick-700">Novità</Text>
+            <Text className="text-xs text-brick-600" numberOfLines={1}>
+              {activityCount} {activityCount === 1 ? 'aggiornamento' : 'aggiornamenti'} sulle voci
+              che segui
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#9B2335" />
+        </Pressable>
+      )}
 
       {/* Category quick-filter — the primary always-visible scope row. Present
           only when ≥2 categories are followed (a lone category has nothing to

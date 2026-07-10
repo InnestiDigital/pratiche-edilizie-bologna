@@ -264,6 +264,45 @@ export async function markAllSeen(db: SQLite.SQLiteDatabase): Promise<void> {
 }
 
 /**
+ * The candidate rows for the "Novità" activity feed: every voce that MOVED since
+ * it entered the feed — a fresh arrival (`is_new`) OR a persisted status
+ * transition (`previous_status` written by `statusTransitionWrite`). Ordered
+ * newest-change-first at the SQL level so the `LIMIT` keeps the most recent
+ * activity; the pure `buildActivityFeed` re-classifies + re-sorts what it returns
+ * (a transition ranks by its flip time, an arrival by first-seen), so this order
+ * is only a bound, not the final one.
+ */
+export async function getActivityPermits(
+  db: SQLite.SQLiteDatabase,
+  limit = 100
+): Promise<Permit[]> {
+  return db.getAllAsync<Permit>(
+    `SELECT * FROM permits
+       WHERE is_new = 1 OR previous_status IS NOT NULL
+       ORDER BY COALESCE(status_changed_at, first_seen_at) DESC
+       LIMIT ?`,
+    limit
+  );
+}
+
+/**
+ * How many voci the activity feed holds — drives the feed's "Novità" entry badge
+ * without loading full rows. `statusTransitionWrite` only persists a
+ * `previous_status` that differs from the incoming status, so a `previous_status
+ * IS NOT NULL` row is always a real transition here and this count matches
+ * `buildActivityFeed`'s length (which additionally guards `previous !== current`).
+ */
+export async function countActivityPermits(db: SQLite.SQLiteDatabase): Promise<number> {
+  return (
+    (
+      await db.getFirstAsync<{ c: number }>(
+        'SELECT COUNT(*) as c FROM permits WHERE is_new = 1 OR previous_status IS NOT NULL'
+      )
+    )?.c ?? 0
+  );
+}
+
+/**
  * Mark a single permit seen (clear its NUOVO flag) — the per-permit counterpart
  * to `markAllSeen`, fired when its detail is opened so that reading a permit
  * counts as reading it (email-style), not only the bulk "Segna lette" action.

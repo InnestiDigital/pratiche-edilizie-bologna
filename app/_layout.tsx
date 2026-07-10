@@ -94,6 +94,18 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
+          name="novita"
+          options={{
+            headerShown: true,
+            title: 'Novità',
+            headerTitle: () => <HeaderBrand title="Novità" />,
+            headerTitleAlign: 'left',
+            presentation: 'card',
+            headerStyle: { backgroundColor: '#9B2335' },
+            headerTintColor: '#ffffff',
+          }}
+        />
+        <Stack.Screen
           name="permit/[id]"
           options={{
             headerShown: true,

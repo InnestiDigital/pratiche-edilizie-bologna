@@ -216,6 +216,21 @@ export async function markAllSeen(_db: SQLite.SQLiteDatabase): Promise<void> {
   // no-op on web
 }
 
+// Candidate rows for the "Novità" activity feed (new arrivals + persisted status
+// transitions). Order is unimportant here — `buildActivityFeed` re-sorts — so the
+// shim just filters the fixtures. `previous_status` is optional on the fixture
+// shape, so `!= null` also excludes the `undefined` rows.
+export async function getActivityPermits(
+  _db: SQLite.SQLiteDatabase,
+  limit = 100
+): Promise<Permit[]> {
+  return FIXTURES.filter((p) => p.is_new === 1 || p.previous_status != null).slice(0, limit);
+}
+
+export async function countActivityPermits(_db: SQLite.SQLiteDatabase): Promise<number> {
+  return FIXTURES.filter((p) => p.is_new === 1 || p.previous_status != null).length;
+}
+
 export async function markPermitSeen(_db: SQLite.SQLiteDatabase, _id: number): Promise<void> {
   // no-op in the screenshot build
 }

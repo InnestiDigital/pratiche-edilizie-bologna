@@ -432,10 +432,13 @@ export default function SyncScreen() {
               );
             })()}
 
-            {/* Voci per mese — trailing-months activity, bucketed by the
-                request date, anchored to the most recent month in the data (a
-                stale offline snapshot still shows its meaningful tail). Series +
-                labels come from the pure, tested buildMonthlyActivity. */}
+            {/* Voci per mese — monthly activity bucketed by the request date,
+                anchored to the most recent month in the data (a stale offline
+                snapshot still shows its meaningful tail). The window length is
+                adaptive: it snaps to the data's own span (clamped) so sparse
+                real data surfaces more of what's stored, not mostly-empty
+                trailing months. Series + labels come from the pure, tested
+                buildMonthlyActivity. */}
             {(() => {
               const activity = buildMonthlyActivity(stats.byMonth);
               if (activity.length === 0) return null;

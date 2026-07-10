@@ -4,9 +4,10 @@
  * `getStats` returns a raw `"YYYY-MM" -> count` map straight off a
  * `GROUP BY substr(source_updated_at, 1, 7)` — i.e. permits bucketed by the
  * month their request was filed (`richiesta_data` → `source_updated_at`). This
- * turns that map into a fixed-length, render-ready series for a small vertical
- * bar chart: the trailing N months of the dataset, gaps filled with zero, each
- * entry carrying its Italian month label and a bounded bar height.
+ * turns that map into a render-ready series for a small vertical bar chart: a
+ * contiguous run of months (gaps filled with zero), each entry carrying its
+ * Italian month label and a bounded bar height. The window length is adaptive
+ * (see `buildMonthlyActivity`).
  *
  * The window is anchored to the **most recent month present in the data**, not
  * to the wall clock. A local snapshot is often weeks or months stale (the app
@@ -15,6 +16,16 @@
  * always shows the meaningful tail of what the user actually has. It also keeps
  * this module pure — no `new Date()`, fully deterministic, unit-tested in Node
  * exactly like `buildStatusBreakdown` / `summarizeSyncResults`.
+ *
+ * The window **length is adaptive** when the caller does not pin one: it snaps
+ * to the data's own month span (earliest to latest), clamped to
+ * `[MIN, MAX]_WINDOW`. A fixed 6-month trailing window silently dropped every
+ * record older than the tail (sparse real data spread over a year rendered
+ * mostly empty months and only a fraction of what was stored); snapping to the
+ * span surfaces more of the actual distribution, while a very wide history
+ * still stays legible (older-than-MAX months roll off, captioned honestly by
+ * the sync screen). A caller that passes an explicit `months` keeps the old
+ * fixed-window behaviour verbatim.
  *
  * Defensive like its sibling stat builders: month keys that are not a real
  * `YYYY-MM` and counts that are not finite positive integers are dropped rather
@@ -37,8 +48,23 @@ const MONTH_ABBR_IT = [
   'dic',
 ];
 
-/** How many trailing months the chart shows by default. */
+/**
+ * Fallback / lower bound for the adaptive window. When the data spans fewer than
+ * this many months the chart still shows this many (a single-month snapshot reads
+ * as a small chart, not a lone bar). Also the default any caller inherits when it
+ * pins no window and the span is narrow.
+ */
 export const MONTHLY_ACTIVITY_WINDOW = 6;
+
+/** Adaptive window floor — alias of {@link MONTHLY_ACTIVITY_WINDOW}, named for intent. */
+export const MONTHLY_ACTIVITY_MIN_WINDOW = MONTHLY_ACTIVITY_WINDOW;
+
+/**
+ * Adaptive window ceiling. Data spanning more than this many months rolls its
+ * oldest months off-chart (the sync screen captions the dropped total) so the
+ * small phone bar chart stays legible instead of cramming a multi-year history.
+ */
+export const MONTHLY_ACTIVITY_MAX_WINDOW = 12;
 
 export interface MonthlyActivityEntry {
   /** `YYYY-MM` bucket key. */
@@ -87,18 +113,28 @@ function sanitizeCount(raw: number): number | null {
 }
 
 /**
- * Build the trailing-`months` monthly-activity series for the chart.
+ * Build the monthly-activity series for the chart.
  *
- * Returns `[]` when there is no usable data (empty/garbage map, or a
+ * When `months` is omitted the window length is **adaptive**: it snaps to the
+ * data's own month span, clamped to `[MIN, MAX]_WINDOW`, so more of what the
+ * user actually has stored surfaces instead of a fixed trailing tail. Pass an
+ * explicit `months` to force a fixed-length trailing window (the pre-adaptive
+ * behaviour, used by the focused unit tests).
+ *
+ * Returns `[]` when there is no usable data (empty/garbage map, or an explicit
  * non-positive window), so the UI can skip the card entirely. Otherwise the
- * result always has exactly `months` entries, oldest → newest.
+ * result is a contiguous run of months, oldest → newest.
  */
 export function buildMonthlyActivity(
   byMonth: Record<string, number>,
-  months: number = MONTHLY_ACTIVITY_WINDOW
+  months?: number
 ): MonthlyActivityEntry[] {
-  const window = Number.isFinite(months) ? Math.floor(months) : 0;
-  if (window <= 0) return [];
+  // An explicitly pinned window that is non-positive / non-finite yields no chart.
+  const pinned = months !== undefined;
+  if (pinned) {
+    const fixed = Number.isFinite(months) ? Math.floor(months as number) : 0;
+    if (fixed <= 0) return [];
+  }
 
   // Clean the raw map: valid month key + sanitized count, merging any duplicate
   // keys that survive sanitation (a defensive belt — SQL yields distinct keys).
@@ -114,6 +150,16 @@ export function buildMonthlyActivity(
 
   // Anchor the window's right edge to the most recent month that has permits.
   const anchor = Math.max(...clean.keys());
+
+  // Fixed length when pinned; otherwise snap to the data's span (earliest →
+  // latest), clamped to [MIN, MAX] so a single-month snapshot still reads as a
+  // chart and a multi-year history stays legible.
+  const window = pinned
+    ? Math.floor(months as number)
+    : Math.min(
+        MONTHLY_ACTIVITY_MAX_WINDOW,
+        Math.max(MONTHLY_ACTIVITY_MIN_WINDOW, anchor - Math.min(...clean.keys()) + 1)
+      );
 
   const counts: { idx: number; count: number }[] = [];
   for (let i = window - 1; i >= 0; i--) {

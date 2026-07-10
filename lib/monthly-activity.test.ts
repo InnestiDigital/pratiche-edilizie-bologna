@@ -4,6 +4,8 @@ import {
   monthlyActivityRangeLabel,
   monthlyActivityWindowTotal,
   MONTHLY_ACTIVITY_WINDOW,
+  MONTHLY_ACTIVITY_MIN_WINDOW,
+  MONTHLY_ACTIVITY_MAX_WINDOW,
 } from './monthly-activity';
 
 describe('buildMonthlyActivity', () => {
@@ -97,9 +99,46 @@ describe('buildMonthlyActivity', () => {
     expect(buildMonthlyActivity({ '2024-11': 3 }, Number.NaN)).toEqual([]);
   });
 
-  it('defaults to a 6-month window', () => {
+  it('defaults to the min window when the data spans fewer months', () => {
     const out = buildMonthlyActivity({ '2024-11': 1 });
     expect(out).toHaveLength(MONTHLY_ACTIVITY_WINDOW);
+    expect(MONTHLY_ACTIVITY_MIN_WINDOW).toBe(MONTHLY_ACTIVITY_WINDOW);
+  });
+
+  describe('adaptive window (no explicit `months`)', () => {
+    it('snaps the window to the data span so older months are not dropped', () => {
+      // Span 2024-06 → 2024-11 = 6 months; a wider span must widen the window.
+      // 2024-03 → 2024-11 = 9 months, inside [MIN=6, MAX=12] → 9 bars, all shown.
+      const out = buildMonthlyActivity({ '2024-11': 3, '2024-03': 2, '2024-06': 1 });
+      expect(out).toHaveLength(9);
+      expect(out[0].monthKey).toBe('2024-03');
+      expect(out[out.length - 1].monthKey).toBe('2024-11');
+      // Every stored record is now represented (nothing rolled off).
+      expect(monthlyActivityWindowTotal(out)).toBe(6);
+    });
+
+    it('floors a narrow span at the min window', () => {
+      // Span 2024-10 → 2024-11 = 2 months < MIN → still MIN bars.
+      const out = buildMonthlyActivity({ '2024-11': 2, '2024-10': 1 });
+      expect(out).toHaveLength(MONTHLY_ACTIVITY_MIN_WINDOW);
+      expect(out[out.length - 1].monthKey).toBe('2024-11');
+    });
+
+    it('caps a very wide span at the max window, rolling off the oldest months', () => {
+      // Span 2023-01 → 2025-02 far exceeds MAX → trailing MAX months only.
+      const out = buildMonthlyActivity({ '2025-02': 4, '2024-05': 2, '2023-01': 9 });
+      expect(out).toHaveLength(MONTHLY_ACTIVITY_MAX_WINDOW);
+      expect(out[out.length - 1].monthKey).toBe('2025-02');
+      // The 2023-01 record sits before the trailing 12 → off-chart (honest gap).
+      expect(monthlyActivityWindowTotal(out)).toBe(6);
+      expect(out.some((e) => e.monthKey === '2023-01')).toBe(false);
+    });
+
+    it('an explicit `months` still pins a fixed trailing window (adaptive is opt-out)', () => {
+      // Same wide data, but pinned to 3 → the pre-adaptive behaviour, unchanged.
+      const out = buildMonthlyActivity({ '2024-11': 3, '2024-03': 2, '2024-06': 1 }, 3);
+      expect(out.map((e) => e.monthKey)).toEqual(['2024-09', '2024-10', '2024-11']);
+    });
   });
 
   it('is a pure read — does not mutate the input map', () => {

@@ -27,6 +27,7 @@ import {
 } from '../../lib/queries';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { personaFeedIntro, PERSONA_PROFILES, type Persona } from '../../lib/personas';
+import { shouldShowPersonaHeader } from '../../lib/persona-header';
 import { PERSONA_ICONS } from '../../components/persona-icons';
 import { shouldShowHomeHint } from '../../lib/home-hint';
 import { listFavoriteIds, toggleFavorite } from '../../lib/favorites';
@@ -1839,10 +1840,14 @@ export default function FeedScreen() {
           <FeedSectionHeader title={section.title} count={section.data.length} />
         )}
         // Persona voice at the top of the populated feed — scrolls away with the
-        // content (not permanent chrome). Only when a persona is set and the feed
-        // has real rows, so it never sits above a skeleton or an empty state.
+        // content (not permanent chrome). Gated on the CURRENT feed having rows
+        // (`sections.length`), not merely on the DB having base-pref data: a
+        // `ListHeaderComponent` renders even for an empty list, so any in-feed
+        // refinement (search, Solo salvate/con note, status/tag/period/radius) that
+        // narrows a populated DB to zero would otherwise float the persona line
+        // above the empty state. `shouldShowPersonaHeader` keeps that decision pure.
         ListHeaderComponent={
-          persona && hasData && !loading ? (
+          persona && shouldShowPersonaHeader({ persona, hasRows: sections.length > 0, loading }) ? (
             <PersonaFeedHeader persona={persona} onPress={() => router.push('/(tabs)/settings')} />
           ) : null
         }

@@ -48,7 +48,7 @@ import { buildProcessingStats, type ProcessingStats } from '../../lib/processing
 import { buildProcessingComparison } from '../../lib/processing-comparison';
 import { buildShareMessage } from '../../lib/share-message';
 import { extractStreetName } from '../../lib/street-name';
-import { getCoords, getEventoExtra } from '../../lib/permit-extra';
+import { getCoords, getEventoExtra, getSegnalazioneExtra } from '../../lib/permit-extra';
 import { formatEventoWhen } from '../../lib/evento-when';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { isSameLocation, type HomeLocation } from '../../lib/home-location';
@@ -558,6 +558,17 @@ export default function PermitDetail() {
     : null;
   const eventoOnline = eventoExtra?.online === 'SI';
 
+  // A segnalazione's feed card leads with its proximity zone (`nome_zona_prossimita`)
+  // as the location line — the only fine-grained "where" this address-less source
+  // carries. The detail showed only the broad quartiere (`permit.zone`), so opening a
+  // card LOST the more specific place the user was reading. Surface it above the
+  // quartiere, reading the same `getSegnalazioneExtra` field the card uses so the two
+  // surfaces can't drift.
+  const segnalazioneZone =
+    permit.category === 'segnalazioni'
+      ? (getSegnalazioneExtra(permit.extra).nome_zona_prossimita ?? null)
+      : null;
+
   // For a still-pending permit, the one fact a resident tracking it wants: how long
   // it has been waiting since the request was filed. Only for `in_attesa`; the pure
   // builder returns null when the request date is missing.
@@ -696,10 +707,25 @@ export default function PermitDetail() {
             </Text>
           )}
 
-          {/* Zone */}
-          {permit.zone && (
+          {/* Proximity zone — the fine-grained location a segnalazione card leads
+              with; shown above the broad quartiere so the detail never says less
+              about where than the card the user tapped. */}
+          {segnalazioneZone && (
             <View className="mt-1.5 flex-row items-center">
               <Ionicons name="location-outline" size={14} color="#8B7355" />
+              <Text className="ml-1 text-base text-stone-500">{segnalazioneZone}</Text>
+            </View>
+          )}
+
+          {/* Zone (quartiere) — the broad district. For a segnalazione it sits below
+              the proximity zone; the plain-dot icon distinguishes the two rows. */}
+          {permit.zone && (
+            <View className={`flex-row items-center ${segnalazioneZone ? 'mt-1' : 'mt-1.5'}`}>
+              <Ionicons
+                name={segnalazioneZone ? 'ellipse-outline' : 'location-outline'}
+                size={14}
+                color="#8B7355"
+              />
               <Text className="ml-1 text-base text-stone-500">{permit.zone}</Text>
             </View>
           )}

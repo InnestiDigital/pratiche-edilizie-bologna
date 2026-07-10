@@ -48,7 +48,8 @@ import { buildProcessingStats, type ProcessingStats } from '../../lib/processing
 import { buildProcessingComparison } from '../../lib/processing-comparison';
 import { buildShareMessage } from '../../lib/share-message';
 import { extractStreetName } from '../../lib/street-name';
-import { getCoords } from '../../lib/permit-extra';
+import { getCoords, getEventoExtra } from '../../lib/permit-extra';
+import { formatEventoWhen } from '../../lib/evento-when';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { isSameLocation, type HomeLocation } from '../../lib/home-location';
 import { STATUS_COLORS } from '../../lib/status-breakdown';
@@ -545,6 +546,18 @@ export default function PermitDetail() {
   // citizen nothing). Only shown for a recognized status; 'altro'/unknown → none.
   const statusDescription = STATUS_DESCRIPTIONS[permit.status];
 
+  // For an evento, the two facts its feed card leads with — the date span and the
+  // "Online" flag — must also appear on the detail, or opening a card LOST the very
+  // information that made the user tap it (the event's start date lives only in
+  // `extra`, so the timeline below, which reads `date_issued`, shows the END date
+  // alone). Both read through the same `formatEventoWhen` / `extra.online` source
+  // the card uses, so the two surfaces can't disagree.
+  const eventoExtra = permit.category === 'eventi' ? getEventoExtra(permit.extra) : null;
+  const eventoWhen = eventoExtra
+    ? formatEventoWhen(eventoExtra.start ?? null, permit.date_issued)
+    : null;
+  const eventoOnline = eventoExtra?.online === 'SI';
+
   // For a still-pending permit, the one fact a resident tracking it wants: how long
   // it has been waiting since the request was filed. Only for `in_attesa`; the pure
   // builder returns null when the request date is missing.
@@ -692,6 +705,34 @@ export default function PermitDetail() {
             <View className="mr-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
             <Text className="text-sm font-semibold text-ink-700">{statusLabel}</Text>
           </View>
+
+          {/* Evento date span — the "when" the card leads with, so the detail never
+              shows less about the timing than the card the user tapped. */}
+          {eventoWhen && (
+            <View className="mt-2 flex-row items-center">
+              <Ionicons name="calendar-outline" size={14} color={CATEGORY_COLORS.eventi.text} />
+              <Text
+                className="ml-1.5 text-[13px] font-semibold"
+                style={{ color: CATEGORY_COLORS.eventi.text }}>
+                {eventoWhen}
+              </Text>
+            </View>
+          )}
+
+          {/* Evento "Online" flag — mirrors the card's pill (a resident deciding
+              whether to travel needs this on the detail too). */}
+          {eventoOnline && (
+            <View
+              className="mt-2 flex-row items-center self-start rounded-full px-2.5 py-0.5"
+              style={{ backgroundColor: CATEGORY_COLORS.eventi.bg }}>
+              <Ionicons name="videocam-outline" size={12} color={CATEGORY_COLORS.eventi.text} />
+              <Text
+                className="ml-1 text-xs font-semibold"
+                style={{ color: CATEGORY_COLORS.eventi.text }}>
+                Online
+              </Text>
+            </View>
+          )}
 
           {/* How long a pending permit has been waiting since the request — the
               concrete, personal counterpart to the generic status description. */}

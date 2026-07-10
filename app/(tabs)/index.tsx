@@ -47,6 +47,7 @@ import { statusLabelFor } from '../../lib/status-label';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import { formatItDate } from '../../lib/format-date';
+import { formatEventoWhen } from '../../lib/evento-when';
 import { assertNever } from '../../lib/assert-never';
 import {
   getCantiereExtra,
@@ -277,17 +278,10 @@ function EventiBody({ permit }: { permit: Permit }) {
   const extra = getEventoExtra(permit.extra);
   const tags = parsePermitTags(permit.tags);
   // Event start lives in `extra` (source_updated_at is NULL for eventi — see
-  // source-eventi.ts / build-feed-query.ts); end is the closing date.
-  const start = formatItDate(extra.start ?? null);
-  const end = formatItDate(permit.date_issued);
-  const dateLabel =
-    start && end && end !== start
-      ? `Dal ${start} al ${end}`
-      : start
-        ? `Il ${start}`
-        : end
-          ? `Il ${end}`
-          : null;
+  // source-eventi.ts / build-feed-query.ts); end is the closing date. The span is
+  // formatted through `formatEventoWhen` — the one source of truth the detail
+  // header shares, so the card and the detail can't drift on how an event reads.
+  const dateLabel = formatEventoWhen(extra.start ?? null, permit.date_issued);
   return (
     <>
       {dateLabel && (

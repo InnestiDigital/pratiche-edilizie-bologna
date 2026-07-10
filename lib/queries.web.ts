@@ -13,7 +13,7 @@
  */
 import type * as SQLite from 'expo-sqlite';
 import { RELEASED_STATUSES, type FilingType } from './constants';
-import type { Category } from './sources';
+import { CATEGORY_HAS_RELEASE_TIME, type Category } from './sources';
 import type { FeedFilters } from './build-feed-query';
 import type { ProcessingDatePair } from './processing-stats';
 import { getCoords } from './permit-extra';
@@ -195,7 +195,11 @@ export async function getReleasedDatePairs(
 ): Promise<ProcessingDatePair[]> {
   const released: readonly string[] = RELEASED_STATUSES;
   return FIXTURES.filter(
-    (p) => released.includes(p.status) && p.date_issued !== null && p.source_updated_at !== null
+    (p) =>
+      released.includes(p.status) &&
+      CATEGORY_HAS_RELEASE_TIME[p.category] &&
+      p.date_issued !== null &&
+      p.source_updated_at !== null
   ).map((p) => ({ request: p.source_updated_at, closing: p.date_issued }));
 }
 

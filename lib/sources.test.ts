@@ -10,6 +10,8 @@ import {
   CATEGORY_REFERENCE_LABEL,
   CATEGORY_REFERENCE_LABEL_LONG,
   CATEGORY_HAS_STATUS_SIGNAL,
+  CATEGORY_HAS_RELEASE_TIME,
+  RELEASE_TIME_CATEGORIES,
   CATEGORY_DESCRIPTIONS,
   datasetLabelFor,
   type Category,
@@ -153,6 +155,7 @@ describe('CATEGORY_* maps', () => {
     expect(Object.keys(CATEGORY_REFERENCE_LABEL).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_REFERENCE_LABEL_LONG).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_HAS_STATUS_SIGNAL).sort()).toEqual(expected);
+    expect(Object.keys(CATEGORY_HAS_RELEASE_TIME).sort()).toEqual(expected);
     expect(Object.keys(CATEGORY_DESCRIPTIONS).sort()).toEqual(expected);
   });
 
@@ -216,5 +219,28 @@ describe('CATEGORY_HAS_STATUS_SIGNAL', () => {
     // Eventi/segnalazioni statuses are normalizer constants — no signal.
     expect(CATEGORY_HAS_STATUS_SIGNAL.eventi).toBe(false);
     expect(CATEGORY_HAS_STATUS_SIGNAL.segnalazioni).toBe(false);
+  });
+});
+
+describe('CATEGORY_HAS_RELEASE_TIME / RELEASE_TIME_CATEGORIES', () => {
+  it('marks only the istanza→esito filing categories as release-time', () => {
+    // edilizia + commercio: source_updated_at → date_issued is a real
+    // request → release span.
+    expect(CATEGORY_HAS_RELEASE_TIME.edilizia).toBe(true);
+    expect(CATEGORY_HAS_RELEASE_TIME.commercio).toBe(true);
+    // cantieri's span is effectivestartdate → effectiveenddate (works duration),
+    // NOT a permit release time — must stay out of the "Tempi di rilascio" pool
+    // even though its concluded rows normalize to the RELEASED_STATUS 'concluso'.
+    expect(CATEGORY_HAS_RELEASE_TIME.cantieri).toBe(false);
+    expect(CATEGORY_HAS_RELEASE_TIME.eventi).toBe(false);
+    expect(CATEGORY_HAS_RELEASE_TIME.segnalazioni).toBe(false);
+  });
+
+  it('derives RELEASE_TIME_CATEGORIES from the map, excluding cantieri', () => {
+    expect(RELEASE_TIME_CATEGORIES).toEqual(['edilizia', 'commercio']);
+    expect(RELEASE_TIME_CATEGORIES).not.toContain('cantieri');
+    for (const c of RELEASE_TIME_CATEGORIES) {
+      expect(CATEGORY_HAS_RELEASE_TIME[c]).toBe(true);
+    }
   });
 });

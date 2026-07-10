@@ -230,6 +230,39 @@ export const CATEGORY_HAS_STATUS_SIGNAL: Record<Category, boolean> = {
 };
 
 /**
+ * Whether a category's `source_updated_at → date_issued` span is a genuine
+ * permit **processing time** (request → release), so its released rows may feed
+ * the sync-screen "Tempi di rilascio" aggregate + the permit-detail "…della
+ * norma" comparison (`processing-stats.ts`).
+ *
+ * - edilizia + commercio are istanza→esito filings: the span is exactly the time
+ *   a resident waits for a pratica to be released. TRUE.
+ * - cantieri stores `effectivestartdate → effectiveenddate` — a physical
+ *   **works duration** (often 1+ year), unrelated to any release time, yet its
+ *   concluded rows normalize to `'concluso'` which is a RELEASED_STATUS. Left in
+ *   the pool they inflate the observed range (min/max) and skew the "norma" pool
+ *   on an edilizia detail. FALSE — excluded.
+ * - eventi/segnalazioni carry no released status, so they never reach the pool;
+ *   FALSE for completeness.
+ *
+ * Exhaustive `Record<Category, boolean>`: a sixth category cannot ship without
+ * declaring whether its dates are a release time (rather than silently leaking a
+ * non-processing span into the aggregate).
+ */
+export const CATEGORY_HAS_RELEASE_TIME: Record<Category, boolean> = {
+  edilizia: true,
+  commercio: true,
+  cantieri: false,
+  eventi: false,
+  segnalazioni: false,
+};
+
+/** The categories whose released rows feed the processing-time aggregate. */
+export const RELEASE_TIME_CATEGORIES: Category[] = (
+  Object.keys(CATEGORY_HAS_RELEASE_TIME) as Category[]
+).filter((c) => CATEGORY_HAS_RELEASE_TIME[c]);
+
+/**
  * ODS `refine` facet field used to scope an edilizia query to one filing year.
  * Lives here (not in `ods-request.ts`) so the year-refine field name is declared
  * once — `ods-request.ts` re-exports it and `buildPageParams` builds its refine

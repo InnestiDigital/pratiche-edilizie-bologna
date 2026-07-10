@@ -1,6 +1,6 @@
 import type * as SQLite from 'expo-sqlite';
 import { RELEASED_STATUSES, type FilingType } from './constants';
-import type { Category } from './sources';
+import { RELEASE_TIME_CATEGORIES, type Category } from './sources';
 import { buildFeedQuery, buildFeedCountQuery, type FeedFilters } from './build-feed-query';
 import { buildRelatedPermitsQuery, RELATED_PERMITS_LIMIT } from './related-query';
 import { getCoords } from './permit-extra';
@@ -226,16 +226,24 @@ export async function getStats(db: SQLite.SQLiteDatabase): Promise<{
  * feeding the pure `buildProcessingStats` "Tempi di rilascio" aggregate. Only
  * rows with both dates present are returned; the pure core drops any pair whose
  * closing precedes the request, so no date validation happens here.
+ *
+ * Scoped to `RELEASE_TIME_CATEGORIES` (edilizia + commercio): a concluded cantiere
+ * also normalizes to the RELEASED_STATUS `'concluso'`, but its dates are a physical
+ * works duration (`effectivestartdate → effectiveenddate`), not a permit release
+ * time — left unscoped it inflated the observed range + skewed the "norma" pool.
  */
 export async function getReleasedDatePairs(
   db: SQLite.SQLiteDatabase
 ): Promise<ProcessingDatePair[]> {
-  const placeholders = RELEASED_STATUSES.map(() => '?').join(', ');
+  const statusPlaceholders = RELEASED_STATUSES.map(() => '?').join(', ');
+  const categoryPlaceholders = RELEASE_TIME_CATEGORIES.map(() => '?').join(', ');
   return db.getAllAsync<ProcessingDatePair>(
     `SELECT source_updated_at AS request, date_issued AS closing FROM permits ` +
       `WHERE date_issued IS NOT NULL AND source_updated_at IS NOT NULL ` +
-      `AND status IN (${placeholders})`,
-    ...RELEASED_STATUSES
+      `AND status IN (${statusPlaceholders}) ` +
+      `AND category IN (${categoryPlaceholders})`,
+    ...RELEASED_STATUSES,
+    ...RELEASE_TIME_CATEGORIES
   );
 }
 

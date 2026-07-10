@@ -45,9 +45,17 @@ export function FadeScrollRow({
         scrollEventThrottle={16}
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) =>
           setScrollX(e.nativeEvent.contentOffset.x)
-        }
-        onContentSizeChange={(w) => setContentWidth(w)}>
-        {children}
+        }>
+        {/* Measure content width from a row wrapper's onLayout rather than the
+            ScrollView's onContentSizeChange: react-native-web never fires the
+            latter, so on the web export (screenshot harness) contentWidth stayed
+            0, maxScroll 0, and no fade ever rendered. onLayout fires on both web
+            and native, so the fade now shows wherever the row overflows. */}
+        <View
+          style={{ flexDirection: 'row' }}
+          onLayout={(e: LayoutChangeEvent) => setContentWidth(e.nativeEvent.layout.width)}>
+          {children}
+        </View>
       </ScrollView>
       {left ? (
         <LinearGradient

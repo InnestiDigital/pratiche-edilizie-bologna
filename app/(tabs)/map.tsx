@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { View, Text, ActivityIndicator, Pressable } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../../lib/db';
 import { getPermits, type FeedFilters } from '../../lib/queries';
 import {
@@ -37,6 +38,7 @@ interface MapData {
 
 export default function MapScreen() {
   const [data, setData] = useState<MapData | null>(null);
+  const router = useRouter();
 
   useFocusEffect(
     useCallback(() => {
@@ -119,6 +121,27 @@ export default function MapScreen() {
               ? 'Le voci sincronizzate non hanno ancora una posizione geografica. Aggiorna i dati per popolare la mappa.'
               : 'Sincronizza i dati dalla scheda Aggiorna per vedere le voci sulla mappa.'}
           </Text>
+          {/* Route the user to Aggiorna — both empty branches point there, so give
+              the same actionable CTA the feed's EmptyDataState carries instead of a
+              dead-end instruction to find the tab themselves. */}
+          <Pressable
+            onPress={() => router.push('/(tabs)/sync')}
+            accessibilityRole="button"
+            accessibilityLabel="Vai ad Aggiorna"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: 20,
+              backgroundColor: '#9B2335',
+              borderRadius: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 20,
+            }}>
+            <Ionicons name="cloud-download-outline" size={16} color="white" />
+            <Text style={{ color: 'white', fontWeight: '700', marginLeft: 8 }}>
+              Vai ad Aggiorna
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <PermitMap pins={data.pins} region={data.region} home={data.home} />

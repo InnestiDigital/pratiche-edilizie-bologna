@@ -15,7 +15,11 @@ import { getDb } from '../../lib/db';
 import { CITY } from '../../lib/city';
 import { getStats, getReleasedDatePairs } from '../../lib/queries';
 import { buildStatusBreakdown } from '../../lib/status-breakdown';
-import { buildMonthlyActivity, monthlyActivityRangeLabel } from '../../lib/monthly-activity';
+import {
+  buildMonthlyActivity,
+  monthlyActivityRangeLabel,
+  monthlyActivityWindowTotal,
+} from '../../lib/monthly-activity';
 import {
   buildProcessingStats,
   processingRangeLabel,
@@ -436,6 +440,13 @@ export default function SyncScreen() {
               const activity = buildMonthlyActivity(stats.byMonth);
               if (activity.length === 0) return null;
               const range = monthlyActivityRangeLabel(activity);
+              // Bars bucket by request/reference month, so eventi (no request
+              // date) and any record outside the trailing window are off-chart.
+              // When the visible bars sum to fewer than the grand total, caption
+              // the gap so "N voci totali" over shorter bars doesn't read as a
+              // miscount.
+              const windowTotal = monthlyActivityWindowTotal(activity);
+              const showsSubset = windowTotal < stats.total;
               const BAR_MAX = 72;
               return (
                 <View className="mb-6">
@@ -506,11 +517,24 @@ export default function SyncScreen() {
                         highlight-the-max idiom is unambiguous (lighter bars are
                         then obviously "the rest"). */}
                     <View
-                      className="mt-3 flex-row items-center border-t border-parchment-200 pt-2.5"
+                      className="mt-3 flex-row items-center justify-between border-t border-parchment-200 pt-2.5"
                       accessibilityRole="text"
                       accessibilityLabel="Il mese più attivo è evidenziato in scuro">
-                      <View className="mr-1.5 h-2.5 w-2.5 rounded-full bg-brick-600" />
-                      <Text className="text-[11px] text-stone-500">mese più attivo</Text>
+                      <View className="flex-row items-center">
+                        <View className="mr-1.5 h-2.5 w-2.5 rounded-full bg-brick-600" />
+                        <Text className="text-[11px] text-stone-500">mese più attivo</Text>
+                      </View>
+                      {/* Only shown when some voci are off-chart (eventi have no
+                          request date; older months fall outside the window) so
+                          the shorter bars don't read as a miscount vs the total. */}
+                      {showsSubset && (
+                        <Text
+                          className="text-[11px] text-stone-400"
+                          accessibilityLabel={`${windowTotal} di ${stats.total} voci hanno una data di richiesta nel periodo`}>
+                          {windowTotal.toLocaleString('it-IT')} di{' '}
+                          {stats.total.toLocaleString('it-IT')} voci
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </View>

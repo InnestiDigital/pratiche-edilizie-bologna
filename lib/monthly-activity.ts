@@ -137,6 +137,19 @@ export function buildMonthlyActivity(
 }
 
 /**
+ * Total voci the chart's visible window actually represents — the sum of every
+ * bar's count. Deliberately less than `getStats().total` whenever some records
+ * are not bucketed here: eventi carry no `source_updated_at` (their start is a
+ * future date, so they never get a request-month bar) and any record whose month
+ * falls outside the trailing window is off-chart too. The sync screen compares
+ * this against the grand total to caption the gap, so "14 voci totali" over bars
+ * that sum to 8 no longer reads as a miscount.
+ */
+export function monthlyActivityWindowTotal(entries: MonthlyActivityEntry[]): number {
+  return entries.reduce((sum, e) => sum + e.count, 0);
+}
+
+/**
  * Compact "giu – nov 2024" / "ott 2024 – gen 2025" caption for the chart's date
  * range. Collapses the year when the whole window sits in one calendar year.
  * Returns `null` for an empty series.

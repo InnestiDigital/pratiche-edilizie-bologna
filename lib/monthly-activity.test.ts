@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildMonthlyActivity,
   monthlyActivityRangeLabel,
+  monthlyActivityWindowTotal,
   MONTHLY_ACTIVITY_WINDOW,
 } from './monthly-activity';
 
@@ -122,5 +123,22 @@ describe('monthlyActivityRangeLabel', () => {
   it('shows both years when the window spans a year boundary', () => {
     const out = buildMonthlyActivity({ '2025-01': 1 }, 4);
     expect(monthlyActivityRangeLabel(out)).toBe('ott 2024 – gen 2025');
+  });
+});
+
+describe('monthlyActivityWindowTotal', () => {
+  it('is 0 for an empty series', () => {
+    expect(monthlyActivityWindowTotal([])).toBe(0);
+  });
+
+  it('sums every bar in the window, ignoring off-window months', () => {
+    // Latest is 2024-11; the 2024-04 count (3) sits outside the trailing 6.
+    const out = buildMonthlyActivity({ '2024-11': 2, '2024-08': 1, '2024-04': 3 }, 6);
+    expect(monthlyActivityWindowTotal(out)).toBe(3);
+  });
+
+  it('counts zero-filled gap months as zero', () => {
+    const out = buildMonthlyActivity({ '2024-11': 4, '2024-09': 1 }, 6);
+    expect(monthlyActivityWindowTotal(out)).toBe(5);
   });
 });

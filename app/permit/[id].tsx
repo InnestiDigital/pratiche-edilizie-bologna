@@ -60,6 +60,7 @@ import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { isSameLocation, type HomeLocation } from '../../lib/home-location';
 import { STATUS_COLORS } from '../../lib/status-breakdown';
 import { statusLabelFor } from '../../lib/status-label';
+import { statusChangeLine } from '../../lib/status-transition';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
   FILING_TYPE_LABELS,
@@ -533,6 +534,15 @@ export default function PermitDetail() {
   const filingLabel = FILING_TYPE_LABELS[filingType] ?? permit.filing_type;
   const statusLabel = statusLabelFor(permit.status, permit.category, permit.status_raw);
   const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
+  // "Cosa è cambiato": the status transition this followed permit went through
+  // since it was first seen (null if it never moved). Rendered under the status
+  // pill, in the category's own vocabulary.
+  const changeLine = statusChangeLine(
+    permit.previous_status,
+    permit.status,
+    permit.category,
+    permit.status_raw
+  );
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
 
   const protocol = formatProtocol(permit.source_id);
@@ -777,6 +787,21 @@ export default function PermitDetail() {
             <View className="mr-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
             <Text className="text-sm font-semibold text-ink-700">{statusLabel}</Text>
           </View>
+
+          {/* "Cosa è cambiato": this permit's status MOVED since the resident
+              started following it. Amber pill under the current status, voiced in
+              the category's vocabulary — distinct from the NUOVO arrival badge. */}
+          {changeLine && (
+            <View
+              className="mt-2 flex-row items-center self-start rounded-full px-3 py-1.5"
+              style={{ backgroundColor: '#FDF3E3' }}
+              accessibilityLabel={`Stato cambiato: ora ${changeLine.current}, era ${changeLine.previous}`}>
+              <Ionicons name="swap-horizontal" size={14} color="#8B5E1A" />
+              <Text className="ml-1.5 text-[13px] font-semibold" style={{ color: '#6B4510' }}>
+                Ora {changeLine.current} · era {changeLine.previous}
+              </Text>
+            </View>
+          )}
 
           {/* Cantiere traffic-change measure — the amber callout the card leads its
               body with, the one fact a resident tracking a roadwork cares about

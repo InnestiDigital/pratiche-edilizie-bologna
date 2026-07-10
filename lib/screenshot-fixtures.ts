@@ -38,6 +38,14 @@ export interface ScreenshotPermit {
   date_issued: string | null;
   status: string;
   status_raw: string;
+  /**
+   * The "cosa è cambiato" transition columns. Optional here (vs required on
+   * `Permit`) so only the demo row carries a value and every other fixture omits
+   * them — `Permit` is a superset, so `PERMIT_FIXTURES as Permit[]` stays valid and
+   * the read side treats an omitted (`undefined`) value exactly like the DB's NULL.
+   */
+  previous_status?: string | null;
+  status_changed_at?: string | null;
   tags: string;
   source_link: string | null;
   is_new: number;
@@ -178,6 +186,12 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
     date_issued: '2024-08-05',
     status: 'concluso',
     status_raw: 'Conclusa',
+    // "Cosa è cambiato" demo row: a permit the resident already followed whose
+    // status MOVED (In attesa → Conclusa). is_new is 0, so the card shows the
+    // amber "cambiata" line WITHOUT a NUOVO badge — proving the two signals are
+    // distinct (NUOVO = just arrived; cambiata = moved while followed).
+    previous_status: 'in_attesa',
+    status_changed_at: '2024-08-05T09:00:00.000Z',
     tags: JSON.stringify(['con_lavori']),
     source_link: portal('cila-2024-004120'),
     is_new: 0,

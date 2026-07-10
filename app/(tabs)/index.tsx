@@ -47,6 +47,7 @@ import { buildResultCount } from '../../lib/result-count-label';
 import { recordNoun } from '../../lib/record-noun';
 import { STATUS_COLORS } from '../../lib/status-breakdown';
 import { statusLabelFor } from '../../lib/status-label';
+import { statusChangeLine } from '../../lib/status-transition';
 import { permitCardBadge } from '../../lib/permit-card-badge';
 import { savedShortcutState } from '../../lib/saved-shortcut';
 import { formatSearchTerm } from '../../lib/search-empty-message';
@@ -393,6 +394,15 @@ function PermitCard({
   const showStatus = CATEGORY_HAS_STATUS_SIGNAL[permit.category];
   const statusLabel = statusLabelFor(permit.status, permit.category, permit.status_raw);
   const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
+  // "Cosa è cambiato": a followed permit whose status MOVED since it was first
+  // seen shows an amber transition line ("Ora Conclusa · era In attesa") —
+  // distinct from the NUOVO badge (first arrival). Null when it never transitioned.
+  const changeLine = statusChangeLine(
+    permit.previous_status,
+    permit.status,
+    permit.category,
+    permit.status_raw
+  );
   // The top-left badge: the filing-type acronym for edilizia (its own color), the
   // category label for every other source (its category color). Shared with the
   // detail's "Nella stessa zona" / "Nei dintorni" rows via permitCardBadge so the
@@ -402,6 +412,7 @@ function PermitCard({
   const a11yLabel = [
     badge.label,
     showStatus ? statusLabel : null,
+    changeLine ? `stato cambiato, ora ${changeLine.current}, era ${changeLine.previous}` : null,
     permit.is_new === 1 ? 'nuovo' : null,
     isSaved ? 'salvata' : null,
     hasNote ? 'con nota' : null,
@@ -465,6 +476,19 @@ function PermitCard({
 
       {/* Category-specific body (exhaustive switch over Category) */}
       <CardBody permit={permit} sort={sort} />
+
+      {/* "Cosa è cambiato" — a permit the resident was already following whose
+          status MOVED since it entered the feed. Amber (pdc) treatment sets it
+          apart from the brick NUOVO badge (arrival) and the brick note strip
+          (their own voice): this is the open data telling them WHY to revisit. */}
+      {changeLine && (
+        <View className="mt-2 flex-row items-center self-start rounded-full bg-pdc-light px-2.5 py-0.5">
+          <Ionicons name="swap-horizontal" size={12} color="#8B5E1A" />
+          <Text className="ml-1 text-xs font-semibold" style={{ color: '#6B4510' }}>
+            Ora {changeLine.current} · era {changeLine.previous}
+          </Text>
+        </View>
+      )}
 
       {/* Proximity chip — only in "Vicino a casa" radius mode. Answers "how far
           is this from MY home?" right on the card (the radius filter already

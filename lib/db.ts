@@ -4,6 +4,8 @@ import {
   PERMITS_CATEGORY_COLUMN_DDL,
   PERMITS_TITLE_COLUMN_DDL,
   PERMITS_EXTRA_COLUMN_DDL,
+  PERMITS_PREVIOUS_STATUS_COLUMN_DDL,
+  PERMITS_STATUS_CHANGED_AT_COLUMN_DDL,
   pendingPermitMigrations,
 } from './schema-migrations';
 import { createFavoritesTableSql } from './favorites';
@@ -42,6 +44,8 @@ async function createTables(db: SQLite.SQLiteDatabase): Promise<void> {
       date_issued TEXT,
       status TEXT NOT NULL,
       status_raw TEXT,
+      ${PERMITS_PREVIOUS_STATUS_COLUMN_DDL},
+      ${PERMITS_STATUS_CHANGED_AT_COLUMN_DDL},
       tags TEXT NOT NULL DEFAULT '[]',
       source_link TEXT,
       is_new INTEGER NOT NULL DEFAULT 1

@@ -7,6 +7,10 @@ import {
   PERMITS_TITLE_COLUMN_DDL,
   PERMITS_EXTRA_COLUMN,
   PERMITS_EXTRA_COLUMN_DDL,
+  PERMITS_PREVIOUS_STATUS_COLUMN,
+  PERMITS_PREVIOUS_STATUS_COLUMN_DDL,
+  PERMITS_STATUS_CHANGED_AT_COLUMN,
+  PERMITS_STATUS_CHANGED_AT_COLUMN_DDL,
   PERMIT_COLUMN_MIGRATIONS,
   pendingPermitMigrations,
 } from './schema-migrations';
@@ -35,26 +39,54 @@ const PRE_CATEGORY_COLUMNS = [
 // A pre-P1 install: has the P0 `category` column, still lacks `title` / `extra`.
 const PRE_P1_COLUMNS = [...PRE_CATEGORY_COLUMNS, PERMITS_CATEGORY_COLUMN];
 
-// A fully migrated (post-P1) install.
+// A post-P1 install: has category/title/extra, still lacks the "cosa è cambiato"
+// transition columns added later (previous_status / status_changed_at).
 const POST_P1_COLUMNS = [...PRE_P1_COLUMNS, PERMITS_TITLE_COLUMN, PERMITS_EXTRA_COLUMN];
+
+// A fully migrated install (every declared column present).
+const FULLY_MIGRATED_COLUMNS = [
+  ...POST_P1_COLUMNS,
+  PERMITS_PREVIOUS_STATUS_COLUMN,
+  PERMITS_STATUS_CHANGED_AT_COLUMN,
+];
 
 const CATEGORY_ALTER = `ALTER TABLE permits ADD COLUMN ${PERMITS_CATEGORY_COLUMN_DDL};`;
 const TITLE_ALTER = `ALTER TABLE permits ADD COLUMN ${PERMITS_TITLE_COLUMN_DDL};`;
 const EXTRA_ALTER = `ALTER TABLE permits ADD COLUMN ${PERMITS_EXTRA_COLUMN_DDL};`;
+const PREVIOUS_STATUS_ALTER = `ALTER TABLE permits ADD COLUMN ${PERMITS_PREVIOUS_STATUS_COLUMN_DDL};`;
+const STATUS_CHANGED_AT_ALTER = `ALTER TABLE permits ADD COLUMN ${PERMITS_STATUS_CHANGED_AT_COLUMN_DDL};`;
 
 describe('pendingPermitMigrations', () => {
-  it('returns the three ALTERs in order for a pre-P0 install', () => {
+  it('returns every ALTER in declaration order for a pre-P0 install', () => {
     const pending = pendingPermitMigrations(PRE_CATEGORY_COLUMNS);
-    expect(pending).toEqual([CATEGORY_ALTER, TITLE_ALTER, EXTRA_ALTER]);
+    expect(pending).toEqual([
+      CATEGORY_ALTER,
+      TITLE_ALTER,
+      EXTRA_ALTER,
+      PREVIOUS_STATUS_ALTER,
+      STATUS_CHANGED_AT_ALTER,
+    ]);
   });
 
-  it('returns exactly the title + extra ALTERs (in order) for a pre-P1 install', () => {
+  it('returns the title + extra + transition ALTERs (in order) for a pre-P1 install', () => {
     const pending = pendingPermitMigrations(PRE_P1_COLUMNS);
-    expect(pending).toEqual([TITLE_ALTER, EXTRA_ALTER]);
+    expect(pending).toEqual([
+      TITLE_ALTER,
+      EXTRA_ALTER,
+      PREVIOUS_STATUS_ALTER,
+      STATUS_CHANGED_AT_ALTER,
+    ]);
   });
 
-  it('returns [] for a fully migrated (post-P1) install', () => {
-    expect(pendingPermitMigrations(POST_P1_COLUMNS)).toEqual([]);
+  it('returns only the transition ALTERs for a post-P1 install', () => {
+    expect(pendingPermitMigrations(POST_P1_COLUMNS)).toEqual([
+      PREVIOUS_STATUS_ALTER,
+      STATUS_CHANGED_AT_ALTER,
+    ]);
+  });
+
+  it('returns [] for a fully migrated install', () => {
+    expect(pendingPermitMigrations(FULLY_MIGRATED_COLUMNS)).toEqual([]);
   });
 
   it('is deterministic in order (matches PERMIT_COLUMN_MIGRATIONS)', () => {
@@ -75,6 +107,11 @@ describe('PERMITS_TITLE_COLUMN_DDL / PERMITS_EXTRA_COLUMN_DDL', () => {
 
   it("declares extra NOT NULL DEFAULT '{}'", () => {
     expect(PERMITS_EXTRA_COLUMN_DDL).toBe("extra TEXT NOT NULL DEFAULT '{}'");
+  });
+
+  it('declares the transition columns as nullable TEXT (backfill-safe)', () => {
+    expect(PERMITS_PREVIOUS_STATUS_COLUMN_DDL).toBe('previous_status TEXT');
+    expect(PERMITS_STATUS_CHANGED_AT_COLUMN_DDL).toBe('status_changed_at TEXT');
   });
 });
 

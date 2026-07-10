@@ -12,6 +12,7 @@ import {
   type UpsertOutcome,
 } from './upsert-classify';
 import { reconcileGeocodedExtra } from './upsert-reconcile';
+import { statusTransitionWrite } from './status-transition';
 import { tallyOutcomes } from './sync-tally';
 import {
   walkPages,
@@ -333,9 +334,23 @@ async function upsertPermit(
     // Rewrite every content column (derived from the same PERMIT_CONTENT_FIELDS
     // that drove the comparison) so any corrected field — not only status —
     // heals. `is_new=1` re-flags the row as freshly touched.
+    const setClauses = PERMIT_CONTENT_FIELDS.map((f) => `${f}=?`);
+    const setParams: (string | number | null)[] = PERMIT_CONTENT_FIELDS.map((f) => reconciled[f]);
+
+    // "Cosa è cambiato": when — and only when — this update is a genuine STATUS
+    // flip (not a mere address/tag/link heal), persist the prior status + when so
+    // the feed/detail can tell the user their followed permit MOVED (distinct from
+    // the NUOVO first-seen flag). The decision lives in the pure `statusTransitionWrite`,
+    // the single source of truth shared with the read-side render.
+    const transition = statusTransitionWrite(existing.status, reconciled.status, outcome, now);
+    if (transition) {
+      setClauses.push('previous_status=?', 'status_changed_at=?');
+      setParams.push(transition.previous_status, transition.status_changed_at);
+    }
+
     await db.runAsync(
-      `UPDATE permits SET ${PERMIT_CONTENT_FIELDS.map((f) => `${f}=?`).join(', ')}, is_new=1 WHERE id=?`,
-      ...PERMIT_CONTENT_FIELDS.map((f) => reconciled[f]),
+      `UPDATE permits SET ${setClauses.join(', ')}, is_new=1 WHERE id=?`,
+      ...setParams,
       existing.id
     );
   }

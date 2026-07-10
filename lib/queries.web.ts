@@ -60,6 +60,11 @@ export interface Permit {
   date_issued: string | null;
   status: string;
   status_raw: string;
+  /** The status this permit held before its most recent flip; NULL if it never
+   *  transitioned. Drives the "cosa è cambiato" line via `statusChangeLine`. */
+  previous_status: string | null;
+  /** ISO instant `previous_status` was captured; NULL alongside it. */
+  status_changed_at: string | null;
   tags: string;
   source_link: string | null;
   is_new: number;

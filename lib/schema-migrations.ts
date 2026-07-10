@@ -55,6 +55,32 @@ export const PERMITS_EXTRA_COLUMN = 'extra';
  */
 export const PERMITS_EXTRA_COLUMN_DDL = `${PERMITS_EXTRA_COLUMN} TEXT NOT NULL DEFAULT '{}'`;
 
+/**
+ * The name of the "prior status" column added to `permits`. Nullable: only a row
+ * whose status has actually flipped since it was first seen carries a value; every
+ * other row (never-transitioned, or a fresh insert) leaves it NULL. Written by the
+ * upsert path via the pure `statusTransitionWrite`, read by `statusChangeLine` to
+ * render the "cosa è cambiato" line — the two share that single core so they can't
+ * drift.
+ */
+export const PERMITS_PREVIOUS_STATUS_COLUMN = 'previous_status';
+
+/**
+ * DDL fragment for `previous_status`, shared verbatim between `CREATE TABLE` (fresh
+ * installs) and the `ALTER TABLE` below (existing installs). Nullable → backfill-safe
+ * for every pre-existing row (they start with no known transition).
+ */
+export const PERMITS_PREVIOUS_STATUS_COLUMN_DDL = `${PERMITS_PREVIOUS_STATUS_COLUMN} TEXT`;
+
+/**
+ * The name of the "status changed at" column added to `permits` — the ISO instant
+ * the paired `previous_status` was captured. Nullable, written together with it.
+ */
+export const PERMITS_STATUS_CHANGED_AT_COLUMN = 'status_changed_at';
+
+/** DDL fragment for `status_changed_at`, shared verbatim across both schema paths. */
+export const PERMITS_STATUS_CHANGED_AT_COLUMN_DDL = `${PERMITS_STATUS_CHANGED_AT_COLUMN} TEXT`;
+
 /** One additive-column migration on the `permits` table. */
 export interface PermitColumnMigration {
   /** The column this migration adds — matched against `PRAGMA table_info`. */
@@ -79,6 +105,14 @@ export const PERMIT_COLUMN_MIGRATIONS: readonly PermitColumnMigration[] = [
   {
     column: PERMITS_EXTRA_COLUMN,
     sql: `ALTER TABLE permits ADD COLUMN ${PERMITS_EXTRA_COLUMN_DDL};`,
+  },
+  {
+    column: PERMITS_PREVIOUS_STATUS_COLUMN,
+    sql: `ALTER TABLE permits ADD COLUMN ${PERMITS_PREVIOUS_STATUS_COLUMN_DDL};`,
+  },
+  {
+    column: PERMITS_STATUS_CHANGED_AT_COLUMN,
+    sql: `ALTER TABLE permits ADD COLUMN ${PERMITS_STATUS_CHANGED_AT_COLUMN_DDL};`,
   },
 ];
 

@@ -74,6 +74,8 @@ function permitRow(overrides: Partial<Permit> = {}): Permit {
     date_issued: '2025-06-01',
     status: 'rilasciata',
     status_raw: 'Rilasciata',
+    previous_status: null,
+    status_changed_at: null,
     tags: '[]',
     source_link: null,
     is_new: 0,

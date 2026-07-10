@@ -29,6 +29,8 @@ function permit(over: Partial<Permit> & { id: number }): Permit {
     date_issued: null,
     status: 'presentata',
     status_raw: '',
+    previous_status: null,
+    status_changed_at: null,
     tags: '[]',
     source_link: null,
     is_new: 0,

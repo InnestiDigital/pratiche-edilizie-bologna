@@ -20,6 +20,7 @@ import {
   CATEGORY_DESCRIPTIONS,
   CATEGORY_LABELS,
   CATEGORY_COLORS,
+  CATEGORY_HAS_RELEASE_TIME,
   datasetLabelFor,
 } from '../../lib/sources';
 import { getDb } from '../../lib/db';
@@ -554,8 +555,13 @@ export default function PermitDetail() {
   // the request to the closing date. Only shown when a closing date exists and is
   // on/after the request (the pure builder returns null on a missing/backwards
   // date), so a still-pending permit — with no closing date — never shows it.
+  // Category-gated: only categories whose two dates are a genuine request→release
+  // span qualify (edilizia + commercio). A cantiere's dates are works start→end,
+  // not a release time — without this gate it would render a bogus (and
+  // feminine-only "Conclusa in …") caption for a masculine, possibly-ongoing
+  // roadwork. Mirrors the aggregate gate in getReleasedDatePairs (3c891a1).
   const processingLabel =
-    permit.status === 'in_attesa'
+    permit.status === 'in_attesa' || !CATEGORY_HAS_RELEASE_TIME[permit.category]
       ? null
       : processingDurationLabel(permit.source_updated_at, permit.date_issued);
 

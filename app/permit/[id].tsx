@@ -51,6 +51,7 @@ import { extractStreetName } from '../../lib/street-name';
 import {
   getCoords,
   getCantiereExtra,
+  getCommercioExtra,
   getEventoExtra,
   getSegnalazioneExtra,
 } from '../../lib/permit-extra';
@@ -586,6 +587,16 @@ export default function PermitDetail() {
       ? (getCantiereExtra(permit.extra).trafficchangesmeasure ?? null)
       : null;
 
+  // A commercio card leads its body with the business sector (`area`, e.g.
+  // "Somministrazione", "Commercio") as the muted qualifier under the title — for a
+  // commercial filing this IS what the record is about (a bar opening vs a retail
+  // change). The detail showed title/address/zone/status but never the sector, so
+  // opening a commercio card LOST the classification the user was reading. Surface it
+  // as a commercio-green sector pill, reading the same `getCommercioExtra` field the
+  // card uses so the two surfaces can't drift (be22863 / a7542d7 / 6359c11 class).
+  const commercioSector =
+    permit.category === 'commercio' ? (getCommercioExtra(permit.extra).area ?? null) : null;
+
   // For a still-pending permit, the one fact a resident tracking it wants: how long
   // it has been waiting since the request was filed. Only for `in_attesa`; the pure
   // builder returns null when the request date is missing.
@@ -809,6 +820,26 @@ export default function PermitDetail() {
                 className="ml-1 text-xs font-semibold"
                 style={{ color: CATEGORY_COLORS.eventi.text }}>
                 Online
+              </Text>
+            </View>
+          )}
+
+          {/* Commercio business sector — the classification the card leads its body
+              with (e.g. "Somministrazione"), shown as a commercio-green pill so the
+              detail never says less about what the filing is than the card. */}
+          {commercioSector && (
+            <View
+              className="mt-3 flex-row items-center self-start rounded-full px-2.5 py-1"
+              style={{ backgroundColor: CATEGORY_COLORS.commercio.bg }}>
+              <Ionicons
+                name="storefront-outline"
+                size={12}
+                color={CATEGORY_COLORS.commercio.text}
+              />
+              <Text
+                className="ml-1 text-xs font-semibold"
+                style={{ color: CATEGORY_COLORS.commercio.text }}>
+                {commercioSector}
               </Text>
             </View>
           )}

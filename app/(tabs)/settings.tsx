@@ -657,7 +657,7 @@ export default function SettingsScreen() {
 
       <SectionHeader
         title="Casa"
-        hint="Filtra il feed per vicinanza alla tua posizione con «Vicino a casa»"
+        hint="Filtra il feed per vicinanza con «Vicino a casa»; con le notifiche attive, ti avvisa quando nuove voci compaiono vicino a casa"
       />
       <View
         className="mx-4 overflow-hidden rounded-xl bg-white"

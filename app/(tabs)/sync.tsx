@@ -532,7 +532,7 @@ export default function SyncScreen() {
                           className="text-[11px] text-stone-400"
                           accessibilityLabel={`${windowTotal} di ${stats.total} voci hanno una data di richiesta nel periodo`}>
                           {windowTotal.toLocaleString('it-IT')} di{' '}
-                          {stats.total.toLocaleString('it-IT')} voci
+                          {stats.total.toLocaleString('it-IT')} voci nel periodo
                         </Text>
                       )}
                     </View>

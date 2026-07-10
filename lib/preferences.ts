@@ -1,7 +1,8 @@
 import { getDb, getPreference, setPreference } from './db';
 import { QUARTIERI, FILING_TYPE_ORDER, type FilingType, type Quartiere } from './constants';
 import { CATEGORIES, type Category } from './sources';
-import { decodeStringArray, decodeEnumArray } from './preferences-decode';
+import { decodeStringArray, decodeEnumArray, decodeEnumValue } from './preferences-decode';
+import { PERSONAS, type Persona } from './personas';
 import {
   parseStoredHome,
   serializeHome,
@@ -14,6 +15,9 @@ export interface UserPreferences {
   zones: Quartiere[];
   filingTypes: FilingType[];
   interests: Category[];
+  /** The role picked at onboarding (seeds the filters), or null if never chosen.
+   *  Persisted so the choice survives a reload and is re-editable in Settings. */
+  persona: Persona | null;
   tags: string[];
   onboardingDone: boolean;
   /** The user's home anchor for the "Vicino a casa" feed radius filter, or null. */
@@ -38,6 +42,9 @@ const DEFAULTS: UserPreferences = {
   // the conservative choice. CATEGORIES stays imported: it is the allowed-value
   // list decodeEnumArray validates against.
   interests: ['edilizia'],
+  // No persona by default: a fresh install (or a pre-persona upgrader with no
+  // stored key) has not answered "chi sei?" yet. null = generic experience.
+  persona: null,
   tags: [],
   onboardingDone: false,
   home: null,
@@ -50,6 +57,7 @@ export async function loadPreferences(): Promise<UserPreferences> {
   const zones = await getPreference(db, 'zones', JSON.stringify(DEFAULTS.zones));
   const filingTypes = await getPreference(db, 'filing_types', JSON.stringify(DEFAULTS.filingTypes));
   const interests = await getPreference(db, 'interests', JSON.stringify(DEFAULTS.interests));
+  const persona = await getPreference(db, 'persona', JSON.stringify(DEFAULTS.persona));
   const tags = await getPreference(db, 'tags', JSON.stringify(DEFAULTS.tags));
   const onboarding = await getPreference(db, 'onboarding_done', 'false');
   const home = await getPreference(db, 'home', 'null');
@@ -60,6 +68,8 @@ export async function loadPreferences(): Promise<UserPreferences> {
     zones: decodeEnumArray(zones, QUARTIERI, DEFAULTS.zones),
     filingTypes: decodeEnumArray(filingTypes, FILING_TYPE_ORDER, DEFAULTS.filingTypes),
     interests: decodeEnumArray(interests, CATEGORIES, DEFAULTS.interests),
+    // A corrupt/legacy/removed persona degrades to null (generic), never crashes load.
+    persona: decodeEnumValue(persona, PERSONAS, DEFAULTS.persona),
     tags: decodeStringArray(tags, DEFAULTS.tags),
     onboardingDone: onboarding === 'true',
     // parseStoredHome hardens against a corrupt/legacy value (→ null); the radius
@@ -77,7 +87,7 @@ export async function isOnboardingDone(): Promise<boolean> {
 }
 
 export async function completeOnboarding(
-  prefs: Pick<UserPreferences, 'zones' | 'filingTypes' | 'interests'>
+  prefs: Pick<UserPreferences, 'zones' | 'filingTypes' | 'interests' | 'persona'>
 ): Promise<void> {
   await savePreferences({ ...prefs, onboardingDone: true });
 }
@@ -103,6 +113,11 @@ export async function savePreferences(prefs: Partial<UserPreferences>): Promise<
   }
   if (prefs.interests !== undefined) {
     await setPreference(db, 'interests', JSON.stringify(prefs.interests));
+  }
+  // `persona: null` is a real value (never chosen / cleared) — JSON.stringify maps
+  // it to the literal 'null' string, distinct from `undefined` "field not saved".
+  if (prefs.persona !== undefined) {
+    await setPreference(db, 'persona', JSON.stringify(prefs.persona));
   }
   if (prefs.tags !== undefined) {
     await setPreference(db, 'tags', JSON.stringify(prefs.tags));

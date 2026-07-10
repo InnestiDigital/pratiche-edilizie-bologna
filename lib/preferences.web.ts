@@ -8,11 +8,13 @@
 import { QUARTIERI, FILING_TYPE_ORDER, type FilingType, type Quartiere } from './constants';
 import { CATEGORIES, type Category } from './sources';
 import { DEFAULT_HOME_RADIUS_M, type HomeLocation } from './home-location';
+import { type Persona } from './personas';
 
 export interface UserPreferences {
   zones: Quartiere[];
   filingTypes: FilingType[];
   interests: Category[];
+  persona: Persona | null;
   tags: string[];
   onboardingDone: boolean;
   home: HomeLocation | null;
@@ -24,6 +26,9 @@ const FIXTURE: UserPreferences = {
   zones: [...QUARTIERI],
   filingTypes: [...FILING_TYPE_ORDER],
   interests: [...CATEGORIES],
+  // A persona is set in the fixture so the Settings "Chi sei?" row renders its
+  // chosen state (icon + label + blurb) in the web screenshot, not the empty CTA.
+  persona: 'compravendita',
   tags: [],
   onboardingDone: true,
   // Anchored on the Navile cantiere cluster (screenshot-fixtures ids 9/13/14), so
@@ -45,7 +50,7 @@ export async function isOnboardingDone(): Promise<boolean> {
 }
 
 export async function completeOnboarding(
-  _prefs: Pick<UserPreferences, 'zones' | 'filingTypes' | 'interests'>
+  _prefs: Pick<UserPreferences, 'zones' | 'filingTypes' | 'interests' | 'persona'>
 ): Promise<void> {
   // no-op on web
 }

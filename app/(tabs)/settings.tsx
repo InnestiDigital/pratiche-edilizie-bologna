@@ -32,6 +32,8 @@ import {
   SOURCES,
   type Category,
 } from '../../lib/sources';
+import { PERSONAS, PERSONA_PROFILES, personaDefaults, type Persona } from '../../lib/personas';
+import { PERSONA_ICONS } from '../../components/persona-icons';
 import {
   loadPreferences,
   savePreferences,
@@ -375,10 +377,92 @@ function AddressModal({
   );
 }
 
+/**
+ * "Chi sei?" — the re-pickable persona sheet. The role chosen at onboarding is a
+ * revisitable identity, not a one-run seed: opening this shows the current role
+ * and picking a (possibly different) one re-seeds the interest + filing filters
+ * with that role's defaults, the same way onboarding did. Editable, never a lock.
+ */
+function PersonaModal({
+  visible,
+  current,
+  onClose,
+  onPick,
+}: {
+  visible: boolean;
+  current: Persona | null;
+  onClose: () => void;
+  onPick: (persona: Persona) => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View className="flex-1 justify-end bg-black/40">
+        <View className="max-h-[86%] rounded-t-3xl bg-parchment-100 pb-8">
+          <View className="flex-row items-center justify-between px-5 pb-1 pt-5">
+            <Text className="text-lg font-bold text-ink-800">Chi sei?</Text>
+            <Pressable
+              onPress={onClose}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Chiudi">
+              <Ionicons name="close" size={22} color="#8B7355" />
+            </Pressable>
+          </View>
+          <Text className="px-5 pb-3 text-xs leading-5 text-stone-600">
+            Scegli il profilo più vicino a te: reimposteremo interessi e tipi di pratica di
+            conseguenza (puoi sempre affinarli).
+          </Text>
+          <ScrollView className="mx-5 mb-2 overflow-hidden rounded-2xl bg-white">
+            {PERSONAS.map((persona, i) => {
+              const profile = PERSONA_PROFILES[persona];
+              const selected = current === persona;
+              return (
+                <Pressable
+                  key={persona}
+                  onPress={() => onPick(persona)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${profile.label}. ${profile.blurb}`}
+                  accessibilityState={{ selected }}
+                  className={`flex-row items-center px-4 py-3.5 ${
+                    i !== PERSONAS.length - 1 ? 'border-b border-parchment-200' : ''
+                  } ${selected ? 'bg-brick-50' : ''}`}>
+                  <View
+                    className={`mr-3.5 h-10 w-10 items-center justify-center rounded-full ${
+                      selected ? 'bg-brick-600' : 'bg-brick-50'
+                    }`}>
+                    <Ionicons
+                      name={PERSONA_ICONS[persona]}
+                      size={20}
+                      color={selected ? 'white' : '#9B2335'}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[15px] font-bold text-ink-800">{profile.label}</Text>
+                    <Text className="mt-0.5 text-xs leading-4 text-stone-500">{profile.blurb}</Text>
+                  </View>
+                  <View
+                    className={`ml-3 h-6 w-6 items-center justify-center rounded-full ${
+                      selected ? 'bg-brick-600' : 'border-2 border-stone-300 bg-white'
+                    }`}>
+                    {selected && <Ionicons name="checkmark" size={15} color="white" />}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function SettingsScreen() {
   const [zones, setZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
   const [interests, setInterests] = useState<Set<Category>>(new Set(CATEGORIES));
   const [filingTypes, setFilingTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
+  // The saved persona (or null) + the re-pick sheet's open state.
+  const [persona, setPersona] = useState<Persona | null>(null);
+  const [personaModalOpen, setPersonaModalOpen] = useState(false);
   const [tags, setTags] = useState<Set<string>>(new Set());
   const [notificationsOn, setNotificationsOn] = useState(false);
   // "Casa" — the home anchor + radius for the feed's "Vicino a casa" filter. The
@@ -405,6 +489,7 @@ export default function SettingsScreen() {
       setZones(new Set(prefs.zones));
       setInterests(new Set(prefs.interests));
       setFilingTypes(new Set(prefs.filingTypes));
+      setPersona(prefs.persona);
       setTags(new Set(prefs.tags));
       setHome(prefs.home);
       setHomeRadius(prefs.homeRadiusMeters);
@@ -486,7 +571,17 @@ export default function SettingsScreen() {
   // At least one interest must stay on (mirrors toggleFilingType): a zero-category
   // preference set would leave the feed permanently empty. Toggling an interest off
   // does not delete stored rows — it just filters them out (cheap + reversible).
+  // A manual filter tweak means the set no longer matches the persona preset, so
+  // drop the persona (in state + storage) — the "Chi sei?" row must never claim a
+  // role whose defaults the user has since edited. Mirrors onboarding's behaviour.
+  const clearPersona = () => {
+    if (persona === null) return;
+    setPersona(null);
+    savePreferences({ persona: null });
+  };
+
   const toggleInterest = (category: Category) => {
+    clearPersona();
     setInterests((prev) => {
       const next = new Set(prev);
       if (next.has(category)) {
@@ -500,6 +595,7 @@ export default function SettingsScreen() {
   };
 
   const toggleFilingType = (type: FilingType) => {
+    clearPersona();
     setFilingTypes((prev) => {
       const next = new Set(prev);
       if (next.has(type)) {
@@ -511,6 +607,22 @@ export default function SettingsScreen() {
       savePreferences({ filingTypes: arr });
       return next;
     });
+  };
+
+  // Re-pick the persona from Settings: seed the interest + filing filters with
+  // that role's defaults (same as onboarding) and persist role + filters together
+  // in one write. Mirrors the interest/filing Sets so the toggles below update live.
+  const applyPersona = (next: Persona) => {
+    const { interests: nextInterests, filingTypes: nextFilingTypes } = personaDefaults(next);
+    setPersona(next);
+    setInterests(new Set(nextInterests));
+    setFilingTypes(new Set(nextFilingTypes));
+    savePreferences({
+      persona: next,
+      interests: nextInterests,
+      filingTypes: nextFilingTypes,
+    });
+    setPersonaModalOpen(false);
   };
 
   const toggleTag = (tag: string) => {
@@ -563,11 +675,13 @@ export default function SettingsScreen() {
             setZones(new Set(QUARTIERI));
             setInterests(new Set(CATEGORIES));
             setFilingTypes(new Set(FILING_TYPE_ORDER));
+            setPersona(null);
             setTags(new Set());
             savePreferences({
               zones: [...QUARTIERI],
               interests: [...CATEGORIES],
               filingTypes: [...FILING_TYPE_ORDER],
+              persona: null,
               tags: [],
             });
           },
@@ -619,6 +733,51 @@ export default function SettingsScreen() {
           <Text className="mt-0.5 text-xs text-stone-600">{summary.caption}</Text>
         </View>
       </View>
+
+      {/* Chi sei — the persona is a revisitable identity, not a one-run onboarding
+          seed. Shows the current role (or an empty prompt) and opens the re-pick
+          sheet, which re-seeds the interest + filing filters below. */}
+      <SectionHeader title="Chi sei?" hint="Adatta interessi e pratiche al tuo profilo" />
+      <View
+        className="mx-4 overflow-hidden rounded-xl bg-white"
+        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+        <Pressable
+          onPress={() => setPersonaModalOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={
+            persona ? `Profilo: ${PERSONA_PROFILES[persona].label}` : 'Scegli un profilo'
+          }
+          accessibilityHint="Apre la scelta del profilo"
+          className="flex-row items-center px-4 py-3.5">
+          <View
+            className={`mr-3.5 h-10 w-10 items-center justify-center rounded-full ${
+              persona ? 'bg-brick-600' : 'bg-parchment-100'
+            }`}>
+            <Ionicons
+              name={persona ? PERSONA_ICONS[persona] : 'person-outline'}
+              size={20}
+              color={persona ? 'white' : '#8B7355'}
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-ink-800">
+              {persona ? PERSONA_PROFILES[persona].label : 'Non impostato'}
+            </Text>
+            <Text className="mt-0.5 text-xs leading-4 text-stone-500">
+              {persona
+                ? PERSONA_PROFILES[persona].blurb
+                : 'Scegli un profilo per impostare i filtri giusti.'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#a89888" />
+        </Pressable>
+      </View>
+      <PersonaModal
+        visible={personaModalOpen}
+        current={persona}
+        onClose={() => setPersonaModalOpen(false)}
+        onPick={applyPersona}
+      />
 
       <SectionHeader
         title="Notifiche"

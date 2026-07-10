@@ -36,3 +36,26 @@ export function decodeEnumArray<T extends string>(
   const allowedSet = new Set<string>(allowed);
   return decodeStringArray(raw, fallback).filter((v): v is T => allowedSet.has(v));
 }
+
+/**
+ * Decode a single JSON-encoded domain-enum value read from persistent storage
+ * (e.g. the chosen persona). Like {@link decodeEnumArray} but scalar: a stored
+ * `JSON.stringify(value)` round-trips back to `value` iff it is a member of
+ * `allowed`; anything else — corrupt/non-JSON input, a non-string payload
+ * (`'null'`, a number), or a legacy/removed enum member no longer in `allowed`
+ * — degrades to `fallback` instead of throwing or returning a dead value.
+ */
+export function decodeEnumValue<T extends string>(
+  raw: string,
+  allowed: readonly T[],
+  fallback: T | null
+): T | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+  if (typeof parsed !== 'string') return fallback;
+  return (allowed as readonly string[]).includes(parsed) ? (parsed as T) : fallback;
+}

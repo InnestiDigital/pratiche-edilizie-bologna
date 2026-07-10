@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { decodeStringArray, decodeEnumArray } from './preferences-decode';
+import { decodeStringArray, decodeEnumArray, decodeEnumValue } from './preferences-decode';
 import { QUARTIERI, FILING_TYPE_ORDER } from './constants';
 import { CATEGORIES } from './sources';
+import { PERSONAS } from './personas';
 
 const ZONE_FALLBACK = [...QUARTIERI];
 const TYPE_FALLBACK = [...FILING_TYPE_ORDER];
@@ -97,5 +98,37 @@ describe('decodeEnumArray', () => {
   it('yields an empty array when every stored interest value is unknown', () => {
     const raw = JSON.stringify(['ambiente', 'mobilita']);
     expect(decodeEnumArray(raw, CATEGORIES, CATEGORY_FALLBACK)).toEqual([]);
+  });
+});
+
+describe('decodeEnumValue', () => {
+  it('round-trips a stored known enum value', () => {
+    expect(decodeEnumValue(JSON.stringify('compravendita'), PERSONAS, null)).toBe('compravendita');
+    for (const p of PERSONAS) {
+      expect(decodeEnumValue(JSON.stringify(p), PERSONAS, null)).toBe(p);
+    }
+  });
+
+  it('maps a stored null (never chosen / cleared) to the fallback', () => {
+    expect(decodeEnumValue('null', PERSONAS, null)).toBe(null);
+    expect(decodeEnumValue(JSON.stringify(null), PERSONAS, 'esplora')).toBe('esplora');
+  });
+
+  it('degrades an unknown / legacy / removed value to the fallback', () => {
+    expect(decodeEnumValue(JSON.stringify('giornalista'), PERSONAS, null)).toBe(null);
+    expect(decodeEnumValue(JSON.stringify('giornalista'), PERSONAS, 'esplora')).toBe('esplora');
+  });
+
+  it('falls back on corrupt / non-JSON input instead of throwing', () => {
+    expect(() => decodeEnumValue('{not json', PERSONAS, null)).not.toThrow();
+    expect(decodeEnumValue('{not json', PERSONAS, null)).toBe(null);
+    expect(decodeEnumValue('', PERSONAS, null)).toBe(null);
+  });
+
+  it('falls back when the parsed value is not a string (number / object / array)', () => {
+    expect(decodeEnumValue('42', PERSONAS, null)).toBe(null);
+    expect(decodeEnumValue('{"a":1}', PERSONAS, null)).toBe(null);
+    expect(decodeEnumValue('["compravendita"]', PERSONAS, null)).toBe(null);
+    expect(decodeEnumValue('true', PERSONAS, null)).toBe(null);
   });
 });

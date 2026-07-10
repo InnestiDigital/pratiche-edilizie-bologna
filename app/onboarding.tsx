@@ -15,16 +15,7 @@ import { APP_NAME } from '../lib/brand';
 import { CATEGORIES, CATEGORY_LABELS, CATEGORY_COLORS, type Category } from '../lib/sources';
 import { PERSONAS, PERSONA_PROFILES, personaDefaults, type Persona } from '../lib/personas';
 import { CivicoMark } from '../components/CivicoMark';
-
-/** Icon per persona — a UI concern kept out of the pure `lib/personas` registry
- *  (which stays React-free) so the glyph name is typed against Ionicons here. */
-const PERSONA_ICONS: Record<Persona, keyof typeof Ionicons.glyphMap> = {
-  professionista: 'construct-outline',
-  compravendita: 'home-outline',
-  impresa: 'business-outline',
-  cittadino: 'people-outline',
-  esplora: 'compass-outline',
-};
+import { PERSONA_ICONS } from '../components/persona-icons';
 
 /** One selectable persona row in the first-run "chi sei" picker: a brand-tinted
  *  icon + the role label + a one-line blurb, with a radio-style check when active.
@@ -276,6 +267,9 @@ export default function OnboardingScreen() {
       zones: [...selectedZones],
       interests: [...selectedInterests],
       filingTypes: [...selectedTypes],
+      // Persist the chosen role (null if the user hand-tweaked or skipped it) so the
+      // identity survives onboarding and can be revisited/changed in Settings.
+      persona: selectedPersona,
     });
     router.replace('/(tabs)/sync');
   };

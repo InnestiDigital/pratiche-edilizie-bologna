@@ -24,6 +24,15 @@ const CATEGORY_STATUS_DESCRIPTION_OVERRIDES: Partial<Record<Category, Record<str
     decaduta:
       'Il titolo ha perso efficacia e l’attività non può più essere avviata su questa base.',
   },
+  // A cantiere is a roadwork *site*, not a *pratica*. The shared `concluso` caption
+  // — "L’iter della pratica si è concluso" — names the wrong domain noun on a
+  // roadwork (same mismatch the `concluso` → "Concluso" label override in
+  // `status-label.ts` already fixes for the pill). Override with cantiere-worded copy
+  // mirroring the shared `in_corso` caption ("I lavori del cantiere…"). `in_corso`
+  // is already cantiere-correct and falls through; `altro` has no caption (undefined).
+  cantieri: {
+    concluso: 'I lavori del cantiere si sono conclusi.',
+  },
   // Every segnalazione carries the constant `altro` status (the dataset exposes no
   // outcome field). Shown as "Ricevuta" (see `status-label.ts`); without a caption
   // the segnalazione hero was the only one to end at a bare, unexplained pill. This

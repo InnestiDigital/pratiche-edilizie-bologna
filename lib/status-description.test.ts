@@ -35,9 +35,25 @@ describe('statusDescriptionFor', () => {
     expect(statusDescriptionFor('rilasciata', 'edilizia')).toBe(STATUS_DESCRIPTIONS.rilasciata);
   });
 
-  it('uses the shared caption for cantieri and eventi', () => {
+  it('uses the shared caption for the already-correct cantieri/eventi statuses', () => {
     expect(statusDescriptionFor('in_corso', 'cantieri')).toBe(STATUS_DESCRIPTIONS.in_corso);
     expect(statusDescriptionFor('in_programma', 'eventi')).toBe(STATUS_DESCRIPTIONS.in_programma);
+  });
+
+  // A cantiere is a roadwork site, not a `pratica`, so the shared `concluso` caption
+  // ("L’iter della pratica si è concluso") names the wrong domain noun — the same
+  // mismatch the "Concluso" label override fixes for the pill. It gets a cantiere-
+  // worded caption; commercio's `concluso` (a real pratica) keeps the shared copy.
+  it('gives cantieri "concluso" a cantiere-worded caption, not the "pratica" one', () => {
+    const desc = statusDescriptionFor('concluso', 'cantieri');
+    expect(desc).toBeDefined();
+    expect(desc).toMatch(/cantiere/i);
+    expect(desc).not.toMatch(/pratica/i);
+    expect(desc).not.toBe(STATUS_DESCRIPTIONS.concluso);
+  });
+
+  it('leaves commercio "concluso" on the shared caption (a commercio filing is a pratica)', () => {
+    expect(statusDescriptionFor('concluso', 'commercio')).toBe(STATUS_DESCRIPTIONS.concluso);
   });
 
   it('yields undefined for altro/unknown so the UI renders no caption', () => {

@@ -48,7 +48,12 @@ import { buildProcessingStats, type ProcessingStats } from '../../lib/processing
 import { buildProcessingComparison } from '../../lib/processing-comparison';
 import { buildShareMessage } from '../../lib/share-message';
 import { extractStreetName } from '../../lib/street-name';
-import { getCoords, getEventoExtra, getSegnalazioneExtra } from '../../lib/permit-extra';
+import {
+  getCoords,
+  getCantiereExtra,
+  getEventoExtra,
+  getSegnalazioneExtra,
+} from '../../lib/permit-extra';
 import { formatEventoWhen } from '../../lib/evento-when';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { isSameLocation, type HomeLocation } from '../../lib/home-location';
@@ -569,6 +574,18 @@ export default function PermitDetail() {
       ? (getSegnalazioneExtra(permit.extra).nome_zona_prossimita ?? null)
       : null;
 
+  // A cantiere's feed card leads its body with the traffic-change measure as a
+  // prominent amber callout ("Divieto di transito veicolare", "Senso unico
+  // alternato") — for a roadwork this IS the fact a resident cares about ("will it
+  // block my street?"). The detail showed the works dates, status and explainer but
+  // never this, so opening a cantiere card LOST its most actionable field. Surface
+  // it as the same amber callout, reading the same `getCantiereExtra` field the
+  // card uses so the two surfaces can't drift (be22863 / a7542d7 info-loss class).
+  const cantiereTraffic =
+    permit.category === 'cantieri'
+      ? (getCantiereExtra(permit.extra).trafficchangesmeasure ?? null)
+      : null;
+
   // For a still-pending permit, the one fact a resident tracking it wants: how long
   // it has been waiting since the request was filed. Only for `in_attesa`; the pure
   // builder returns null when the request date is missing.
@@ -744,6 +761,29 @@ export default function PermitDetail() {
             <View className="mr-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
             <Text className="text-sm font-semibold text-ink-700">{statusLabel}</Text>
           </View>
+
+          {/* Cantiere traffic-change measure — the amber callout the card leads its
+              body with, the one fact a resident tracking a roadwork cares about
+              (will it block my street?). Same amber treatment + field as the card,
+              wrapping full-width here since the detail need not truncate it. */}
+          {cantiereTraffic && (
+            <View
+              className="mt-3 flex-row items-start rounded-lg px-2.5 py-2"
+              style={{ backgroundColor: CATEGORY_COLORS.cantieri.bg }}>
+              <Ionicons
+                name="warning-outline"
+                size={14}
+                color={CATEGORY_COLORS.cantieri.text}
+                style={{ marginTop: 1 }}
+              />
+              <Text
+                className="ml-1.5 flex-1 text-[13px] leading-5"
+                style={{ color: CATEGORY_COLORS.cantieri.text }}
+                selectable>
+                {cantiereTraffic}
+              </Text>
+            </View>
+          )}
 
           {/* Evento date span — the "when" the card leads with, so the detail never
               shows less about the timing than the card the user tapped. */}

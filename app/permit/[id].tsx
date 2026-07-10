@@ -71,6 +71,7 @@ import {
   type FilingType,
 } from '../../lib/constants';
 import { statusDescriptionFor } from '../../lib/status-description';
+import { permitCardBadge } from '../../lib/permit-card-badge';
 
 // Visual treatment for the "vs. local median" caption: a muted, secondary line
 // under the green "Conclusa in …" duration. Green when faster, neutral stone when
@@ -202,8 +203,7 @@ function RelatedRow({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const filingType = permit.filing_type as FilingType;
-  const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
+  const badge = permitCardBadge(permit);
   const statusLabel = statusLabelFor(permit.status, permit.category, permit.status_raw);
   const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
 
@@ -211,12 +211,12 @@ function RelatedRow({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${permit.filing_type}, ${permit.address ?? 'Indirizzo non disponibile'}, ${statusLabel}`}
+      accessibilityLabel={`${badge.label}, ${permit.address ?? 'Indirizzo non disponibile'}, ${statusLabel}`}
       accessibilityHint="Apri i dettagli di questa pratica"
       className={`flex-row items-center py-3 ${!isLast ? 'border-b border-parchment-200' : ''}`}>
-      <View className="mr-3 rounded-md px-2 py-1" style={{ backgroundColor: fc.bg }}>
-        <Text className="text-[11px] font-bold" style={{ color: fc.text }}>
-          {permit.filing_type}
+      <View className="mr-3 rounded-md px-2 py-1" style={{ backgroundColor: badge.bg }}>
+        <Text className="text-[11px] font-bold" style={{ color: badge.text }}>
+          {badge.label}
         </Text>
       </View>
       <View className="flex-1">
@@ -248,8 +248,7 @@ function NearbyRow({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const filingType = permit.filing_type as FilingType;
-  const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
+  const badge = permitCardBadge(permit);
   const headline = permitHeadline(permit);
   const distance = formatNearbyDistance(meters);
 
@@ -257,12 +256,12 @@ function NearbyRow({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${permit.filing_type}, ${headline}, a ${distance}`}
+      accessibilityLabel={`${badge.label}, ${headline}, a ${distance}`}
       accessibilityHint="Apri i dettagli di questa pratica"
       className={`flex-row items-center py-3 ${!isLast ? 'border-b border-parchment-200' : ''}`}>
-      <View className="mr-3 rounded-md px-2 py-1" style={{ backgroundColor: fc.bg }}>
-        <Text className="text-[11px] font-bold" style={{ color: fc.text }}>
-          {permit.filing_type}
+      <View className="mr-3 rounded-md px-2 py-1" style={{ backgroundColor: badge.bg }}>
+        <Text className="text-[11px] font-bold" style={{ color: badge.text }}>
+          {badge.label}
         </Text>
       </View>
       <View className="flex-1">

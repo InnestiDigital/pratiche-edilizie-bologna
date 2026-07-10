@@ -44,6 +44,7 @@ import { buildResultCount } from '../../lib/result-count-label';
 import { recordNoun } from '../../lib/record-noun';
 import { STATUS_COLORS } from '../../lib/status-breakdown';
 import { statusLabelFor } from '../../lib/status-label';
+import { permitCardBadge } from '../../lib/permit-card-badge';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import { formatItDate } from '../../lib/format-date';
@@ -389,19 +390,10 @@ function PermitCard({
   const statusLabel = statusLabelFor(permit.status, permit.category, permit.status_raw);
   const dotColor = STATUS_COLORS[permit.status] ?? '#9ca3af';
   // The top-left badge: the filing-type acronym for edilizia (its own color), the
-  // category label for every other source (its category color).
-  const isEdilizia = permit.category === 'edilizia';
-  const badge = isEdilizia
-    ? {
-        bg: FILING_COLORS[permit.filing_type].bg,
-        text: FILING_COLORS[permit.filing_type].text,
-        label: FILING_TYPE_ABBREV[permit.filing_type],
-      }
-    : {
-        bg: CATEGORY_COLORS[permit.category].bg,
-        text: CATEGORY_COLORS[permit.category].text,
-        label: CATEGORY_LABELS[permit.category],
-      };
+  // category label for every other source (its category color). Shared with the
+  // detail's "Nella stessa zona" / "Nei dintorni" rows via permitCardBadge so the
+  // chip can't drift between screens.
+  const badge = permitCardBadge(permit);
 
   const a11yLabel = [
     badge.label,

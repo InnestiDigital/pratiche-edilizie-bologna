@@ -16,6 +16,10 @@ export default function TabLayout() {
           paddingBottom: 30,
           paddingTop: 8,
         },
+        // Explicit lineHeight — without it the web export's default label line-box
+        // clips descenders ("Mappa"→"Maooa", "Aggiorna"→"Aaaiorna"), which also
+        // leaks into the App Store screenshots (generated from the same web build).
+        tabBarLabelStyle: { fontSize: 11, lineHeight: 15 },
         headerStyle: { backgroundColor: '#9B2335' },
         headerTintColor: '#ffffff',
         headerTitleAlign: 'left',

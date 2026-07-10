@@ -67,10 +67,10 @@ import {
   FILING_TYPE_FULL_NAMES,
   FILING_TYPE_DESCRIPTIONS,
   FILING_COLORS,
-  STATUS_DESCRIPTIONS,
   TAG_LABELS,
   type FilingType,
 } from '../../lib/constants';
+import { statusDescriptionFor } from '../../lib/status-description';
 
 // Visual treatment for the "vs. local median" caption: a muted, secondary line
 // under the green "Conclusa in …" duration. Green when faster, neutral stone when
@@ -550,7 +550,7 @@ export default function PermitDetail() {
 
   // Plain-Italian meaning of the current status (jargon like "Decaduta" tells the
   // citizen nothing). Only shown for a recognized status; 'altro'/unknown → none.
-  const statusDescription = STATUS_DESCRIPTIONS[permit.status];
+  const statusDescription = statusDescriptionFor(permit.status, permit.category);
 
   // For an evento, the two facts its feed card leads with — the date span and the
   // "Online" flag — must also appear on the detail, or opening a card LOST the very

@@ -71,6 +71,7 @@ import {
 } from '../../lib/sources';
 import {
   effectiveFeedCategories,
+  effectiveFilingTypes,
   showFilingSubRow,
   categoryChoices,
   showCategoryRow as shouldShowCategoryRow,
@@ -1220,16 +1221,21 @@ export default function FeedScreen() {
       const prefs = await loadPreferences();
       const newOffset = reset ? 0 : offsetRef.current;
 
+      // Scope the feed to the categories the user follows (mirrors zones), then
+      // apply the session-local category quick-filter on top: a selected category
+      // narrows to just that one, `null` keeps all followed. An orphaned selection
+      // falls back to all followed (never an empty feed).
+      const feedCategories = effectiveFeedCategories(activeCategory, prefs.interests);
+
       const filters: FeedFilters = {
         zones: activeZones.size < QUARTIERI.length ? [...activeZones] : prefs.zones,
-        filingTypes: [...activeTypes].filter((t) => prefs.filingTypes.includes(t)),
-        // Scope the feed to the categories the user follows (mirrors zones), then
-        // apply the session-local category quick-filter on top: a selected
-        // category narrows to just that one, `null` keeps all followed. An
-        // orphaned selection falls back to all followed (never an empty feed).
-        // The filing-type IN test above is edilizia-scoped in build-feed-query,
-        // so a cantiere/event/… row is kept as long as its category is in scope.
-        categories: effectiveFeedCategories(activeCategory, prefs.interests),
+        // Filing-type chips are edilizia-only: apply the active PDC/SCIA/CILA
+        // selection ONLY while the feed is scoped to edilizia alone (when the chip
+        // row is visible). Out of that scope the chips are hidden, so a stale
+        // subset must fall back to the full followed set — else it would silently
+        // drop edilizia SCIA/CILA rows in a mixed feed with no chip to clear.
+        filingTypes: effectiveFilingTypes([...activeTypes], prefs.filingTypes, feedCategories),
+        categories: feedCategories,
         // In-feed tag chips override the persistent settings tag filter for this
         // session; fall back to prefs.tags when no chip is active (mirrors zones).
         tags: activeTags.size > 0 ? [...activeTags] : prefs.tags,

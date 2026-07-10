@@ -1,3 +1,4 @@
+import { type FilingType } from './constants';
 import { CATEGORIES, type Category } from './sources';
 
 /**
@@ -44,6 +45,33 @@ export function effectiveFeedCategories(
  */
 export function showFilingSubRow(effective: Category[]): boolean {
   return effective.length === 1 && effective[0] === 'edilizia';
+}
+
+/**
+ * The filing-type filter (PDC / SCIA / CILA) actually applied to the feed WHERE.
+ *
+ * The filing chips are edilizia-only sub-filters, shown ONLY when the feed is
+ * scoped to edilizia alone ({@link showFilingSubRow}). Their `activeTypes`
+ * selection is session-persistent, but the chip ROW is hidden the moment the feed
+ * mixes categories or focuses a non-edilizia one — so a previously-narrowed
+ * selection (e.g. only PDC) must NOT keep filtering out of that scope, or it would
+ * silently drop edilizia SCIA/CILA rows with no visible chip left to clear it.
+ *
+ * Out of edilizia-alone scope this returns the full preferred set (the followed
+ * filing types) — no narrowing beyond preferences. In scope it returns the active
+ * selection intersected with the preferred set. Gating the query here (rather than
+ * resetting `activeTypes` on every category switch) keeps ONE source of truth for
+ * "does the filing filter apply" and preserves the user's chip selection for when
+ * they narrow back to edilizia. `preferredTypes` is the persisted followed set
+ * (`preferences.filingTypes`); `effective` is {@link effectiveFeedCategories}'s output.
+ */
+export function effectiveFilingTypes(
+  activeTypes: readonly FilingType[],
+  preferredTypes: readonly FilingType[],
+  effective: Category[]
+): FilingType[] {
+  if (!showFilingSubRow(effective)) return [...preferredTypes];
+  return activeTypes.filter((t) => preferredTypes.includes(t));
 }
 
 /**

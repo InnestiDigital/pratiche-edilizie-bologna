@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   effectiveFeedCategories,
+  effectiveFilingTypes,
   showFilingSubRow,
   categoryChoices,
   showCategoryRow,
 } from './feed-category';
+import { FILING_TYPE_ORDER, type FilingType } from './constants';
 import { CATEGORIES, type Category } from './sources';
 
 const ALL: Category[] = [...CATEGORIES];
+const ALL_TYPES: FilingType[] = [...FILING_TYPE_ORDER];
 
 describe('effectiveFeedCategories', () => {
   it('returns all followed when nothing is selected', () => {
@@ -65,6 +68,39 @@ describe('showFilingSubRow', () => {
 
   it('composes: selecting eventi in a mixed follower hides the filing row', () => {
     expect(showFilingSubRow(effectiveFeedCategories('eventi', ['edilizia', 'eventi']))).toBe(false);
+  });
+});
+
+describe('effectiveFilingTypes', () => {
+  it('applies the active PDC/SCIA/CILA selection when scoped to edilizia alone', () => {
+    expect(effectiveFilingTypes(['PDC'], ALL_TYPES, ['edilizia'])).toEqual(['PDC']);
+  });
+
+  it('keeps every followed type when the full set is active under edilizia scope', () => {
+    expect(effectiveFilingTypes(ALL_TYPES, ALL_TYPES, ['edilizia'])).toEqual(ALL_TYPES);
+  });
+
+  it('falls back to the full followed set out of edilizia-alone scope (mixed feed)', () => {
+    // The bug guard: a narrowed {PDC} selection would otherwise silently drop
+    // edilizia SCIA/CILA rows in a mixed feed with the chip row hidden.
+    expect(effectiveFilingTypes(['PDC'], ALL_TYPES, ['edilizia', 'eventi'])).toEqual(ALL_TYPES);
+  });
+
+  it('falls back to the full followed set for a non-edilizia single category', () => {
+    expect(effectiveFilingTypes(['PDC'], ALL_TYPES, ['cantieri'])).toEqual(ALL_TYPES);
+    expect(effectiveFilingTypes(['SCIA'], ALL_TYPES, ['eventi'])).toEqual(ALL_TYPES);
+  });
+
+  it('intersects the active selection with the preferred set under edilizia scope', () => {
+    // A followed-set narrower than the active selection wins (user follows only PDC/SCIA).
+    expect(effectiveFilingTypes(['PDC', 'CILA'], ['PDC', 'SCIA'], ['edilizia'])).toEqual(['PDC']);
+  });
+
+  it('composes with effectiveFeedCategories: leaving edilizia scope drops the filter', () => {
+    const mixed = effectiveFeedCategories(null, ['edilizia', 'eventi']);
+    expect(effectiveFilingTypes(['PDC'], ALL_TYPES, mixed)).toEqual(ALL_TYPES);
+    const edOnly = effectiveFeedCategories('edilizia', ['edilizia', 'eventi']);
+    expect(effectiveFilingTypes(['PDC'], ALL_TYPES, edOnly)).toEqual(['PDC']);
   });
 });
 

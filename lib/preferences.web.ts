@@ -69,3 +69,13 @@ export async function setNotificationsEnabled(_enabled: boolean): Promise<void> 
 export async function savePreferences(_prefs: Partial<UserPreferences>): Promise<void> {
   // no-op on web
 }
+
+export async function getActivitySeenAt(): Promise<string | null> {
+  // null -> everything is "unread" so the fixture activity still renders in
+  // the /novita screenshot build.
+  return null;
+}
+
+export async function markActivitySeen(_instant?: string): Promise<void> {
+  // no-op on web
+}

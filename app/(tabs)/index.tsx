@@ -26,7 +26,7 @@ import {
   type FeedFilters,
   type SortOption,
 } from '../../lib/queries';
-import { loadPreferences, savePreferences } from '../../lib/preferences';
+import { loadPreferences, savePreferences, getActivitySeenAt } from '../../lib/preferences';
 import { personaFeedIntro, PERSONA_PROFILES, type Persona } from '../../lib/personas';
 import { shouldShowPersonaHeader } from '../../lib/persona-header';
 import { PERSONA_ICONS } from '../../components/persona-icons';
@@ -1348,8 +1348,9 @@ export default function FeedScreen() {
         // New (unseen) permits across the whole DB — drives the "mark all seen"
         // action; global, matching markAllSeen's global UPDATE.
         setNewCount(await countNewPermits(db));
-        // Activity total (arrivals + transitions) — badges the "Novità" entry.
-        setActivityCount(await countActivityPermits(db));
+        // Activity total (arrivals + transitions newer than the ack watermark)
+        // — badges the "Novità" entry.
+        setActivityCount(await countActivityPermits(db, await getActivitySeenAt()));
         // Saved-permit ids, so each card can render its bookmark from one query
         // instead of an isFavorite call per visible row.
         setFavoriteIds(await listFavoriteIds(db));
@@ -1424,7 +1425,10 @@ export default function FeedScreen() {
   // focus is a true no-op; only cards that lost their NUOVO flag re-render. This
   // never resets the list, so the worst case if focus never fires is simply the
   // pre-existing behavior (the badge clears on the next natural reload) — not a
-  // scroll jump.
+  // scroll jump. Also refreshes the "Novità" badge on focus: visiting /novita
+  // stamps the ack watermark, and loadPermits (mount/deps effect, not a focus
+  // effect) would otherwise never see that update — so recompute it here too,
+  // which is what makes the badge clear when the user returns from /novita.
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -1434,6 +1438,8 @@ export default function FeedScreen() {
         if (!active) return;
         setNewCount(stillNew.size);
         setPermits((prev) => applySeenToList(prev, stillNew));
+        const ackAt = await getActivitySeenAt();
+        if (active) setActivityCount(await countActivityPermits(db, ackAt));
       })();
       return () => {
         active = false;

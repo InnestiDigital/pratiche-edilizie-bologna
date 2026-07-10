@@ -220,14 +220,20 @@ export async function markAllSeen(_db: SQLite.SQLiteDatabase): Promise<void> {
 // transitions). Order is unimportant here — `buildActivityFeed` re-sorts — so the
 // shim just filters the fixtures. `previous_status` is optional on the fixture
 // shape, so `!= null` also excludes the `undefined` rows.
+// `_ackAt` (the acknowledgement watermark) is ignored on web: the fixture
+// render must always show activity, regardless of any watermark.
 export async function getActivityPermits(
   _db: SQLite.SQLiteDatabase,
+  _ackAt: string | null,
   limit = 100
 ): Promise<Permit[]> {
   return FIXTURES.filter((p) => p.is_new === 1 || p.previous_status != null).slice(0, limit);
 }
 
-export async function countActivityPermits(_db: SQLite.SQLiteDatabase): Promise<number> {
+export async function countActivityPermits(
+  _db: SQLite.SQLiteDatabase,
+  _ackAt: string | null
+): Promise<number> {
   return FIXTURES.filter((p) => p.is_new === 1 || p.previous_status != null).length;
 }
 

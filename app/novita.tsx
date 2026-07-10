@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '../lib/db';
 import { getActivityPermits, type Permit } from '../lib/queries';
+import { getActivitySeenAt, markActivitySeen } from '../lib/preferences';
 import { buildActivityFeed, type ActivityEntry } from '../lib/activity-feed';
 import { permitCardBadge } from '../lib/permit-card-badge';
 import { statusChangeLine } from '../lib/status-transition';
@@ -27,8 +28,16 @@ export default function NovitaScreen() {
       let active = true;
       (async () => {
         const db = await getDb();
-        const rows = await getActivityPermits(db);
-        if (active) setEntries(buildActivityFeed(rows));
+        const ackAt = await getActivitySeenAt();
+        const rows = await getActivityPermits(db, ackAt);
+        if (active) {
+          setEntries(buildActivityFeed(rows));
+          // Visiting Novità acknowledges the activity just shown (auto-clear-
+          // on-visit): stamp the watermark to now so the feed's badge, which
+          // recomputes against it on its next focus, clears. Only genuinely
+          // newer activity (arrived/changed after this stamp) will re-badge.
+          await markActivitySeen();
+        }
       })();
       return () => {
         active = false;

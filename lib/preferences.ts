@@ -103,6 +103,29 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
   await setPreference(db, 'notifications_enabled', String(enabled));
 }
 
+/**
+ * The "Novità" acknowledgement watermark: an ISO instant, or null if the user
+ * has never visited /novita. Not part of `UserPreferences` — like
+ * `notifications_enabled`, this is an internal watermark, not a user-facing
+ * pref, so it is read/written via its own accessors instead of
+ * load/savePreferences.
+ */
+export async function getActivitySeenAt(): Promise<string | null> {
+  const db = await getDb();
+  const val = await getPreference(db, 'activity_seen_at', 'null');
+  return val === 'null' ? null : val;
+}
+
+/**
+ * Stamp the watermark to `instant` (default: now). Called when the user visits
+ * /novita — auto-clear-on-visit for the Novità badge. The clock read lives here
+ * in the device-coupled module, not in the pure `activity-ack` core.
+ */
+export async function markActivitySeen(instant?: string): Promise<void> {
+  const db = await getDb();
+  await setPreference(db, 'activity_seen_at', instant ?? new Date().toISOString());
+}
+
 export async function savePreferences(prefs: Partial<UserPreferences>): Promise<void> {
   const db = await getDb();
   if (prefs.zones !== undefined) {

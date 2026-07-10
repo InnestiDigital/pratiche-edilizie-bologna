@@ -266,21 +266,33 @@ export async function markAllSeen(db: SQLite.SQLiteDatabase): Promise<void> {
 /**
  * The candidate rows for the "Novità" activity feed: every voce that MOVED since
  * it entered the feed — a fresh arrival (`is_new`) OR a persisted status
- * transition (`previous_status` written by `statusTransitionWrite`). Ordered
- * newest-change-first at the SQL level so the `LIMIT` keeps the most recent
- * activity; the pure `buildActivityFeed` re-classifies + re-sorts what it returns
- * (a transition ranks by its flip time, an arrival by first-seen), so this order
- * is only a bound, not the final one.
+ * transition (`previous_status` written by `statusTransitionWrite`) — AND whose
+ * activity is newer than the acknowledgement watermark `ackAt` (the
+ * `activity_seen_at` preference; see `preferences.ts` + the pure
+ * `lib/activity-ack.ts`). `ackAt = null` means "never acknowledged", so the
+ * `? IS NULL` branch keeps every candidate row in that case.
+ *
+ * `COALESCE(status_changed_at, first_seen_at)` is the SQL twin of the pure
+ * `activityInstant()` — both the watermark filter here and the `ORDER BY`
+ * below use the exact same expression, so what is filtered in and how it is
+ * sorted always agree. Ordered newest-change-first at the SQL level so the
+ * `LIMIT` keeps the most recent activity; the pure `buildActivityFeed`
+ * re-classifies + re-sorts what it returns (a transition ranks by its flip
+ * time, an arrival by first-seen), so this order is only a bound, not final.
  */
 export async function getActivityPermits(
   db: SQLite.SQLiteDatabase,
+  ackAt: string | null,
   limit = 100
 ): Promise<Permit[]> {
   return db.getAllAsync<Permit>(
     `SELECT * FROM permits
-       WHERE is_new = 1 OR previous_status IS NOT NULL
+       WHERE (is_new = 1 OR previous_status IS NOT NULL)
+         AND (? IS NULL OR COALESCE(status_changed_at, first_seen_at) > ?)
        ORDER BY COALESCE(status_changed_at, first_seen_at) DESC
        LIMIT ?`,
+    ackAt,
+    ackAt,
     limit
   );
 }
@@ -291,12 +303,24 @@ export async function getActivityPermits(
  * `previous_status` that differs from the incoming status, so a `previous_status
  * IS NOT NULL` row is always a real transition here and this count matches
  * `buildActivityFeed`'s length (which additionally guards `previous !== current`).
+ *
+ * Same acknowledgement watermark as `getActivityPermits` — a row only counts
+ * here if its `COALESCE(status_changed_at, first_seen_at)` is newer than
+ * `ackAt` (or `ackAt` is null, i.e. never acknowledged), so the badge count and
+ * the list it points to always agree.
  */
-export async function countActivityPermits(db: SQLite.SQLiteDatabase): Promise<number> {
+export async function countActivityPermits(
+  db: SQLite.SQLiteDatabase,
+  ackAt: string | null
+): Promise<number> {
   return (
     (
       await db.getFirstAsync<{ c: number }>(
-        'SELECT COUNT(*) as c FROM permits WHERE is_new = 1 OR previous_status IS NOT NULL'
+        `SELECT COUNT(*) as c FROM permits
+           WHERE (is_new = 1 OR previous_status IS NOT NULL)
+             AND (? IS NULL OR COALESCE(status_changed_at, first_seen_at) > ?)`,
+        ackAt,
+        ackAt
       )
     )?.c ?? 0
   );

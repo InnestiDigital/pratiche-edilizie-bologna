@@ -118,7 +118,7 @@ function ActivityRow({ entry, onPress }: { entry: ActivityEntry<Permit>; onPress
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
       accessibilityHint="Apri i dettagli"
-      className="mx-4 mb-2.5 rounded-xl bg-white p-4"
+      className="mx-4 mb-2.5 flex-row items-center rounded-xl bg-white p-4"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -126,40 +126,43 @@ function ActivityRow({ entry, onPress }: { entry: ActivityEntry<Permit>; onPress
         shadowRadius: 4,
         elevation: 2,
       }}>
-      <View className="mb-2 flex-row items-center">
-        <View className="rounded-md px-2.5 py-1" style={{ backgroundColor: badge.bg }}>
-          <Text className="text-xs font-bold" style={{ color: badge.text }}>
-            {badge.label}
-          </Text>
+      <View className="flex-1">
+        <View className="mb-2 flex-row items-center">
+          <View className="rounded-md px-2.5 py-1" style={{ backgroundColor: badge.bg }}>
+            <Text className="text-xs font-bold" style={{ color: badge.text }}>
+              {badge.label}
+            </Text>
+          </View>
+          {when && <Text className="ml-auto text-xs font-medium text-stone-400">{when}</Text>}
         </View>
-        {when && <Text className="ml-auto text-xs font-medium text-stone-400">{when}</Text>}
-      </View>
 
-      <Text className="text-sm font-semibold leading-5 text-ink-800" numberOfLines={2}>
-        {headline}
-      </Text>
-      {permit.zone && (
-        <Text className="mt-0.5 text-xs text-stone-500" numberOfLines={1}>
-          {permit.zone}
+        <Text className="text-sm font-semibold leading-5 text-ink-800" numberOfLines={2}>
+          {headline}
         </Text>
-      )}
-
-      {/* The reason this voce is in the activity feed. A transition reuses the
-          amber "cosa è cambiato" treatment (identical to the feed card); a new
-          arrival gets the brick NUOVO tag — the same two-voice split as the feed. */}
-      {change ? (
-        <View className="mt-2 flex-row items-center self-start rounded-full bg-pdc-light px-2.5 py-0.5">
-          <Ionicons name="swap-horizontal" size={12} color="#8B5E1A" />
-          <Text className="ml-1 text-xs font-semibold" style={{ color: '#6B4510' }}>
-            Ora {change.current} · era {change.previous}
+        {permit.zone && (
+          <Text className="mt-0.5 text-xs text-stone-500" numberOfLines={1}>
+            {permit.zone}
           </Text>
-        </View>
-      ) : (
-        <View className="mt-2 flex-row items-center self-start rounded-full bg-brick-50 px-2.5 py-0.5">
-          <Ionicons name="sparkles" size={11} color="#9B2335" />
-          <Text className="ml-1 text-xs font-semibold text-brick-600">Nuova voce</Text>
-        </View>
-      )}
+        )}
+
+        {/* The reason this voce is in the activity feed. A transition reuses the
+            amber "cosa è cambiato" treatment (identical to the feed card); a new
+            arrival gets the brick NUOVO tag — the same two-voice split as the feed. */}
+        {change ? (
+          <View className="mt-2 flex-row items-center self-start rounded-full bg-pdc-light px-2.5 py-0.5">
+            <Ionicons name="swap-horizontal" size={12} color="#8B5E1A" />
+            <Text className="ml-1 text-xs font-semibold" style={{ color: '#6B4510' }}>
+              Ora {change.current} · era {change.previous}
+            </Text>
+          </View>
+        ) : (
+          <View className="mt-2 flex-row items-center self-start rounded-full bg-brick-50 px-2.5 py-0.5">
+            <Ionicons name="sparkles" size={11} color="#9B2335" />
+            <Text className="ml-1 text-xs font-semibold text-brick-600">Nuova voce</Text>
+          </View>
+        )}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color="#c4b8a8" style={{ marginLeft: 12 }} />
     </Pressable>
   );
 }

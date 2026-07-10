@@ -609,6 +609,19 @@ export default function PermitDetail() {
   const categoryColor = CATEGORY_COLORS[permit.category] ?? CATEGORY_COLORS.edilizia;
   const categoryDescription = filingDescription ? null : CATEGORY_DESCRIPTIONS[permit.category];
 
+  // The header identity badge mirrors the feed card's chip (index.tsx): edilizia
+  // carries its filing-type color + full name (PdC/SCIA/CILA), every other category
+  // carries its own category color + label. Reaching for FILING_COLORS
+  // unconditionally fell back to PDC's olive-gold for eventi/cantieri/commercio/
+  // segnalazioni — clashing with the category-colored rest of the screen (an evento
+  // detail is all-purple except this one olive badge) and disagreeing with the feed
+  // card the user tapped. `fc` stays the source for the filing-type explainer below,
+  // which only ever renders for edilizia, so it is correct there.
+  const headerBadge =
+    permit.category === 'edilizia'
+      ? { bg: fc.bg, text: fc.text, label: filingLabel }
+      : { bg: categoryColor.bg, text: categoryColor.text, label: CATEGORY_LABELS[permit.category] };
+
   const handleShare = async () => {
     const message = buildShareMessage({
       filingLabel,
@@ -652,9 +665,9 @@ export default function PermitDetail() {
           }}>
           {/* Badges */}
           <View className="mb-3 flex-row flex-wrap items-center">
-            <View className="rounded-lg px-3 py-1" style={{ backgroundColor: fc.bg }}>
-              <Text className="text-sm font-bold" style={{ color: fc.text }}>
-                {filingLabel}
+            <View className="rounded-lg px-3 py-1" style={{ backgroundColor: headerBadge.bg }}>
+              <Text className="text-sm font-bold" style={{ color: headerBadge.text }}>
+                {headerBadge.label}
               </Text>
             </View>
             {permit.is_new === 1 && (

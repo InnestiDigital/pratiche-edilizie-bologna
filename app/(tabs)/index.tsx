@@ -99,6 +99,7 @@ import { FadeScrollRow } from '../../components/FadeScrollRow';
 import {
   FILING_TYPE_ORDER,
   FILING_COLORS,
+  FILING_TYPE_ABBREV,
   STATUS_LABELS,
   TAG_LABELS,
   QUARTIERI,
@@ -399,7 +400,7 @@ function PermitCard({
     ? {
         bg: FILING_COLORS[permit.filing_type].bg,
         text: FILING_COLORS[permit.filing_type].text,
-        label: permit.filing_type,
+        label: FILING_TYPE_ABBREV[permit.filing_type],
       }
     : {
         bg: CATEGORY_COLORS[permit.category].bg,
@@ -1693,7 +1694,7 @@ export default function FeedScreen() {
                 <Text
                   className={`text-sm font-bold ${active ? '' : 'text-stone-500'}`}
                   style={active ? { color: fc.text } : undefined}>
-                  {type}
+                  {FILING_TYPE_ABBREV[type]}
                 </Text>
               </Pressable>
             );

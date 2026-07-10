@@ -4,6 +4,7 @@ import {
   FILING_TYPE_ORDER,
   FILING_TYPE_FULL_NAMES,
   FILING_TYPE_DESCRIPTIONS,
+  FILING_TYPE_ABBREV,
   FILING_DATASET_KEY,
 } from './constants';
 
@@ -37,6 +38,29 @@ describe('filing-type explainer copy', () => {
     // acronyms — assert the expansion actually happened.
     expect(FILING_TYPE_FULL_NAMES.SCIA).toContain('Segnalazione Certificata');
     expect(FILING_TYPE_FULL_NAMES.CILA).toContain('Comunicazione Inizio Lavori');
+  });
+});
+
+// The short badge acronym (feed card, filter chip, detail explainer eyebrow, sync
+// composition sub-row) reads from one map so it can't drift between screens — the
+// bug this map fixed was the feed/detail rendering the raw enum 'PDC' while sync
+// already showed 'PdC'. Guard the canonical form.
+describe('FILING_TYPE_ABBREV', () => {
+  it('renders the Permesso di Costruire abbreviation as "PdC" (lowercase "di")', () => {
+    // Italian typographic convention: only the P and C are initials; the "d" of
+    // "di" stays lowercase. Any regression back to all-caps "PDC" fails here.
+    expect(FILING_TYPE_ABBREV.PDC).toBe('PdC');
+  });
+
+  it('keeps SCIA and CILA as all-caps acronyms', () => {
+    expect(FILING_TYPE_ABBREV.SCIA).toBe('SCIA');
+    expect(FILING_TYPE_ABBREV.CILA).toBe('CILA');
+  });
+
+  it('has a non-empty abbreviation for every filing type', () => {
+    for (const type of FILING_TYPE_ORDER) {
+      expect(FILING_TYPE_ABBREV[type].trim().length).toBeGreaterThan(0);
+    }
   });
 });
 

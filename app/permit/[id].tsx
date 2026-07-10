@@ -55,6 +55,7 @@ import { statusLabelFor } from '../../lib/status-label';
 import { DetailSkeleton } from '../../components/DetailSkeleton';
 import {
   FILING_TYPE_LABELS,
+  FILING_TYPE_ABBREV,
   FILING_TYPE_FULL_NAMES,
   FILING_TYPE_DESCRIPTIONS,
   FILING_COLORS,
@@ -766,7 +767,7 @@ export default function PermitDetail() {
               </View>
               <View className="flex-1">
                 <Text className="text-xs font-bold" style={{ color: fc.text }}>
-                  {permit.filing_type}
+                  {FILING_TYPE_ABBREV[filingType]}
                 </Text>
                 <Text className="text-[15px] font-bold leading-5 text-ink-800">
                   {filingFullName}

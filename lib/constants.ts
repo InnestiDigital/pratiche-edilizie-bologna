@@ -38,6 +38,18 @@ export const FILING_TYPE_LABELS: Record<FilingType, string> = {
   CILA: 'CILA',
 };
 
+// The short badge acronym shown wherever there's only room for the abbreviation
+// (feed card badge, detail explainer eyebrow, sync composition sub-row). 'PdC'
+// follows Italian typographic convention — the 'd' of "di" stays lowercase —
+// whereas SCIA/CILA are true acronyms and stay all-caps. Single source of truth
+// so the abbreviation can't drift between screens (it did: the feed/detail showed
+// the raw enum 'PDC' while sync already rendered 'PdC').
+export const FILING_TYPE_ABBREV: Record<FilingType, string> = {
+  PDC: 'PdC',
+  SCIA: 'SCIA',
+  CILA: 'CILA',
+};
+
 // The per-filing-type brand palette used for badges/dots across every screen
 // (feed cards, detail header, settings). `bg` is the soft badge fill, `text` is
 // the saturated accent (also used as the dot color). Single source of truth so

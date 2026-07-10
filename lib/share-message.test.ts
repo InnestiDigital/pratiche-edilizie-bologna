@@ -3,6 +3,7 @@ import { buildShareMessage, type ShareMessageInput } from './share-message';
 
 const full: ShareMessageInput = {
   filingLabel: 'Permesso di Costruire',
+  title: null,
   address: 'Via Marconi 24',
   zone: 'Porto-Saragozza',
   procedimento: 'Ristrutturazione edilizia con cambio di destinazione d’uso',
@@ -31,6 +32,7 @@ describe('buildShareMessage', () => {
   it('always emits the title line with the required status + protocol lines', () => {
     const bare = buildShareMessage({
       filingLabel: 'SCIA',
+      title: null,
       address: null,
       zone: null,
       procedimento: null,
@@ -48,6 +50,33 @@ describe('buildShareMessage', () => {
   it('falls back to a label when the address is blank', () => {
     const msg = buildShareMessage({ ...full, address: '   ' });
     expect(msg.split('\n')[0]).toBe('Permesso di Costruire — Indirizzo non disponibile');
+  });
+
+  it('heads with the title for a non-edilizia record and keeps the address on its own line', () => {
+    // A cantiere/commercio/evento carries its real name in `title`; sharing it
+    // must lead with that name, not the address, and still surface the street.
+    const msg = buildShareMessage({
+      ...full,
+      filingLabel: 'Cantiere',
+      title: 'Lavori per la realizzazione del Tecnopolo',
+      address: 'Via Stalingrado 45',
+    });
+    expect(msg.split('\n').slice(0, 2)).toEqual([
+      'Cantiere — Lavori per la realizzazione del Tecnopolo',
+      'Via Stalingrado 45',
+    ]);
+  });
+
+  it('a segnalazione (title set, address always null) shares its report type, not the placeholder', () => {
+    const msg = buildShareMessage({
+      ...full,
+      filingLabel: 'Segnalazione',
+      title: 'Verde privato · Alberi/rami · Invadenti',
+      address: null,
+    });
+    expect(msg.split('\n')[0]).toBe('Segnalazione — Verde privato · Alberi/rami · Invadenti');
+    expect(msg).not.toContain('Indirizzo non disponibile');
+    expect(msg).not.toContain('\n\n');
   });
 
   it('drops blank/whitespace-only optional lines rather than emitting empty lines', () => {

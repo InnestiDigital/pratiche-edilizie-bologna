@@ -39,6 +39,7 @@ import { getNoteRecord, setNote, deleteNote } from '../../lib/notes';
 import { normalizeNote, NOTE_MAX_LENGTH } from '../../lib/note-text';
 import { formatItDate } from '../../lib/format-date';
 import { formatProtocol } from '../../lib/format-protocol';
+import { permitHeadline } from '../../lib/permit-headline';
 import { buildMapsUrl } from '../../lib/maps-url';
 import { buildPermitTimeline } from '../../lib/permit-timeline';
 import { pendingDurationLabel } from '../../lib/pending-duration';
@@ -242,7 +243,7 @@ function NearbyRow({
 }) {
   const filingType = permit.filing_type as FilingType;
   const fc = FILING_COLORS[filingType] ?? FILING_COLORS.PDC;
-  const headline = permit.title ?? permit.address ?? 'Indirizzo non disponibile';
+  const headline = permitHeadline(permit);
   const distance = formatNearbyDistance(meters);
 
   return (
@@ -598,6 +599,7 @@ export default function PermitDetail() {
   const handleShare = async () => {
     const message = buildShareMessage({
       filingLabel,
+      title: permit.title,
       address: permit.address,
       zone: permit.zone,
       procedimento: permit.procedimento,
@@ -649,10 +651,24 @@ export default function PermitDetail() {
             )}
           </View>
 
-          {/* Address */}
+          {/* Headline: edilizia heads with its address; every other source
+              (cantieri/commercio/eventi/segnalazioni) carries its real name in
+              `title`. Reading address alone rendered the "Indirizzo non
+              disponibile" placeholder for every address-less segnalazione and
+              buried the real name for the rest — permitHeadline is the single
+              source of truth shared with the share text + the nearby row. */}
           <Text className="text-xl font-bold leading-7 text-ink-800" selectable>
-            {permit.address ?? 'Indirizzo non disponibile'}
+            {permitHeadline(permit)}
           </Text>
+
+          {/* The street address as a subline when the headline is the title (a
+              non-edilizia record with a real address), so cantieri/commercio/
+              eventi keep their location under the name. */}
+          {permit.title && permit.address && (
+            <Text className="mt-0.5 text-base text-stone-500" selectable>
+              {permit.address}
+            </Text>
+          )}
 
           {/* Zone */}
           {permit.zone && (

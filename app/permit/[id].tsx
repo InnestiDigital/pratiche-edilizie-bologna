@@ -748,11 +748,17 @@ export default function PermitDetail() {
               the proximity zone; the plain-dot icon distinguishes the two rows. */}
           {permit.zone && (
             <View className={`flex-row items-center ${segnalazioneZone ? 'mt-1' : 'mt-1.5'}`}>
-              <Ionicons
-                name={segnalazioneZone ? 'ellipse-outline' : 'location-outline'}
-                size={14}
-                color="#8B7355"
-              />
+              {segnalazioneZone ? (
+                // A small filled dot (not a hollow ring, which reads like an
+                // unchecked checkbox) marks the broad district as subordinate to
+                // the proximity zone above; the w-3.5 box keeps its text left
+                // edge aligned with the 14px location pin's row.
+                <View className="w-3.5 items-center">
+                  <Ionicons name="ellipse" size={9} color="#8B7355" />
+                </View>
+              ) : (
+                <Ionicons name="location-outline" size={14} color="#8B7355" />
+              )}
               <Text className="ml-1 text-base text-stone-500">{permit.zone}</Text>
             </View>
           )}

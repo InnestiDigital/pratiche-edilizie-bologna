@@ -5,6 +5,7 @@ import {
   parseStoredHome,
   sanitizeHomeRadius,
   formatRadiusLabel,
+  homeAlertCaption,
   homeFilterActive,
   filterPermitsNearHome,
   isSameLocation,
@@ -79,6 +80,27 @@ describe('formatRadiusLabel', () => {
     expect(formatRadiusLabel(1000)).toBe('1 km');
     expect(formatRadiusLabel(2000)).toBe('2 km');
     expect(formatRadiusLabel(1500)).toBe('1,5 km');
+  });
+});
+
+describe('homeAlertCaption', () => {
+  it('promises the radius-scoped alert only when home set AND notifications on', () => {
+    expect(homeAlertCaption(HOME, true, 500)).toBe(
+      'Ti avviseremo per le nuove pratiche entro 500 m da casa'
+    );
+    expect(homeAlertCaption(HOME, true, 1000)).toBe(
+      'Ti avviseremo per le nuove pratiche entro 1 km da casa'
+    );
+  });
+
+  it('is null when the alert would not fire (no home, or notifications off)', () => {
+    expect(homeAlertCaption(null, true, 500)).toBeNull();
+    expect(homeAlertCaption(HOME, false, 500)).toBeNull();
+    expect(homeAlertCaption(null, false, 500)).toBeNull();
+  });
+
+  it('states the radius via the shared formatter (Italian km comma)', () => {
+    expect(homeAlertCaption(HOME, true, 1500)).toContain('1,5 km');
   });
 });
 

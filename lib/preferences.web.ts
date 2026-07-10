@@ -51,7 +51,10 @@ export async function completeOnboarding(
 }
 
 export async function isNotificationsEnabled(): Promise<boolean> {
-  return false;
+  // On in the fixture: it is the app's advertised default and it makes the
+  // place-aware alert caption (Settings "Casa", home set + notifications on)
+  // render in the screenshot so the P4 radius alert is visually verifiable.
+  return true;
 }
 
 export async function setNotificationsEnabled(_enabled: boolean): Promise<void> {

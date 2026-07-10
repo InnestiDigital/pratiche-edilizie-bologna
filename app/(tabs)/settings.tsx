@@ -52,6 +52,7 @@ import { recordNoun } from '../../lib/record-noun';
 import {
   HOME_RADIUS_OPTIONS,
   formatRadiusLabel,
+  homeAlertCaption,
   DEFAULT_HOME_RADIUS_M,
   type HomeLocation,
 } from '../../lib/home-location';
@@ -711,6 +712,18 @@ export default function SettingsScreen() {
                 })}
               </View>
             </View>
+            {/* Surface the P4 place-aware alert: with a home set AND notifications
+                on, the background push is already radius-scoped ("N pratiche vicino
+                a casa"). Tell the user so the shipped capability is discoverable —
+                stated in their own radius terms, only when it will actually fire. */}
+            {homeAlertCaption(home, notificationsOn, homeRadius) !== null && (
+              <View className="flex-row items-start border-t border-parchment-200 px-4 py-3">
+                <Ionicons name="notifications" size={15} color="#9B2335" style={{ marginTop: 1 }} />
+                <Text className="ml-2 flex-1 text-xs leading-5 text-stone-600">
+                  {homeAlertCaption(home, notificationsOn, homeRadius)}
+                </Text>
+              </View>
+            )}
           </>
         ) : (
           // No anchor yet: teach the two ways to set it — type an address here, or

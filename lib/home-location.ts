@@ -106,6 +106,26 @@ export function homeFilterActive(home: HomeLocation | null, enabled: boolean): b
 }
 
 /**
+ * Settings copy that tells the user their background alerts are place-aware.
+ * The P4 alert (`home-alert.ts::chooseNotificationBody`, wired at
+ * `background-sync.ts`) already targets the push to "N pratiche vicino a casa"
+ * whenever a home is set — but the UI never advertised it, so the capability
+ * was invisible. This is the single decision for that caption: promise the
+ * radius-scoped alert ONLY when it will actually fire (home set AND
+ * notifications on), stating the radius in the user's own terms via the tested
+ * {@link formatRadiusLabel}; otherwise `null` (don't promise an alert the
+ * background task won't send). Pure so it can be unit-tested off-device.
+ */
+export function homeAlertCaption(
+  home: HomeLocation | null,
+  notificationsOn: boolean,
+  radiusMeters: number
+): string | null {
+  if (home === null || !notificationsOn) return null;
+  return `Ti avviseremo per le nuove pratiche entro ${formatRadiusLabel(radiusMeters)} da casa`;
+}
+
+/**
  * Keep the items whose coordinate is within `radiusMeters` of the home, input
  * order preserved. Delegates to the tested `filterWithinRadius`; items whose
  * coordinate accessor returns `null` (no/absent coord — e.g. a not-yet-geocoded

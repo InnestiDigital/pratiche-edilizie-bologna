@@ -37,6 +37,11 @@ export interface PersonaProfile {
   label: string;
   /** One line: who this is + why they'd open the app (the "right first question"). */
   blurb: string;
+  /** Present-tense, second-person framing of the feed for this role — the persona's
+   *  voice IN the app (the feed header reads it), distinct from the picker-facing
+   *  `blurb`. Their task, their vocabulary, so the feed doesn't read generic once
+   *  onboarding is behind them. */
+  feedIntro: string;
   /** Civic categories this persona follows by default. */
   interests: Category[];
   /** Edilizia filing types they follow (only relevant when `edilizia` is followed). */
@@ -55,6 +60,7 @@ export const PERSONA_PROFILES: Record<Persona, PersonaProfile> = {
   professionista: {
     label: 'Tecnico',
     blurb: 'Geometra, architetto o tecnico: pratiche edilizie e cantieri per la due diligence.',
+    feedIntro: 'Edilizia e cantieri per la tua due diligence.',
     interests: ['edilizia', 'cantieri'],
     filingTypes: [...ALL_FILING_TYPES],
   },
@@ -63,6 +69,7 @@ export const PERSONA_PROFILES: Record<Persona, PersonaProfile> = {
   compravendita: {
     label: 'Compra / vende casa',
     blurb: 'Compri, vendi o valuti un immobile: cosa si costruisce, si scava e apre nella zona.',
+    feedIntro: 'Cosa si costruisce, si scava e apre nella zona.',
     interests: ['edilizia', 'cantieri', 'commercio'],
     filingTypes: [...ALL_FILING_TYPES],
   },
@@ -71,6 +78,7 @@ export const PERSONA_PROFILES: Record<Persona, PersonaProfile> = {
   impresa: {
     label: 'Impresa / cantieri',
     blurb: 'Impresa o cantierista: lavori stradali e pratiche che toccano i tuoi siti.',
+    feedIntro: 'Lavori stradali e pratiche sui tuoi cantieri.',
     interests: ['cantieri', 'edilizia'],
     filingTypes: [...ALL_FILING_TYPES],
   },
@@ -79,6 +87,7 @@ export const PERSONA_PROFILES: Record<Persona, PersonaProfile> = {
   cittadino: {
     label: 'Cittadino',
     blurb: 'Segui il tuo quartiere: cantieri, segnalazioni, eventi e nuove attività.',
+    feedIntro: 'Il tuo quartiere: cantieri, segnalazioni, eventi.',
     interests: [...ALL_INTERESTS],
     filingTypes: [...ALL_FILING_TYPES],
   },
@@ -87,6 +96,7 @@ export const PERSONA_PROFILES: Record<Persona, PersonaProfile> = {
   esplora: {
     label: 'Esplora tutto',
     blurb: 'Non sei sicuro? Segui tutto e affina i filtri più tardi.',
+    feedIntro: 'Tutte le categorie civiche di Bologna.',
     interests: [...ALL_INTERESTS],
     filingTypes: [...ALL_FILING_TYPES],
   },
@@ -108,4 +118,13 @@ export function personaDefaults(persona: Persona): {
     interests: [...profile.interests],
     filingTypes: [...profile.filingTypes],
   };
+}
+
+/**
+ * The feed-header line for a persona — the role's task in its own voice, read by
+ * the feed's persona header so the chosen persona keeps speaking past onboarding
+ * (before this the persona only shaped the onboarding + Settings pickers).
+ */
+export function personaFeedIntro(persona: Persona): string {
+  return PERSONA_PROFILES[persona].feedIntro;
 }

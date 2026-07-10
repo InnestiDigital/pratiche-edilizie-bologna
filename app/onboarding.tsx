@@ -215,6 +215,10 @@ export default function OnboardingScreen() {
   // The persona whose defaults are currently applied, or null once the user has
   // hand-tweaked the pickers (so the highlight never lies about a custom set).
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
+  // The granular interest + filing pickers stay collapsed by default so the fast
+  // path is persona → Inizia; a user who wants finer control opts in. Expanding
+  // never changes the underlying selection — it only reveals the controls.
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   // Picking a persona seeds the interest + filing pickers with that role's
@@ -359,46 +363,88 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        {/* Interessi — which civic categories to follow. Defaults to all; the
-            edilizia filing-type card below appears only when Edilizia is kept. */}
-        <View className="mb-2 flex-row items-center justify-between">
-          <Text className="text-base font-bold text-ink-800">Cosa vuoi seguire</Text>
-          <Text className="text-sm text-brick-600">
-            {selectedInterests.size}/{CATEGORIES.length}
-          </Text>
-        </View>
-        <View
-          className="mb-8 overflow-hidden rounded-2xl bg-white"
+        {/* Personalizza filtri — the granular interest + filing pickers, collapsed
+            by default so the persona-seeded defaults are the fast path (persona →
+            Inizia). The summary line reflects what the persona set; a user who
+            wants finer control taps to expand. Expanding never mutates the
+            selection — it only reveals the controls. */}
+        <Pressable
+          onPress={() => setFiltersExpanded((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel="Personalizza filtri"
+          accessibilityState={{ expanded: filtersExpanded }}
+          className="mb-4 flex-row items-center rounded-2xl bg-white px-4 py-3.5"
           style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
-          {CATEGORIES.map((category, i) => (
-            <InterestRow
-              key={category}
-              category={category}
-              selected={selectedInterests.has(category)}
-              onPress={() => toggleInterest(category)}
-              isLast={i === CATEGORIES.length - 1}
-            />
-          ))}
-        </View>
+          <View className="mr-3.5 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
+            <Ionicons name="options-outline" size={18} color="#9B2335" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-ink-800">Personalizza filtri</Text>
+            <Text className="mt-0.5 text-xs leading-4 text-stone-500">
+              {selectedInterests.size}/{CATEGORIES.length} categorie
+              {ediliziaSelected
+                ? ` · ${selectedTypes.size}/${FILING_TYPE_ORDER.length} tipi di pratica`
+                : ''}
+            </Text>
+          </View>
+          <Ionicons
+            name={filtersExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color="#9B2335"
+          />
+        </Pressable>
 
-        {/* Tipo pratica edilizia — only relevant when Edilizia is followed. */}
-        {ediliziaSelected && (
+        {filtersExpanded && (
           <>
-            <Text className="mb-2 text-base font-bold text-ink-800">Tipo di pratica edilizia</Text>
+            {/* Interessi — which civic categories to follow. Defaults to all; the
+                edilizia filing-type card below appears only when Edilizia is kept. */}
+            <View className="mb-2 flex-row items-center justify-between">
+              <Text className="text-base font-bold text-ink-800">Cosa vuoi seguire</Text>
+              <Text className="text-sm text-brick-600">
+                {selectedInterests.size}/{CATEGORIES.length}
+              </Text>
+            </View>
             <View
               className="mb-8 overflow-hidden rounded-2xl bg-white"
               style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 }}>
-              {FILING_TYPE_ORDER.map((type, i) => (
-                <TypeRow
-                  key={type}
-                  type={type}
-                  fullName={FILING_TYPE_FULL_NAMES[type]}
-                  selected={selectedTypes.has(type)}
-                  onPress={() => toggleType(type)}
-                  isLast={i === FILING_TYPE_ORDER.length - 1}
+              {CATEGORIES.map((category, i) => (
+                <InterestRow
+                  key={category}
+                  category={category}
+                  selected={selectedInterests.has(category)}
+                  onPress={() => toggleInterest(category)}
+                  isLast={i === CATEGORIES.length - 1}
                 />
               ))}
             </View>
+
+            {/* Tipo pratica edilizia — only relevant when Edilizia is followed. */}
+            {ediliziaSelected && (
+              <>
+                <Text className="mb-2 text-base font-bold text-ink-800">
+                  Tipo di pratica edilizia
+                </Text>
+                <View
+                  className="mb-8 overflow-hidden rounded-2xl bg-white"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    elevation: 2,
+                  }}>
+                  {FILING_TYPE_ORDER.map((type, i) => (
+                    <TypeRow
+                      key={type}
+                      type={type}
+                      fullName={FILING_TYPE_FULL_NAMES[type]}
+                      selected={selectedTypes.has(type)}
+                      onPress={() => toggleType(type)}
+                      isLast={i === FILING_TYPE_ORDER.length - 1}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
           </>
         )}
 

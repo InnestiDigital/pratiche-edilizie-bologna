@@ -48,6 +48,7 @@ import { recordNoun } from '../../lib/record-noun';
 import { STATUS_COLORS } from '../../lib/status-breakdown';
 import { statusLabelFor } from '../../lib/status-label';
 import { permitCardBadge } from '../../lib/permit-card-badge';
+import { savedShortcutState } from '../../lib/saved-shortcut';
 import { formatSearchTerm } from '../../lib/search-empty-message';
 import { formatProtocol } from '../../lib/format-protocol';
 import { formatItDate } from '../../lib/format-date';
@@ -1610,6 +1611,12 @@ export default function FeedScreen() {
     effectiveFeedCategories(activeCategory, followedCategories)
   );
 
+  // First-class saved-only shortcut (pure core: saved-shortcut.ts) — an
+  // always-visible bookmark button in the search bar that jumps in/out of
+  // saved-only mode, so following a permit is one tap to revisit instead of
+  // opening the filter panel to find "Solo salvate".
+  const savedShortcut = savedShortcutState(favoriteIds.size, onlyFavorites);
+
   const removeFilter = (key: string) => {
     if (key === ZONES_CHIP_KEY) setActiveZones(new Set(QUARTIERI));
     else if (key === PERIOD_CHIP_KEY) setPeriod('all');
@@ -1635,6 +1642,30 @@ export default function FeedScreen() {
           clearButtonMode="while-editing"
           accessibilityLabel="Cerca indirizzo, procedimento, nota o protocollo"
         />
+        {/* First-class "Salvati" toggle — one tap into/out of saved-only mode,
+            badged with the live saved count. Shares the onlyFavorites state with
+            the filter panel's "Solo salvate" pill (one source of truth). */}
+        {savedShortcut.visible && (
+          <Pressable
+            onPress={() => setOnlyFavorites((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={savedShortcut.accessibilityLabel}
+            accessibilityState={{ selected: onlyFavorites }}
+            className={`ml-2 h-10 w-10 items-center justify-center rounded-lg ${
+              onlyFavorites ? 'bg-brick-600' : 'bg-parchment-100'
+            }`}>
+            <Ionicons
+              name={savedShortcut.iconName}
+              size={20}
+              color={onlyFavorites ? 'white' : '#8B7355'}
+            />
+            {savedShortcut.badge && !onlyFavorites && (
+              <View className="absolute -right-1 -top-1 h-4 min-w-4 items-center justify-center rounded-full bg-brick-600 px-1">
+                <Text className="text-[10px] font-bold text-white">{savedShortcut.badge}</Text>
+              </View>
+            )}
+          </Pressable>
+        )}
         <Pressable
           onPress={() => setFiltersOpen((v) => !v)}
           accessibilityRole="button"

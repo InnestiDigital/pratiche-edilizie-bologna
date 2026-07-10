@@ -26,4 +26,12 @@ describe('statusLabelFor', () => {
   it('does not override a status the category has no special-casing for', () => {
     expect(statusLabelFor('in_programma', 'eventi', 'In programma')).toBe('In programma');
   });
+
+  it('renders segnalazioni altro as "Ricevuta" (a report in the open data is received)', () => {
+    expect(statusLabelFor('altro', 'segnalazioni', 'Altro')).toBe('Ricevuta');
+  });
+
+  it('keeps altro as "Altro" for edilizia (a genuine unknown-status catch-all)', () => {
+    expect(statusLabelFor('altro', 'edilizia', 'Altro')).toBe('Altro');
+  });
 });

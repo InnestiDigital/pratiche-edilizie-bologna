@@ -24,6 +24,14 @@ const CATEGORY_STATUS_DESCRIPTION_OVERRIDES: Partial<Record<Category, Record<str
     decaduta:
       'Il titolo ha perso efficacia e l’attività non può più essere avviata su questa base.',
   },
+  // Every segnalazione carries the constant `altro` status (the dataset exposes no
+  // outcome field). Shown as "Ricevuta" (see `status-label.ts`); without a caption
+  // the segnalazione hero was the only one to end at a bare, unexplained pill. This
+  // honest one-liner explains the state — and why there is no further one — bringing
+  // the hero to parity with the other four categories.
+  segnalazioni: {
+    altro: 'La segnalazione è stata inviata al Comune; il dataset pubblico non ne riporta l’esito.',
+  },
 };
 
 /**

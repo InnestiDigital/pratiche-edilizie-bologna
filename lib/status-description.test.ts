@@ -45,4 +45,13 @@ describe('statusDescriptionFor', () => {
     expect(statusDescriptionFor('altro', 'edilizia')).toBeUndefined();
     expect(statusDescriptionFor('not_a_real_status', 'commercio')).toBeUndefined();
   });
+
+  // Segnalazioni carry a constant `altro` status (the dataset has no outcome field),
+  // so — unlike edilizia's catch-all `altro` — it gets a category-specific caption
+  // rather than none, keeping the segnalazione hero from ending at a bare pill.
+  it('gives segnalazioni altro an honest caption (not the empty edilizia catch-all)', () => {
+    const desc = statusDescriptionFor('altro', 'segnalazioni');
+    expect(desc).toBeDefined();
+    expect(desc).toMatch(/segnalazione/i);
+  });
 });

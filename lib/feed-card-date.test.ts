@@ -120,6 +120,32 @@ describe('feedCardDate', () => {
     }
   });
 
+  it("shows an event's detection date (not its future end date) under a request sort", () => {
+    // The request_* sorts order eventi by first_seen_at (REQUEST_DATE_SQL), since an
+    // event has no request date. The default richiesta→chiusura order would fall
+    // through the NULL richiesta to date_issued (the FUTURE end date), desyncing the
+    // card + section header from the list order. Mirror the SQL: lead with rilevata.
+    const event = {
+      category: 'eventi' as const,
+      source_updated_at: null,
+      date_issued: '2026-11-20', // future event date — must NOT be shown under a request sort
+      first_seen_at: '2026-07-04T10:00:00Z', // the column the feed is ordered by
+    };
+    for (const sort of ['request_newest', 'request_oldest'] as const) {
+      expect(feedCardDate(event, sort)).toEqual({
+        kind: 'rilevata',
+        label: 'Rilevata',
+        icon: 'eye-outline',
+        date: '04/07/2026',
+      });
+    }
+    // The other sorts are unaffected: closing sort still shows the event date.
+    expect(feedCardDate(event, 'closing_newest')).toMatchObject({
+      kind: 'chiusura',
+      date: '20/11/2026',
+    });
+  });
+
   it('falls back to the always-present detected date when both domain dates are null', () => {
     expect(
       feedCardDate(

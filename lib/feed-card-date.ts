@@ -88,6 +88,30 @@ const PREFERENCE: Record<SortOption, FeedCardDateKind[]> = {
 };
 
 /**
+ * The `request_*` sorts order the feed by `REQUEST_DATE_SQL` (see
+ * `build-feed-query.ts`), which is `source_updated_at` for every category EXCEPT
+ * eventi — an event carries no request date (its `source_updated_at` is NULL), so
+ * the feed orders it by its discovery date (`first_seen_at`) instead. The default
+ * `PREFERENCE['request_newest']` order leads with `richiesta` then `chiusura`, so
+ * an eventi card would fall through the NULL `richiesta` to `chiusura`
+ * (`date_issued` = the event's FUTURE end date) — a date uncorrelated with the
+ * `first_seen_at` the row is actually ordered by. That desynced the card footer
+ * AND the month section header from the list order (non-monotonic headers under
+ * the default sort for anyone following eventi). Mirror the SQL: under a
+ * `request_*` sort an event's leading date is `rilevata` (`first_seen_at`), so the
+ * footer/header agree with the ordering column. Returns `null` (use `PREFERENCE`)
+ * for any non-eventi row or non-`request_*` sort.
+ */
+function requestSortDateOrder(
+  permit: FeedCardDateInput,
+  sort: SortOption | undefined
+): FeedCardDateKind[] | null {
+  if (permit.category !== 'eventi') return null;
+  if (sort !== 'request_newest' && sort !== 'request_oldest') return null;
+  return ['rilevata', 'chiusura', 'richiesta'];
+}
+
+/**
  * The `chiusura` field's label + icon depend on what `date_issued` MEANS for the
  * category, exactly as `buildPermitTimeline` branches on `chiusuraKind`: a real
  * conclusion (`completion` — edilizia/commercio/segnalazioni) reads as a compact
@@ -127,7 +151,7 @@ export function pickFeedDateField(
   permit: FeedCardDateInput,
   sort: SortOption | undefined
 ): PickedFeedDateField | null {
-  const order = PREFERENCE[sort ?? 'newest'];
+  const order = requestSortDateOrder(permit, sort) ?? PREFERENCE[sort ?? 'newest'];
   for (const kind of order) {
     const field = FIELDS[kind];
     const raw = field.raw(permit);

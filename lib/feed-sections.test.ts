@@ -65,6 +65,28 @@ describe('groupPermitsBySection', () => {
     expect(sections[0].title).toBe('Settembre 2024');
   });
 
+  it('buckets eventi by discovery month under a request sort, keeping headers monotonic', () => {
+    // Under request_newest the feed orders eventi by first_seen_at, but their
+    // date_issued is a FUTURE, unordered end date. Bucketing on date_issued would
+    // splice a far-future month between the discovery-ordered rows (July → November
+    // → July). The eventi row must bucket on its discovery month so the headers stay
+    // monotonic with the list order — the exact desync this fix closes.
+    const permits = [
+      permit({ id: 1, source_updated_at: '2026-07-05' }), // edilizia, request July
+      permit({
+        id: 2,
+        category: 'eventi',
+        source_updated_at: null,
+        date_issued: '2026-11-20', // future event date — must NOT drive the header
+        first_seen_at: '2026-07-04T10:00:00Z', // discovered in July, the ordering column
+      }),
+    ];
+    const sections = groupPermitsBySection(permits, 'request_newest');
+    expect(sections).toHaveLength(1);
+    expect(sections[0].title).toBe('Luglio 2026');
+    expect(sections[0].data.map((p) => p.id)).toEqual([1, 2]);
+  });
+
   it('collects date-less permits into a "Senza data" bucket', () => {
     const sections = groupPermitsBySection(
       [

@@ -11,6 +11,7 @@ import {
   type PermitContent,
   type UpsertOutcome,
 } from './upsert-classify';
+import { reconcileGeocodedExtra } from './upsert-reconcile';
 import { tallyOutcomes } from './sync-tally';
 import {
   walkPages,
@@ -315,14 +316,20 @@ async function upsertPermit(
     return classifyUpsert(null, permit, changes);
   }
 
-  const outcome = classifyUpsert(existing, permit, 0);
+  // Carry forward the geocode the back-fill merged into this row's `extra`: an
+  // edilizia row re-normalizes without the `lat`/`lon` it was geocoded with, so
+  // without this every re-sync would read as `updated`, wipe the coordinate, and
+  // fire a spurious "aggiornate" alert (the background task never re-back-fills).
+  // Coords are only carried when the codvia+civico join keys are unchanged.
+  const reconciled = reconcileGeocodedExtra(existing, permit);
+  const outcome = classifyUpsert(existing, reconciled, 0);
   if (outcome === 'updated') {
     // Rewrite every content column (derived from the same PERMIT_CONTENT_FIELDS
     // that drove the comparison) so any corrected field — not only status —
     // heals. `is_new=1` re-flags the row as freshly touched.
     await db.runAsync(
       `UPDATE permits SET ${PERMIT_CONTENT_FIELDS.map((f) => `${f}=?`).join(', ')}, is_new=1 WHERE id=?`,
-      ...PERMIT_CONTENT_FIELDS.map((f) => permit[f]),
+      ...PERMIT_CONTENT_FIELDS.map((f) => reconciled[f]),
       existing.id
     );
   }

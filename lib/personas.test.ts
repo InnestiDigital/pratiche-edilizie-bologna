@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  PERSONAS,
-  PERSONA_PROFILES,
-  personaDefaults,
-  personaFeedIntro,
-  type Persona,
-} from './personas';
+import { PERSONAS, PERSONA_PROFILES, personaDefaults, type Persona } from './personas';
 import { CATEGORIES, type Category } from './sources';
 import { FILING_TYPE_ORDER, type FilingType } from './constants';
 
@@ -14,12 +8,11 @@ describe('personas registry', () => {
     expect(Object.keys(PERSONA_PROFILES).sort()).toEqual([...PERSONAS].sort());
   });
 
-  it('every persona has non-empty label + blurb + feedIntro copy', () => {
+  it('every persona has non-empty label + blurb copy', () => {
     for (const p of PERSONAS) {
       const profile = PERSONA_PROFILES[p];
       expect(profile.label.trim().length).toBeGreaterThan(0);
       expect(profile.blurb.trim().length).toBeGreaterThan(0);
-      expect(profile.feedIntro.trim().length).toBeGreaterThan(0);
     }
   });
 
@@ -89,20 +82,5 @@ describe('personaDefaults', () => {
     for (const p of ['esplora', 'cittadino'] as Persona[]) {
       expect(new Set(personaDefaults(p).interests)).toEqual(new Set(CATEGORIES));
     }
-  });
-});
-
-describe('personaFeedIntro', () => {
-  it('returns the registry feedIntro for each persona', () => {
-    for (const p of PERSONAS) {
-      expect(personaFeedIntro(p)).toBe(PERSONA_PROFILES[p].feedIntro);
-    }
-  });
-
-  it('returns a distinct, non-empty line for every persona', () => {
-    const intros = PERSONAS.map(personaFeedIntro);
-    for (const line of intros) expect(line.trim().length).toBeGreaterThan(0);
-    // Each role speaks in its own words — no two personas share a feed line.
-    expect(new Set(intros).size).toBe(PERSONAS.length);
   });
 });

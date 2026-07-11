@@ -27,9 +27,6 @@ import {
   type SortOption,
 } from '../../lib/queries';
 import { loadPreferences, savePreferences, getActivitySeenAt } from '../../lib/preferences';
-import { personaFeedIntro, PERSONA_PROFILES, type Persona } from '../../lib/personas';
-import { shouldShowPersonaHeader } from '../../lib/persona-header';
-import { PERSONA_ICONS } from '../../components/persona-icons';
 import { shouldShowHomeHint } from '../../lib/home-hint';
 import { listFavoriteIds, toggleFavorite } from '../../lib/favorites';
 import { listNotePreviews } from '../../lib/notes';
@@ -1111,47 +1108,6 @@ function HomeHintBanner({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
-/* ── Persona feed header ────────────────────────── */
-
-/** The chosen persona's voice IN the feed — before this the persona only shaped
- *  onboarding + the Settings picker, so the feed read identical for a Tecnico and
- *  a Cittadino. Renders as the SectionList `ListHeaderComponent` (scrolls away
- *  with the content, so it frames the feed on arrival without being permanent
- *  chrome) only when a persona is set; a pre-persona upgrader (persona null) sees
- *  the plain feed. Role eyebrow + tailored one-liner (`personaFeedIntro`), brick
- *  role glyph, tap → Settings "Chi sei?" to re-pick — same identity + card
- *  skeleton as the Settings persona row and the HomeHintBanner. */
-function PersonaFeedHeader({ persona, onPress }: { persona: Persona; onPress: () => void }) {
-  const label = PERSONA_PROFILES[persona].label;
-  const intro = personaFeedIntro(persona);
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Profilo: ${label}. ${intro} Tocca per cambiarlo.`}
-      accessibilityHint="Apri le impostazioni del profilo"
-      className="mx-4 mb-2 mt-2 flex-row items-center rounded-xl bg-white px-3 py-2.5"
-      style={{
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
-        elevation: 1,
-      }}>
-      <View className="mr-2.5 h-9 w-9 items-center justify-center rounded-full bg-brick-50">
-        <Ionicons name={PERSONA_ICONS[persona]} size={17} color="#9B2335" />
-      </View>
-      <View className="flex-1 pr-1">
-        <Text className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-          {label}
-        </Text>
-        <Text className="mt-0.5 text-[13px] font-semibold leading-4 text-ink-800">{intro}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={16} color="#c4b8a8" />
-    </Pressable>
-  );
-}
-
 /* ── Date Section Header ────────────────────────── */
 
 /** Sticky month header ("Novembre 2024") over a run of same-month cards. */
@@ -1225,10 +1181,6 @@ export default function FeedScreen() {
   // refreshed from prefs on every reset load.
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [followedCategories, setFollowedCategories] = useState<Category[]>([]);
-  // The user's chosen persona (mirrored from prefs on every reset load, like
-  // followedCategories/home) — drives the feed's persona header. null = a
-  // pre-persona upgrader / fresh install → no header, plain feed.
-  const [persona, setPersona] = useState<Persona | null>(null);
 
   const [activeTypes, setActiveTypes] = useState<Set<FilingType>>(new Set(FILING_TYPE_ORDER));
   const [activeZones, setActiveZones] = useState<Set<Quartiere>>(new Set(QUARTIERI));
@@ -1324,8 +1276,6 @@ export default function FeedScreen() {
         // Mirror the followed set into state so the category quick-filter row can
         // render (and re-hydrate) without waiting on the next prefs read.
         setFollowedCategories(prefs.interests);
-        // Mirror the chosen persona so the feed persona header can render.
-        setPersona(prefs.persona);
         // Mirror the home anchor + radius so the FilterPanel toggle and chip render.
         setHome(prefs.home);
         setHomeRadiusMeters(prefs.homeRadiusMeters);
@@ -1937,18 +1887,6 @@ export default function FeedScreen() {
         renderSectionHeader={({ section }) => (
           <FeedSectionHeader title={section.title} count={section.data.length} />
         )}
-        // Persona voice at the top of the populated feed — scrolls away with the
-        // content (not permanent chrome). Gated on the CURRENT feed having rows
-        // (`sections.length`), not merely on the DB having base-pref data: a
-        // `ListHeaderComponent` renders even for an empty list, so any in-feed
-        // refinement (search, Solo salvate/con note, status/tag/period/radius) that
-        // narrows a populated DB to zero would otherwise float the persona line
-        // above the empty state. `shouldShowPersonaHeader` keeps that decision pure.
-        ListHeaderComponent={
-          persona && shouldShowPersonaHeader({ persona, hasRows: sections.length > 0, loading }) ? (
-            <PersonaFeedHeader persona={persona} onPress={() => router.push('/(tabs)/settings')} />
-          ) : null
-        }
         contentContainerStyle={{ paddingBottom: 24 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9B2335" />

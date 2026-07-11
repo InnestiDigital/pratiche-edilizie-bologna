@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { homeCircleFraction, type MapPin, type MapRegion, type HomeMarker } from '../lib/map-pins';
+import type { StaticMarker } from '../lib/static-layers';
 
 /** Brand wine-red — matches the native home marker + radius ring. */
 const HOME_COLOR = '#9B2335';
@@ -22,10 +23,13 @@ export function PermitMap({
   pins,
   region,
   home,
+  staticMarkers = [],
 }: {
   pins: MapPin[];
   region: MapRegion;
   home?: HomeMarker | null;
+  /** Toggleable static-layer markers (farmacie, …) drawn distinctly from pins. */
+  staticMarkers?: StaticMarker[];
 }) {
   const router = useRouter();
   // Measured container size (px). We project into pixels rather than percentages so
@@ -105,6 +109,37 @@ export function PermitMap({
             />
           );
         })()}
+      {/* Static-layer markers — a colored rounded SQUARE with a white pharmacy
+          cross, deliberately NOT a round dot so a farmacia never reads as a
+          permit pin. Non-pressable: static markers are reference data, not
+          routable permits. Drawn UNDER the pins (primary permit data stays on
+          top), under the home marker — mirrors the native PermitMap order. */}
+      {size &&
+        staticMarkers.map((m) => {
+          const pos = project(m.lat, m.lon);
+          return (
+            <View
+              key={`${m.layer}-${m.id}`}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: pos.left - 8,
+                top: pos.top - 8,
+                width: 16,
+                height: 16,
+                borderRadius: 4,
+                backgroundColor: m.color,
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <Text style={{ color: '#ffffff', fontSize: 11, lineHeight: 12, fontWeight: '900' }}>
+                +
+              </Text>
+            </View>
+          );
+        })}
       {size &&
         pins.map((pin) => {
           const pos = project(pin.lat, pin.lon);

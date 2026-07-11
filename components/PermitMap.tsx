@@ -2,6 +2,7 @@ import { StyleSheet, View, Text } from 'react-native';
 import MapView, { Marker, Circle, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import type { MapPin, MapRegion, HomeMarker } from '../lib/map-pins';
+import type { StaticMarker } from '../lib/static-layers';
 
 /** Brand wine-red — the home anchor + radius ring color (distinct from every category dot). */
 const HOME_COLOR = '#9B2335';
@@ -24,10 +25,13 @@ export function PermitMap({
   pins,
   region,
   home,
+  staticMarkers = [],
 }: {
   pins: MapPin[];
   region: MapRegion;
   home?: HomeMarker | null;
+  /** Toggleable static-layer markers (farmacie, …) drawn distinctly from pins. */
+  staticMarkers?: StaticMarker[];
 }) {
   const router = useRouter();
   return (
@@ -46,6 +50,24 @@ export function PermitMap({
           strokeWidth={2}
         />
       )}
+      {/* Static-layer markers: a colored rounded SQUARE with a white pharmacy
+          cross — deliberately not a round dot, so a farmacia never reads as a
+          followed permit pin. No onCalloutPress: static markers are reference
+          data and never route to a /permit detail; the callout shows name +
+          address only. */}
+      {staticMarkers.map((m) => (
+        <Marker
+          key={`${m.layer}-${m.id}`}
+          coordinate={{ latitude: m.lat, longitude: m.lon }}
+          title={m.title}
+          description={m.subtitle ?? undefined}
+          anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={false}>
+          <View style={[styles.staticMarker, { backgroundColor: m.color }]}>
+            <Text style={styles.staticGlyph}>+</Text>
+          </View>
+        </Marker>
+      ))}
       {pins.map((pin) => (
         <Marker
           key={pin.id}
@@ -85,5 +107,20 @@ const styles = StyleSheet.create({
   homeGlyph: {
     fontSize: 14,
     lineHeight: 18,
+  },
+  staticMarker: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  staticGlyph: {
+    color: '#ffffff',
+    fontSize: 13,
+    lineHeight: 15,
+    fontWeight: '900',
   },
 });

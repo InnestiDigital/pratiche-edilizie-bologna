@@ -17,6 +17,7 @@
 
 import { tallyTags } from './tally-tags';
 import type { Category } from './sources';
+import { STATIC_LAYERS, type StaticMarker } from './static-layers';
 
 export interface ScreenshotPermit {
   id: number;
@@ -412,6 +413,80 @@ export const PERMIT_FIXTURES: ScreenshotPermit[] = [
       lat: '44.5215',
       lon: '11.3585',
     }),
+  },
+];
+
+/**
+ * A handful of realistic Bologna farmacie for the map screenshot's STATIC LAYER
+ * (docs/ROADMAP.md §4b). Placed on plausible central-Bologna coordinates that sit
+ * within the permit-pin cloud above, so the farmacie overlay renders ON the fixture
+ * map when the layer is toggled on. Imported ONLY by `static-layer-sync.web.ts` (the
+ * web shim), never by a `.ts` module. Color is sourced from the registry so it never
+ * drifts from the live layer hue.
+ */
+export const STATIC_MARKER_FIXTURES: StaticMarker[] = [
+  {
+    id: '058000010000',
+    lat: 44.4949,
+    lon: 11.3406,
+    layer: 'farmacie',
+    title: 'FARMACIA CENTRALE',
+    subtitle: 'VIA UGO BASSI, 1',
+    color: STATIC_LAYERS.farmacie.color,
+  },
+  {
+    id: '058000021000',
+    lat: 44.4972,
+    lon: 11.3418,
+    layer: 'farmacie',
+    title: 'FARMACIA DELLA MONTAGNOLA',
+    subtitle: 'VIA IRNERIO, 2',
+    color: STATIC_LAYERS.farmacie.color,
+  },
+  {
+    id: '058000028000',
+    lat: 44.4901,
+    lon: 11.3268,
+    layer: 'farmacie',
+    title: 'FARMACIA COMUNALE SARAGOZZA',
+    subtitle: 'VIA SARAGOZZA, 105',
+    color: STATIC_LAYERS.farmacie.color,
+  },
+  {
+    id: '058000034000',
+    lat: 44.5142,
+    lon: 11.3421,
+    layer: 'farmacie',
+    title: 'FARMACIA COMUNALE ZANARDI',
+    subtitle: 'VIA ZANARDI, 78',
+    color: STATIC_LAYERS.farmacie.color,
+  },
+  {
+    id: '058000041000',
+    lat: 44.5061,
+    lon: 11.3612,
+    layer: 'farmacie',
+    title: 'FARMACIA SAN DONATO',
+    subtitle: 'VIA SAN DONATO, 44',
+    color: STATIC_LAYERS.farmacie.color,
+  },
+  {
+    id: '058000047000',
+    lat: 44.4726,
+    lon: 11.3641,
+    layer: 'farmacie',
+    title: 'FARMACIA TOSCANA',
+    subtitle: 'VIA TOSCANA, 61',
+    color: STATIC_LAYERS.farmacie.color,
+  },
+  {
+    id: '058000053000',
+    lat: 44.4966,
+    lon: 11.3532,
+    layer: 'farmacie',
+    title: 'FARMACIA ZAMBONI',
+    subtitle: 'VIA ZAMBONI, 59',
+    color: STATIC_LAYERS.farmacie.color,
   },
 ];
 

@@ -488,6 +488,67 @@ export const STATIC_MARKER_FIXTURES: StaticMarker[] = [
     subtitle: 'VIA ZAMBONI, 59',
     color: STATIC_LAYERS.farmacie.color,
   },
+  // scuole — the 2nd static layer (dataset `elenco-delle-scuole`). Same fixture
+  // contract as the farmacie block above: a handful of real central-Bologna schools
+  // on plausible coordinates inside the permit-pin cloud, keyed on a `geo_id`-shaped
+  // id (the layer's stable per-row key), so the scuole overlay renders ON the fixture
+  // map when its layer is toggled on — and the screenshot harness can SEE it (the
+  // registry gained `scuole` in fcb3815 but this fixture had no scuole markers, so
+  // the layer showed an empty overlay). Color is sourced from the registry.
+  {
+    id: '4900000010',
+    lat: 44.4897,
+    lon: 11.3487,
+    layer: 'scuole',
+    title: 'Liceo Ginnasio Luigi Galvani',
+    subtitle: 'Via Castiglione, 38',
+    color: STATIC_LAYERS.scuole.color,
+  },
+  {
+    id: '4900000021',
+    lat: 44.4941,
+    lon: 11.3402,
+    layer: 'scuole',
+    title: 'Scuola Primaria Edmondo De Amicis',
+    subtitle: 'Via Cesare Battisti, 27',
+    color: STATIC_LAYERS.scuole.color,
+  },
+  {
+    id: '4900000034',
+    lat: 44.4838,
+    lon: 11.3661,
+    layer: 'scuole',
+    title: 'Liceo Scientifico Enrico Fermi',
+    subtitle: 'Via Mazzini, 172/2',
+    color: STATIC_LAYERS.scuole.color,
+  },
+  {
+    id: '4900000048',
+    lat: 44.5108,
+    lon: 11.3495,
+    layer: 'scuole',
+    title: 'Istituto Aldini Valeriani',
+    subtitle: 'Via Bassanelli, 9/11',
+    color: STATIC_LAYERS.scuole.color,
+  },
+  {
+    id: '4900000055',
+    lat: 44.4972,
+    lon: 11.3221,
+    layer: 'scuole',
+    title: 'Scuola Secondaria Guido Reni',
+    subtitle: 'Via Emilia Ponente, 231',
+    color: STATIC_LAYERS.scuole.color,
+  },
+  {
+    id: '4900000062',
+    lat: 44.4809,
+    lon: 11.3708,
+    layer: 'scuole',
+    title: 'Istituto Manfredi-Tanari',
+    subtitle: 'Viale Felsina, 40',
+    color: STATIC_LAYERS.scuole.color,
+  },
 ];
 
 export const STATS_FIXTURE = {

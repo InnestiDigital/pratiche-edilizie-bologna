@@ -1,8 +1,9 @@
 import { StyleSheet, View, Text } from 'react-native';
 import MapView, { Marker, Circle, PROVIDER_DEFAULT } from 'react-native-maps';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import type { MapPin, MapRegion, HomeMarker } from '../lib/map-pins';
-import type { StaticMarker } from '../lib/static-layers';
+import { STATIC_LAYERS, type StaticMarker } from '../lib/static-layers';
 
 /** Brand wine-red — the home anchor + radius ring color (distinct from every category dot). */
 const HOME_COLOR = '#9B2335';
@@ -50,11 +51,13 @@ export function PermitMap({
           strokeWidth={2}
         />
       )}
-      {/* Static-layer markers: a colored rounded SQUARE with a white pharmacy
-          cross — deliberately not a round dot, so a farmacia never reads as a
-          followed permit pin. No onCalloutPress: static markers are reference
-          data and never route to a /permit detail; the callout shows name +
-          address only. */}
+      {/* Static-layer markers: a colored rounded SQUARE carrying the layer's
+          white Ionicons glyph (farmacie medkit, scuole cap, …), deliberately NOT
+          a round dot so a static marker never reads as a permit pin. The glyph
+          matches the toggle chip + legend, so schools and pharmacies are
+          distinguished by SHAPE+GLYPH, not color alone. No onCalloutPress:
+          static markers are reference data and never route to a /permit detail;
+          the callout shows name + address only. */}
       {staticMarkers.map((m) => (
         <Marker
           key={`${m.layer}-${m.id}`}
@@ -64,7 +67,7 @@ export function PermitMap({
           anchor={{ x: 0.5, y: 0.5 }}
           tracksViewChanges={false}>
           <View style={[styles.staticMarker, { backgroundColor: m.color }]}>
-            <Text style={styles.staticGlyph}>+</Text>
+            <Ionicons name={STATIC_LAYERS[m.layer].ionicon} size={11} color="#ffffff" />
           </View>
         </Marker>
       ))}
@@ -116,11 +119,5 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  staticGlyph: {
-    color: '#ffffff',
-    fontSize: 13,
-    lineHeight: 15,
-    fontWeight: '900',
   },
 });

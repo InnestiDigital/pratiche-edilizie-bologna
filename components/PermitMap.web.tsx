@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { homeCircleFraction, type MapPin, type MapRegion, type HomeMarker } from '../lib/map-pins';
-import type { StaticMarker } from '../lib/static-layers';
+import { STATIC_LAYERS, type StaticMarker } from '../lib/static-layers';
 
 /** Brand wine-red — matches the native home marker + radius ring. */
 const HOME_COLOR = '#9B2335';
@@ -109,11 +110,14 @@ export function PermitMap({
             />
           );
         })()}
-      {/* Static-layer markers — a colored rounded SQUARE with a white pharmacy
-          cross, deliberately NOT a round dot so a farmacia never reads as a
-          permit pin. Non-pressable: static markers are reference data, not
-          routable permits. Drawn UNDER the pins (primary permit data stays on
-          top), under the home marker — mirrors the native PermitMap order. */}
+      {/* Static-layer markers — a colored rounded SQUARE carrying the layer's
+          white Ionicons glyph (farmacie medkit, scuole cap, …), deliberately NOT
+          a round dot so a static marker never reads as a permit pin. The glyph
+          matches the toggle chip + legend, so schools and pharmacies are
+          distinguished by SHAPE+GLYPH, not color alone. Non-pressable: static
+          markers are reference data, not routable permits. Drawn UNDER the pins
+          (primary permit data stays on top), under the home marker — mirrors the
+          native PermitMap order. */}
       {size &&
         staticMarkers.map((m) => {
           const pos = project(m.lat, m.lon);
@@ -134,9 +138,7 @@ export function PermitMap({
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-              <Text style={{ color: '#ffffff', fontSize: 11, lineHeight: 12, fontWeight: '900' }}>
-                +
-              </Text>
+              <Ionicons name={STATIC_LAYERS[m.layer].ionicon} size={11} color="#ffffff" />
             </View>
           );
         })}

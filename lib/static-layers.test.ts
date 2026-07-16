@@ -53,6 +53,7 @@ describe('static-layer registry', () => {
     );
     expect(label.farmacie).toBe('Farmacie');
     expect(label.scuole).toBe('Scuole');
+    expect(label.mercati).toBe('Mercati');
   });
 });
 

@@ -47,6 +47,15 @@ export interface PageParamsOptions {
    * both.
    */
   where?: string;
+  /**
+   * When set, an ODS `select` clause restricting the page to a comma-separated
+   * field list (e.g. `recordid,denominazione,geopoint`). Passed through verbatim.
+   * Used by a static layer whose dataset carries no natural per-row id field in the
+   * default payload, so it must explicitly `select` the meta `recordid` to key its
+   * markers (see `static-layer-sync.ts`); the categories never set it, so their
+   * full-payload query is byte-identical to before.
+   */
+  select?: string;
 }
 
 function requireNonNegativeInt(name: string, value: number): void {
@@ -160,6 +169,7 @@ export function buildPageParams({
   limit = API_LIMIT,
   year,
   where,
+  select,
 }: PageParamsOptions): Record<string, string> {
   requireNonNegativeInt('offset', offset);
   if (!Number.isInteger(limit) || limit <= 0) {
@@ -178,6 +188,10 @@ export function buildPageParams({
 
   if (where !== undefined) {
     params.where = where;
+  }
+
+  if (select !== undefined) {
+    params.select = select;
   }
 
   return params;

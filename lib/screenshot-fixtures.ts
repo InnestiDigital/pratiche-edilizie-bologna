@@ -549,6 +549,59 @@ export const STATIC_MARKER_FIXTURES: StaticMarker[] = [
     subtitle: 'Viale Felsina, 40',
     color: STATIC_LAYERS.scuole.color,
   },
+  // mercati — the 3rd static layer (dataset `mercati-e-fiere`). Same fixture
+  // contract as the blocks above: a handful of real central-Bologna markets/fairs
+  // on plausible coordinates inside the permit-pin cloud, keyed on a `recordid`-
+  // shaped id (the ODS meta id the layer keys on, since this dataset has no natural
+  // per-row id), subtitled with the market days — so the mercati overlay renders ON
+  // the fixture map when its layer is toggled on and the screenshot harness can SEE
+  // it (the fixture-completeness guard fails the build if a layer has no fixture).
+  // Color is sourced from the registry.
+  {
+    id: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0',
+    lat: 44.4914,
+    lon: 11.3452,
+    layer: 'mercati',
+    title: 'Mercato di Mezzo',
+    subtitle: 'Lunedì-sabato',
+    color: STATIC_LAYERS.mercati.color,
+  },
+  {
+    id: 'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1',
+    lat: 44.4986,
+    lon: 11.3199,
+    layer: 'mercati',
+    title: 'Mercato Rionale Via Veneto',
+    subtitle: 'Martedì, Venerdì',
+    color: STATIC_LAYERS.mercati.color,
+  },
+  {
+    id: 'c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2',
+    lat: 44.5016,
+    lon: 11.3421,
+    layer: 'mercati',
+    title: 'Mercato della Montagnola',
+    subtitle: 'Venerdì, Sabato',
+    color: STATIC_LAYERS.mercati.color,
+  },
+  {
+    id: 'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3',
+    lat: 44.4869,
+    lon: 11.3298,
+    layer: 'mercati',
+    title: 'Mercato Produttori Agricoli Saragozza',
+    subtitle: 'Sabato',
+    color: STATIC_LAYERS.mercati.color,
+  },
+  {
+    id: 'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4',
+    lat: 44.5063,
+    lon: 11.3588,
+    layer: 'mercati',
+    title: 'Fiera di San Donato',
+    subtitle: 'Domenica',
+    color: STATIC_LAYERS.mercati.color,
+  },
 ];
 
 export const STATS_FIXTURE = {

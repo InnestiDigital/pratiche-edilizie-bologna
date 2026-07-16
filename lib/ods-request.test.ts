@@ -75,6 +75,19 @@ describe('buildPageParams', () => {
     expect(buildPageParams({ offset: 0 })).not.toHaveProperty('where');
   });
 
+  it('passes a select clause through verbatim (static-layer recordid keying)', () => {
+    const select = 'recordid,denominazione,geopoint';
+    expect(buildPageParams({ offset: 0, select })).toEqual({
+      limit: String(API_LIMIT),
+      offset: '0',
+      select,
+    });
+  });
+
+  it('omits select entirely when none is given (categories keep their full payload)', () => {
+    expect(buildPageParams({ offset: 0 })).not.toHaveProperty('select');
+  });
+
   it('produces a well-formed query string via URLSearchParams (year encoded)', () => {
     const qs = new URLSearchParams(buildPageParams({ offset: 100, year: 2023 })).toString();
     expect(qs).toBe('limit=100&offset=100&refine=richiesta_anno_prot%3A2023');

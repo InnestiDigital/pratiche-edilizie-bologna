@@ -4,9 +4,15 @@ import { withRetry } from './retry';
 import { walkPages } from './paginate';
 import { buildPageParams } from './ods-request';
 import type { ParsedPage } from './schemas';
-import { STATIC_LAYERS, type StaticLayerId, type StaticMarker } from './static-layers';
+import {
+  STATIC_LAYERS,
+  type StaticLayerConfig,
+  type StaticLayerId,
+  type StaticMarker,
+} from './static-layers';
 import { parseFarmaciePage } from './source-farmacie';
 import { parseScuolePage } from './source-scuole';
+import { parseMercatoPage } from './source-mercati';
 
 /**
  * DEVICE-NETWORK glue for the static context layers (docs/ROADMAP.md §4b). The
@@ -35,6 +41,7 @@ export const STATIC_LAYER_PARSERS: Record<
 > = {
   farmacie: parseFarmaciePage,
   scuole: parseScuolePage,
+  mercati: parseMercatoPage,
 };
 
 /** Options for {@link fetchStaticLayer}. `fetchPage` is injectable for tests. */
@@ -67,14 +74,21 @@ export function fetchStaticLayer(
   opts: FetchStaticLayerOptions = {}
 ): Promise<StaticMarker[]> {
   const { fetchPage: fetchPageImpl = fetchPage, signal, onProgress } = opts;
-  const config = STATIC_LAYERS[layer];
+  // Widen the narrow per-entry literal to the interface so the optional
+  // `selectFields` (present only on layers without a natural id) is visible.
+  const config: StaticLayerConfig = STATIC_LAYERS[layer];
   const url = BOLOGNA_API_BASE.replace('{slug}', config.slug);
   const parse = STATIC_LAYER_PARSERS[layer];
+  // Layers whose dataset carries no natural per-row id (mercati) select the ODS
+  // meta `recordid` + the fields their parser reads; the others fetch the full
+  // payload (no `select` → identical query to before).
+  const select = config.selectFields ? config.selectFields.join(',') : undefined;
 
   return walkPages<StaticMarker>(
     (offset) =>
       withRetry(
-        () => fetchPageImpl<StaticMarker>(url, buildPageParams({ offset }), { parse, signal }),
+        () =>
+          fetchPageImpl<StaticMarker>(url, buildPageParams({ offset, select }), { parse, signal }),
         {
           onRetry: ({ attempt, delayMs }) =>
             onProgress?.(`Ritento ${config.label} (${attempt}) tra ${Math.round(delayMs)}ms…`),

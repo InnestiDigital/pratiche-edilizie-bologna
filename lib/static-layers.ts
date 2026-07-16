@@ -24,7 +24,7 @@
  * one-line append here — the exhaustive {@link STATIC_LAYERS} record below then
  * fails the build until the new id gets its config.
  */
-export const STATIC_LAYER_IDS = ['farmacie', 'scuole'] as const;
+export const STATIC_LAYER_IDS = ['farmacie', 'scuole', 'mercati'] as const;
 export type StaticLayerId = (typeof STATIC_LAYER_IDS)[number];
 
 /**
@@ -45,6 +45,16 @@ export interface StaticLayerConfig {
   readonly color: string;
   /** Ionicons glyph name for the toggle chip. */
   readonly ionicon: string;
+  /**
+   * Optional ODS `select` field list for the layer's page fetch. Most datasets
+   * carry a natural stable per-row id in the default payload (farmacie `civkey`,
+   * scuole `geo_id`), so they omit this and fetch the full record. A dataset whose
+   * only stable per-row id is the ODS meta `recordid` — absent from the default
+   * payload — sets this to explicitly select `recordid` plus every field its parser
+   * reads (see `mercati`), so its marker keys stay collision-free. When present the
+   * fetch adds an ODS `select`; when absent the query is the full-payload default.
+   */
+  readonly selectFields?: readonly string[];
 }
 
 /**
@@ -62,6 +72,15 @@ export interface StaticLayerConfig {
  * Its scholastic blue `#377EB8` (ColorBrewer Set1 blue) sits clearly off farmacie's
  * teal and every category accent, so schools and pharmacies never blur together as
  * small markers.
+ *
+ * `mercati` = the Bologna markets-and-fairs gazetteer (dataset `mercati-e-fiere`,
+ * 249 rows: rionali / farmers / fairs — a distinct neighbourhood POI for residents
+ * and house-hunters). Its Set1 purple `#984EA3` sits off farmacie's teal, scuole's
+ * blue and every category accent (eventi's muted violet `#5B3D82` reads clearly
+ * apart, and the squared static marker vs the round category dot keeps them
+ * distinct even at hue-proximity). Unlike the other two it carries no natural
+ * per-row id field, so it sets {@link StaticLayerConfig.selectFields} to key its
+ * markers on the ODS meta `recordid` (see `source-mercati.ts`).
  */
 export const STATIC_LAYERS = {
   farmacie: {
@@ -77,6 +96,17 @@ export const STATIC_LAYERS = {
     slug: 'elenco-delle-scuole',
     color: '#377EB8',
     ionicon: 'school',
+  },
+  mercati: {
+    id: 'mercati',
+    label: 'Mercati',
+    slug: 'mercati-e-fiere',
+    color: '#984EA3',
+    ionicon: 'storefront',
+    // `mercati-e-fiere` exposes no natural per-row id in its default payload, so
+    // select the ODS meta `recordid` (verified unique across all 249 rows) plus the
+    // fields the parser reads. See `source-mercati.ts`.
+    selectFields: ['recordid', 'denominazione', 'giorni_svolgimento', 'ubicazione', 'geopoint'],
   },
 } as const satisfies Record<StaticLayerId, StaticLayerConfig>;
 

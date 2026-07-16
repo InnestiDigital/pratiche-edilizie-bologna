@@ -52,5 +52,19 @@ describe('static-layer registry', () => {
       {} as Record<StaticLayerId, string>
     );
     expect(label.farmacie).toBe('Farmacie');
+    expect(label.scuole).toBe('Scuole');
+  });
+});
+
+describe('static-layer parser map', () => {
+  it('pairs a page parser to every static layer id (runtime parity, not just tsc)', async () => {
+    // tsc already forces STATIC_LAYER_PARSERS to be a Record<StaticLayerId, …>, but a
+    // runtime coverage check mirrors the `sources.ts` category-parser parity test and
+    // catches an id/parser-map drift a `Partial`-shaped regression could sneak past.
+    const { STATIC_LAYER_PARSERS } = await import('./static-layer-sync');
+    expect(Object.keys(STATIC_LAYER_PARSERS).sort()).toEqual([...STATIC_LAYER_IDS].sort());
+    for (const id of STATIC_LAYER_IDS) {
+      expect(typeof STATIC_LAYER_PARSERS[id]).toBe('function');
+    }
   });
 });

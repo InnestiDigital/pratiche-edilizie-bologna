@@ -24,7 +24,7 @@
  * one-line append here — the exhaustive {@link STATIC_LAYERS} record below then
  * fails the build until the new id gets its config.
  */
-export const STATIC_LAYER_IDS = ['farmacie'] as const;
+export const STATIC_LAYER_IDS = ['farmacie', 'scuole'] as const;
 export type StaticLayerId = (typeof STATIC_LAYER_IDS)[number];
 
 /**
@@ -57,6 +57,11 @@ export interface StaticLayerConfig {
  * teal-green `#1B9E77` reads as the Italian pharmacy green cross yet sits clearly
  * off `commercio`'s forest `#2F6B3A` (and every other category accent), so the two
  * are never confused even as small markers.
+ *
+ * `scuole` = the Bologna school gazetteer (dataset `elenco-delle-scuole`, 361 rows).
+ * Its scholastic blue `#377EB8` (ColorBrewer Set1 blue) sits clearly off farmacie's
+ * teal and every category accent, so schools and pharmacies never blur together as
+ * small markers.
  */
 export const STATIC_LAYERS = {
   farmacie: {
@@ -65,6 +70,13 @@ export const STATIC_LAYERS = {
     slug: 'farmacie',
     color: '#1B9E77',
     ionicon: 'medkit',
+  },
+  scuole: {
+    id: 'scuole',
+    label: 'Scuole',
+    slug: 'elenco-delle-scuole',
+    color: '#377EB8',
+    ionicon: 'school',
   },
 } as const satisfies Record<StaticLayerId, StaticLayerConfig>;
 

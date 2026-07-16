@@ -6,6 +6,7 @@ import { buildPageParams } from './ods-request';
 import type { ParsedPage } from './schemas';
 import { STATIC_LAYERS, type StaticLayerId, type StaticMarker } from './static-layers';
 import { parseFarmaciePage } from './source-farmacie';
+import { parseScuolePage } from './source-scuole';
 
 /**
  * DEVICE-NETWORK glue for the static context layers (docs/ROADMAP.md §4b). The
@@ -28,10 +29,13 @@ import { parseFarmaciePage } from './source-farmacie';
  * analogue of `source-runtime.ts`, kept here (device glue) so the pure
  * `static-layers.ts` registry stays free of schema/parser imports.
  */
-const STATIC_LAYER_PARSERS: Record<StaticLayerId, (payload: unknown) => ParsedPage<StaticMarker>> =
-  {
-    farmacie: parseFarmaciePage,
-  };
+export const STATIC_LAYER_PARSERS: Record<
+  StaticLayerId,
+  (payload: unknown) => ParsedPage<StaticMarker>
+> = {
+  farmacie: parseFarmaciePage,
+  scuole: parseScuolePage,
+};
 
 /** Options for {@link fetchStaticLayer}. `fetchPage` is injectable for tests. */
 export interface FetchStaticLayerOptions {

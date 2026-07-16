@@ -152,7 +152,13 @@ export default function MapScreen() {
   // (its radius ring draws even before any nearby row is geocoded), or an active
   // static overlay (so a toggled layer has a surface even on a sparse map).
   const hasMap = data.pins.length > 0 || data.home !== null || activeStaticMarkers.length > 0;
-  const hasLegend = presentCategories.length > 0 || data.home !== null || activeLayerIds.length > 0;
+  // Static overlays are deliberately NOT in this legend: each active layer's toggle
+  // chip (below) is already its key — a filled pill in the layer color with the same
+  // white Ionicon the marker draws. Duplicating that in the legend only pushed the
+  // busiest chrome zone past two rows once all three static layers were on. So the
+  // legend stays the SYNCED-data key (home + up to 5 categories) → never more than
+  // two wrapped rows, whatever the static toggles do.
+  const hasLegend = presentCategories.length > 0 || data.home !== null;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f0ece3' }}>
@@ -229,7 +235,8 @@ export default function MapScreen() {
           {/* The legend is a fixed, small set (home + up to 5 categories) — wrap
               it across lines so every item is always visible at a glance. A
               horizontal-scroll legend hides items a still frame can never reveal;
-              legends benefit from being seen in full. */}
+              legends benefit from being seen in full. Static context overlays are
+              NOT keyed here — their colored toggle chips (below) are their key. */}
           <View
             style={{
               flexDirection: 'row',
@@ -277,28 +284,6 @@ export default function MapScreen() {
                 />
                 <Text style={{ color: '#4b4238', fontSize: 13, fontWeight: '600' }}>
                   {CATEGORY_LABELS[c]}
-                </Text>
-              </View>
-            ))}
-            {/* Divider before the static layers: they are context overlays, not
-                permit categories, so a squared swatch (matching their squared map
-                marker) keeps the distinction legible in the legend too. */}
-            {activeLayerIds.length > 0 && (presentCategories.length > 0 || data.home !== null) && (
-              <View style={{ width: 1, height: 14, backgroundColor: '#d8cdbd' }} />
-            )}
-            {activeLayerIds.map((id) => (
-              <View key={id} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 3,
-                    backgroundColor: STATIC_LAYERS[id].color,
-                    marginRight: 6,
-                  }}
-                />
-                <Text style={{ color: '#4b4238', fontSize: 13, fontWeight: '600' }}>
-                  {STATIC_LAYERS[id].label}
                 </Text>
               </View>
             ))}

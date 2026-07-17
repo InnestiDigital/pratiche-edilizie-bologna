@@ -11,10 +11,11 @@ Offline browser for **Comune di Bologna civic open data** across **5 categories*
 **local SQLite database** and shows them in a feed that works fully offline. A background task
 periodically re-syncs and fires a **local** push notification when new or updated records land.
 
-**Plan of record: `docs/ROADMAP.md`** — phases P0–P2 (multi-category platform) are done; P3
-(rebrand to **"Civico"** — name is decided, §4 has the execution checklist), P4 (map + radius
-alerts, §4b has the research context), and P5 (multi-city, §4c has the data-driven audit protocol)
-are specified there for autonomous execution. Read it before starting any phase work.
+**Plan of record: `docs/ROADMAP.md`** — ALL phases are closed: P0–P2 (multi-category platform),
+P3 (rebrand to **"Civico"**), P4 (map tab + static layers + Nei dintorni) are done; P5
+(multi-city) is **permanently closed** — the app is Bologna-only, final decision (ago 2026).
+The icon is the original **Due Torri** mark (restored when P5 closed; the neutral-mark rationale
+died with multi-city). Do not reopen P5 or redesign the icon without an explicit owner decision.
 
 - **No backend, no accounts, no analytics.** Everything runs on-device. The only network calls are
   read-only GETs to the Bologna open-data API.

@@ -108,9 +108,9 @@ interessi utente. Note per sorgente:
 | ✅ **P0 — Registry** *(fatto, lug 2026)* | `sources.ts`, migrazione additiva su `permits` (niente rename), categoria in feed/query/prefs. Zero nuove sorgenti, comportamento identico | — | il grosso del lavoro concettuale; tutto testabile in vitest |
 | ✅ **P1 — Cantieri + Commercio** *(fatto, lug 2026)* | `lavori-pubblici` (banale) + `istanze-commercio` (stesso shape dell'edilizia). Feed multi-categoria, notifiche estese | P0 | 2 schemi + 2 normalizer + card |
 | ✅ **P2 — Eventi + Segnalazioni** *(fatto, lug 2026)* | `eventi-agenda-cultura` (sync futuro, ordinati per data di scoperta) + `segnalazioni-czrm`. Qui l'app diventa quotidianamente utile a chiunque | P0 | semantica sync nuova (futuro) |
-| **P3 — Rebrand "Civico"** *(nome deciso; delegato all'automazione)* | Nome, icona, splash, copy, config città, listing ASC nuovo | P1 (senza multi-categoria il rebrand è vuoto) | checklist in §4 |
-| **P4 — Mappa + raggio** *(delegato all'automazione)* | Vista mappa, geocoding on-device via gazzetteer civici Bologna → alert "entro 300 m da casa"; poi layer statici (farmacie, scuole, ZTL, mercati) | P1-P2 | contesto in §4b |
-| **P5 — Multi-città (data-driven)** | Audit portali città candidate → soglia di ammissione → integrazione solo delle città sopra soglia. Adapter CKAN quando serve la prima città non-ODS | P3 | protocollo in §4c |
+| ✅ **P3 — Rebrand "Civico"** *(fatto in 2.0.0; icona poi ripristinata alle Due Torri, vedi nota)* | Nome, copy, config città, listing ASC | P1 | checklist in §4 |
+| ✅ **P4 — Mappa** *(fatto, ago 2026)* | Tab mappa (react-native-maps/Apple Maps), "Nei dintorni", layer statici (farmacie, scuole, mercati), tracker/Novità | P1-P2 | contesto in §4b |
+| ❌ **P5 — Multi-città — CHIUSA (ago 2026)** | Decisione finale del proprietario: l'app resta **solo Bologna**. Il protocollo in §4c resta come riferimento storico; nessun audit, nessun adapter CKAN | — | non si fa |
 
 Regola invariata: **niente backend, niente account, niente analytics.** È il
 differenziatore (privacy, costi zero, offline). Tutte le fasi lo rispettano.
@@ -227,7 +227,11 @@ solo vista mappa, NON entrano nel feed né nelle notifiche.
 
 ---
 
-## 4c. P5 — Multi-città: protocollo data-driven (riformulato, lug 2026)
+## 4c. P5 — Multi-città: protocollo data-driven — **CHIUSA, solo Bologna** (ago 2026)
+
+> **Decisione finale (ago 2026):** l'app resta focalizzata su Bologna. Con questa decisione
+> l'icona è tornata alle **Due Torri** originali (il vincolo "segno neutro multi-città" non
+> esiste più: le Torri SONO l'identità). Il protocollo sotto resta solo come riferimento.
 
 Decisione del proprietario: non vincolare l'app a una città — **se i dati di altre città
 lo permettono, supportarle**. Il vincolo reale non è il codice (P0-P2 ha reso il costo
